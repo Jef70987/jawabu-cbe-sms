@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import  HrData  from '../../data/HrSidebarData';
+import BursarData  from '../../SidebarData/BursarSidebarData';
 import { useNavigate } from 'react-router-dom';
 
-function HrSidebar() {
+function BursarSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [openDropdown, setOpenDropdown] = useState(null);
   const navigate = useNavigate();
@@ -67,14 +67,14 @@ function HrSidebar() {
           {/* School Logo and Name */}
           <div className="flex items-center space-x-3 w-full">
             <img 
-              src="assets/logo.jpg" 
+              src="/logo.jpeg" 
               alt="School Logo" 
               className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-lg"
             />
             {!isCollapsed && (
               <div className="flex flex-col">
                 <h1 className="text-white font-bold text-lg leading-tight">KOGWENO</h1>
-                <h2 className="text-blue-200 text-xs font-semibold">PRI SCHOOL</h2>
+                <h2 className="text-blue-200 text-xs font-semibold">SCHOOL</h2>
               </div>
             )}
           </div>
@@ -101,7 +101,7 @@ function HrSidebar() {
         {/* Navigation Items */}
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
-            {HrData.map((val, key) => (
+            {BursarData.map((val, key) => (
               <li key={key} className="relative">
                 {/* Main Navigation Item */}
                 <div
@@ -226,4 +226,4 @@ function HrSidebar() {
   );
 }
 
-export default HrSidebar;
+export default BursarSidebar;

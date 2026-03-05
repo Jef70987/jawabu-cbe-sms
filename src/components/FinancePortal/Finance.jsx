@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom"
-import FinanceSidebar from "../sidebars/FinanceSidebar";
+import FinanceSidebar from "../../sidebars/FinanceSidebar";
 import Dashboard from "./Dashboard";
 import FeeManagement from "./FeeManagement";
 import PayrollManagement from "./PayrollManagement";

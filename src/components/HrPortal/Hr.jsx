@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom"
-import HrSidebar from "../sidebars/HrSidebar";
+import HrSidebar from "../../sidebars/HrSidebar";
 import HrDashboard from "./Dashboard";
 
 import Report from "./Report";

@@ -1,6 +1,6 @@
 import React from "react"
 import { Routes, Route } from "react-router-dom";
-import AdminSidebar from "../sidebars/RegisterSidebar";
+import AdminSidebar from "../../sidebars/RegisterSidebar";
 import Dashboard from "./Dashboard";
 import Admission from "./Admission";
 import Login from "../Authentication/Login";

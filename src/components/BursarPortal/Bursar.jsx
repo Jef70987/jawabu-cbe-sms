@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom"
-import BursarSidebar from "../sidebars/BursarSidebar";
+import BursarSidebar from "../../sidebars/BursarSidebar";
 import BursarDashboard from "./Dashboard";
 import PaymentRecords from "./PaymentRecords";
 import FeeStructure from "./FeeStructure";

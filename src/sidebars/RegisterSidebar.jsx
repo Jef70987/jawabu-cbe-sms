@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import FinanceSidebarData from '../../data/FinanceSidebarData';
+import RegisterSidebarData from '../../SidebarData/RegisterSidebarData';
 import { useNavigate } from 'react-router-dom';
 
-function Sidebar() {
+function BursarSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [openDropdown, setOpenDropdown] = useState(null);
   const navigate = useNavigate();
+
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -80,9 +81,10 @@ function Sidebar() {
           </div>
 
           {/* Toggle Button inside sidebar - Hidden when collapsed */}
+          
             <button 
               onClick={toggleSidebar}
-              className="absolute -right-3 top-6 bg-blue-700 hover:bg-blue-600 text-white rounded-full p-2 shadow-lg border border-blue-600 transition-all duration-200 hover:scale-110"
+              className="absolute -right-2 top-6 bg-blue-700 hover:bg-blue-600 text-white rounded-full p-2 shadow-lg border border-blue-600 transition-all duration-200 hover:scale-110"
               aria-label="Toggle sidebar"
             >
               <svg 
@@ -94,12 +96,13 @@ function Sidebar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
               </svg>
             </button>
+          
         </div>
 
         {/* Navigation Items */}
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
-            {FinanceSidebarData.map((val, key) => (
+            {RegisterSidebarData.map((val, key) => (
               <li key={key} className="relative">
                 {/* Main Navigation Item */}
                 <div
@@ -224,4 +227,4 @@ function Sidebar() {
   );
 }
 
-export default Sidebar;
+export default BursarSidebar;
