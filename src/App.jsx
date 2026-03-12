@@ -9,6 +9,9 @@ import { AuthProvider } from "./components/Authentication/AuthContext";
 import ProtectedRoute from "./components/Authentication/ProtectedRoute";
 import Accountant from "./components/AccountantPortal/Finance";
 import Teacher from "./components/TeacherPortal/TeacherMain";
+import Principal from "./components/PrincipalPortal/Principal";
+import Deputy from  "./components/DeputyPrincipalPortal/Deputy";
+
 function App() {
     return(
         <AuthProvider>
@@ -43,6 +46,17 @@ function App() {
                             <Hr/>
                         </ProtectedRoute>
                             }/>
+                    <Route path="/PrincipalPortal/*" element={
+                       <ProtectedRoute allowedRoles={['principal']}>
+                          <Principal/>
+                      </ProtectedRoute>
+                        }/>
+
+                    <Route path="/DeputyPortal/*" element={
+                       <ProtectedRoute allowedRoles={['deputy_principal']}>
+                           <Deputy/>
+                       </ProtectedRoute>
+                       }/>
 
                     <Route path="*" element={<Login/>}/>
                 </Routes>
