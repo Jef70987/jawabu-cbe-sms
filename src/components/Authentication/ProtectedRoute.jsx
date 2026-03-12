@@ -13,14 +13,14 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/Login" replace />;
-  }
+ // if (!user) {
+   // return <Navigate to="/Login" replace />;
+  //}
 
   // Check if user has required role
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />;
-  }
+ // if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+   // return <Navigate to="/unauthorized" replace />;
+  //}
 
   return children;
 };
