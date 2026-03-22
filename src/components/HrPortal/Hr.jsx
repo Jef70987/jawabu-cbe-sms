@@ -9,8 +9,6 @@ import Settings from "./Settings";
 import Login from "../Authentication/Login";
 import Payroll from "./PayrollMngmt";
 import Recruitment from "./Recruitment";
-
-import StaffRegistration from "./StaffReg";
 import StaffMngAdmin from "./Admin";
 import StaffManagement from "./StaffMngnt";
 
@@ -37,7 +35,7 @@ const Hr = () => {
                     <Route path="/Payroll" element={<Payroll/>}/>
                     <Route path="/Recruitment" element={<Recruitment/>}/>
                     <Route path="/Staffmngnt" element={<StaffManagement/>}/>
-                    <Route path="/Staffreg" element={<StaffRegistration/>}/>
+            
                     <Route path="/Report" element={<StaffMngAdmin/>}/>
                     <Route path="/HelpSupport" element={<HelpSupport/>}/>
                     <Route path="/Settings" element={<Settings/>}/>

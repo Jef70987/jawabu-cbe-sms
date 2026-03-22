@@ -23,63 +23,63 @@ const StudentSidebarData = [
     icon: <DashboardIcon />,
     link: "/StudentPortal/Dashboard"
   },
-  {
-    title: "Academic",
-    icon: <SchoolIcon sx={{fontSize:30}}/>,
-    link: "/StudentPortal/AcademicRecord"
-  },
+  // {
+  //   title: "Academic",
+  //   icon: <SchoolIcon sx={{fontSize:30}}/>,
+  //   link: "/StudentPortal/AcademicRecord"
+  // },
 
-  {
-    title: "Learning",
-    icon: <LibraryBooksIcon sx={{fontSize:30}}/>,
-    link: "/StudentPortal/Learning"
-  },
-  {
-    title: "Analytics",
-    icon: <BarChartIcon sx={{fontSize:30}}/>,
-    link: "/StudentPortal/CareerGuidance"
-  },
-  {
-    title: "Chatbot",
-    icon: <SmartToyIcon sx={{fontSize:30}} />,
-    link: "/StudentPortal/bot"
-  },
+  // {
+  //   title: "Learning",
+  //   icon: <LibraryBooksIcon sx={{fontSize:30}}/>,
+  //   link: "/StudentPortal/Learning"
+  // },
+  // {
+  //   title: "Analytics",
+  //   icon: <BarChartIcon sx={{fontSize:30}}/>,
+  //   link: "/StudentPortal/CareerGuidance"
+  // },
+  // {
+  //   title: "Chatbot",
+  //   icon: <SmartToyIcon sx={{fontSize:30}} />,
+  //   link: "/StudentPortal/bot"
+  // },
   
-  {
-    title: "ExtraCurriculumn",
-    icon: <DescriptionIcon sx={{fontSize:30}}/>,
-    link: "/StudentPortal/ExtraCurriculumn"
-  },
-  {
-    title: "Finance",
-    icon: <MonetizationOnIcon />,
-    link: "/StudentPortal/FeeManagement"
-  },
+  // {
+  //   title: "ExtraCurriculumn",
+  //   icon: <DescriptionIcon sx={{fontSize:30}}/>,
+  //   link: "/StudentPortal/ExtraCurriculumn"
+  // },
+  // {
+  //   title: "Finance",
+  //   icon: <MonetizationOnIcon />,
+  //   link: "/StudentPortal/FeeManagement"
+  // },
 
-  {
-    title: "Notices",
-    icon: <EventIcon sx={{fontSize:30}}/>,
-    link: "/StudentPortal/Notices"
-  },
-  {
-    title: "Profile",
-    icon: <PersonIcon sx={{fontSize:30}}/>,
-    link: "/StudentPortal/StudentProfile"
-  },
-  {
-    title: "Settings",
-    icon: <SettingsIcon sx={{fontSize:30}} />,
-    link: "/StudentPortal/Settings"
-  },
-  {
-    title: "Help & Support",
-    icon: <HelpIcon sx={{fontSize:30}}/>,
-    link: "/StudentPortal/Help&Support"
-  },
+  // {
+  //   title: "Notices",
+  //   icon: <EventIcon sx={{fontSize:30}}/>,
+  //   link: "/StudentPortal/Notices"
+  // },
+  // {
+  //   title: "Profile",
+  //   icon: <PersonIcon sx={{fontSize:30}}/>,
+  //   link: "/StudentPortal/StudentProfile"
+  // },
+  // {
+  //   title: "Settings",
+  //   icon: <SettingsIcon sx={{fontSize:30}} />,
+  //   link: "/StudentPortal/Settings"
+  // },
+  // {
+  //   title: "Help & Support",
+  //   icon: <HelpIcon sx={{fontSize:30}}/>,
+  //   link: "/StudentPortal/Help&Support"
+  // },
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{fontSize:30}}/>,
-    link: "/Login"
+    link: "/Logout"
   },
 ];
 

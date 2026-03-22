@@ -55,7 +55,7 @@ function HrSidebar() {
       {/* Sidebar */}
       <div 
         className={`
-          h-screen bg-gradient-to-b from-red-700 to-red-800 
+          h-screen bg-blue-900
           shadow-2xl border-r border-red-600 transition-all duration-300 ease-in-out z-50
           ${isCollapsed ? 'w-20' : 'w-64'}
           /* Mobile styles */
@@ -68,14 +68,14 @@ function HrSidebar() {
           {/* School Logo and Name */}
           <div className="flex items-center space-x-3 w-full">
             <img 
-              src="assets/logo.jpg" 
+              src="/logo.jpeg" 
               alt="School Logo" 
               className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-lg"
             />
             {!isCollapsed && (
-             <div className="flex flex-col">
+              <div className="flex flex-col">
                 <h1 className="text-white font-bold text-lg leading-tight">JAWABU</h1>
-                <h2 className="text-white text-xs font-semibold">SCHOOL</h2>
+                <h2 className="text-blue-200 text-xs font-semibold">SCHOOL</h2>
                 <p className="text-sm font-extrabold text-white truncate">{user?.username} | {user?.role}</p>
               </div>
             )}

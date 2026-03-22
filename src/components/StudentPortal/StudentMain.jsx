@@ -1,7 +1,8 @@
 import React from "react"
 import { Routes, Route } from "react-router-dom";
 import StudentSidebar from "../../sidebars/StudentSidebar";
-
+import StudentDashboard from "./Dashboard";
+import Logout from "../Authentication/Logout";
 
 const Student = () => {
     return(
@@ -20,7 +21,9 @@ const Student = () => {
                 minHeight: "100vh"
             }}>
                 <Routes>
-                    <Route path="/" element={<Dashboard/>}/>
+                    <Route path="/" element={<StudentDashboard/>}/>
+                    <Route path="/Dashboard" element={<StudentDashboard/>}/>
+                    <Route path="/Logout" element={<Logout/>}/>
                    
                 </Routes>
                

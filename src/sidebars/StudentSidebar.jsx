@@ -4,12 +4,12 @@ import StudentSidebarData from '../SidebarData/StudentSidebarData';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/Authentication/AuthContext';
 
-function StudentSidebar() {
+function StudentSidebar({ children }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const navigate = useNavigate();
-  const { user} = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -25,7 +25,6 @@ function StudentSidebar() {
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
-    // Close any open dropdowns when collapsing
     if (!isCollapsed) {
       setOpenDropdown(null);
     }
@@ -37,7 +36,6 @@ function StudentSidebar() {
 
   const handleNavigation = (path) => {
     navigate(path);
-    // Auto-close sidebar on mobile after navigation
     if (isMobile) {
       setIsCollapsed(true);
       setOpenDropdown(null);
@@ -45,43 +43,69 @@ function StudentSidebar() {
   };
 
   return (
-    <div className="relative h-full">
-      {/* Overlay for mobile when sidebar is open */}
-      {!isCollapsed && isMobile && (
-        <div 
-          className="fixed inset-0 bg-gradient-to-t from-blue-900/90 via-blue-800/85 to-blue-900/90 backdrop-blur-sm z-40 lg:hidden"
-          onClick={toggleSidebar}
-        />
+    <>
+      {/* Mobile Top Bar - Thin, Logo on left, Username on right */}
+      {isMobile && (
+        <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-800 to-blue-900 shadow-md z-50 lg:hidden">
+          <div className="flex items-center justify-between px-4 py-2">
+            {/* Logo Section - Left Side */}
+            <button 
+              onClick={toggleSidebar}
+              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
+            >
+              <div className="relative">
+                <img 
+                  src="/logo.jpeg" 
+                  alt="Logo" 
+                  className="w-8 h-8 rounded-lg object-cover border border-white/30 shadow-lg"
+                />
+                <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-400 border border-white rounded-full animate-pulse"></span>
+              </div>
+              <div className="flex flex-col leading-tight">
+                <h1 className="text-white font-bold text-sm leading-tight">JAWABU</h1>
+                <h2 className="text-white text-[10px] font-semibold leading-tight">SCHOOL</h2>
+              </div>
+            </button>
+
+            {/* User Info Section - Right Side */}
+            <div className="text-right">
+              <p className="text-white text-xs font-semibold">{user?.username}</p>
+              <p className="text-blue-200 text-[10px] font-medium">{user?.first_name} | {user?.role}</p>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Mobile Bottom Navigation - Always visible when on mobile */}
+      {/* Mobile Bottom Navigation - Thin */}
       {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 bg-blue-800 shadow-2xl z-50 lg:hidden">
-          <div className="flex justify-around items-center h-16 px-2 overflow-x-auto">
-            {StudentSidebarData.slice(0, 15).map((val, key) => (
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-blue-900 to-blue-800 shadow-lg z-50 lg:hidden">
+          <div className="flex justify-around items-center h-12 px-2">
+            {StudentSidebarData.slice(0, 5).map((val, key) => (
               <button
                 key={key}
                 onClick={() => handleNavigation(val.link)}
                 className={`
-                  flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-all duration-300
+                  flex flex-col items-center justify-center px-2 py-1 rounded-lg transition-all duration-300
                   ${window.location.pathname === val.link 
-                    ? 'text-white scale-110 bg-blue-600' 
-                    : 'text-blue-100 hover:text-white hover:bg-blue-600/50'
+                    ? 'text-white bg-blue-600/50' 
+                    : 'text-blue-100 hover:text-white hover:bg-blue-600/30'
                   }
                 `}
               >
-                <div className="text-xl mb-1 drop-shadow-lg">{val.icon}</div>
-                <span className="text-xs font-bold whitespace-nowrap drop-shadow-md">{val.title}</span>
+                <div className="text-base mb-0.5">{val.icon}</div>
+                <span className="text-[9px] font-semibold whitespace-nowrap">{val.title}</span>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Main Content Spacer for Mobile - Pushes content up above bottom nav */}
-      {isMobile && <div className="pb-20"></div>}
+      {/* Main Content Area with proper spacing */}
+      <div className={isMobile ? "pt-12 pb-12" : ""}>
+        {children}
+      </div>
 
-      {/* Toggle Button - Hidden on mobile */}
+      {/* Desktop Toggle Button - Hidden on mobile */}
       {!isMobile && (
         <button 
           onClick={toggleSidebar}
@@ -102,16 +126,14 @@ function StudentSidebar() {
       {/* Sidebar */}
       <div 
         className={`
-          h-screen bg-blue-900
-          shadow-2xl border-r-0 transition-all duration-500 ease-in-out z-50
+          h-screen bg-blue-900 shadow-2xl border-r-0 transition-all duration-500 ease-in-out z-50
           ${isCollapsed ? 'w-20' : 'w-72'}
-          /* Mobile styles */
           fixed lg:relative top-0 left-0
           ${isCollapsed && isMobile ? '-translate-x-full' : 'translate-x-0'}
           overflow-hidden flex flex-col
         `}
       >
-        {/* Animated background pattern - like Login page */}
+        {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
             backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
@@ -119,7 +141,7 @@ function StudentSidebar() {
           }}></div>
         </div>
 
-        {/* Curved border effect - inspired by Login page */}
+        {/* Decorative Element */}
         <div className="absolute right-0 top-0 h-32 w-32 bg-white/5" 
              style={{ 
                clipPath: 'polygon(100% 0, 0% 100%, 100% 100%)',
@@ -129,14 +151,12 @@ function StudentSidebar() {
 
         {/* Header Section */}
         <div className="relative z-10">
-          {/* Decorative top border */}
           <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-400 to-blue-600"></div>
           
           <div className={`
             flex items-center p-5 border-b border-red-700 bg-red-800 backdrop-blur-sm
             ${isCollapsed ? 'justify-center' : 'justify-between'}
           `}>
-            {/* Logo and Name */}
             <div className={`flex items-center ${isCollapsed ? 'flex-col' : 'space-x-4'}`}>
               <div className="relative group">
                 <div className="bg-blue-400 rounded-xl blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
@@ -148,7 +168,6 @@ function StudentSidebar() {
                     ${isCollapsed ? 'w-12 h-12' : 'w-14 h-14'}
                   `}
                 />
-                {/* Online indicator */}
                 <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full animate-pulse"></span>
               </div>
               
@@ -161,7 +180,7 @@ function StudentSidebar() {
               )}
             </div>
 
-            {/* Toggle Button - Only visible on desktop */}
+            {/* Desktop Toggle Button inside sidebar */}
             {!isMobile && (
               <button 
                 onClick={toggleSidebar}
@@ -185,12 +204,11 @@ function StudentSidebar() {
           </div>
         </div>
 
-        {/* Navigation Items - Scrollable */}
+        {/* Navigation Items */}
         <nav className="relative z-10 flex-1 overflow-y-auto py-6 px-3 scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-blue-900/30">
           <ul className="space-y-2">
             {StudentSidebarData.map((val, key) => (
               <li key={key} className="relative">
-                {/* Main Navigation Item */}
                 <div
                   className={`
                     flex items-center w-full p-3 rounded-xl cursor-pointer transition-all duration-300 group
@@ -209,41 +227,25 @@ function StudentSidebar() {
                     }
                   }}
                 >
-                  {/* Shine effect on hover */}
                   <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
 
-                  {/* Active indicator */}
                   {window.location.pathname === val.link && (
                     <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-300 to-blue-500 rounded-r-full"></div>
                   )}
 
-                  {/* Icon */}
-                  <div className={`
-                    flex-shrink-0 transition-all duration-300
-                    ${isCollapsed ? 'text-2xl' : 'text-xl'}
-                    drop-shadow-lg
-                  `}>
+                  <div className={`flex-shrink-0 transition-all duration-300 ${isCollapsed ? 'text-2xl' : 'text-xl'}`}>
                     {val.icon}
                   </div>
 
-                  {/* Title */}
                   {!isCollapsed && (
                     <div className="ml-3 flex-1">
-                      <span className={`
-                        font-bold transition-colors duration-200 whitespace-nowrap drop-shadow-md
-                      `}>
-                        {val.title}
-                      </span>
+                      <span className="font-bold whitespace-nowrap">{val.title}</span>
                     </div>
                   )}
 
-                  {/* Dropdown Arrow */}
                   {!isCollapsed && val.subNav && (
                     <svg 
-                      className={`
-                        w-4 h-4 transition-all duration-300 flex-shrink-0 drop-shadow-md
-                        ${openDropdown === key ? 'rotate-180' : ''}
-                      `}
+                      className={`w-4 h-4 transition-all duration-300 ${openDropdown === key ? 'rotate-180' : ''}`}
                       fill="none" 
                       stroke="currentColor" 
                       viewBox="0 0 24 24"
@@ -253,7 +255,6 @@ function StudentSidebar() {
                   )}
                 </div>
 
-                {/* Sub Navigation */}
                 {!isCollapsed && val.subNav && openDropdown === key && (
                   <ul className="ml-8 mt-2 space-y-1 animate-slideDown">
                     {val.subNav.map((subVal, subKey) => (
@@ -271,19 +272,9 @@ function StudentSidebar() {
                             handleNavigation(subVal.link);
                           }}
                         >
-                          {/* Shine effect */}
                           <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                          
-                          <div className={`
-                            text-sm transition-all duration-200 drop-shadow-md
-                          `}>
-                            {subVal.icon}
-                          </div>
-                          <span className={`
-                            ml-2 text-sm font-semibold transition-all duration-200 drop-shadow-md
-                          `}>
-                            {subVal.title}
-                          </span>
+                          <div className="text-sm">{subVal.icon}</div>
+                          <span className="ml-2 text-sm font-semibold">{subVal.title}</span>
                         </div>
                       </li>
                     ))}
@@ -299,10 +290,7 @@ function StudentSidebar() {
           relative z-10 border-t border-blue-700/30 p-4 bg-blue-800/30 backdrop-blur-md
           ${isCollapsed ? 'text-center' : ''}
         `}>
-          <div className={`
-            text-white/80 transition-all duration-300 overflow-hidden drop-shadow-md
-            ${isCollapsed ? 'text-xs' : 'text-sm'}
-          `}>
+          <div className={`text-white/80 transition-all duration-300 ${isCollapsed ? 'text-xs' : 'text-sm'}`}>
             {!isCollapsed ? (
               <div className="space-y-1">
                 <p className="font-bold">© {new Date().getFullYear()} jawabu</p>
@@ -310,9 +298,7 @@ function StudentSidebar() {
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <span className="text-xs font-bold rotate-0 whitespace-nowrap text-blue-300">
-                  ©{new Date().getFullYear()}
-                </span>
+                <span className="text-xs font-bold text-blue-300">©{new Date().getFullYear()}</span>
               </div>
             )}
           </div>
@@ -335,26 +321,25 @@ function StudentSidebar() {
           }
         }
 
-        /* Custom scrollbar for navigation */
         .scrollbar-thin::-webkit-scrollbar {
           width: 4px;
         }
 
         .scrollbar-thin::-webkit-scrollbar-track {
-          background: rgba(30, 58, 138, 0.3); /* blue-900/30 */
+          background: rgba(30, 58, 138, 0.3);
           border-radius: 20px;
         }
 
         .scrollbar-thin::-webkit-scrollbar-thumb {
-          background: #3b82f6; /* blue-500 */
+          background: #3b82f6;
           border-radius: 20px;
         }
 
         .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-          background: #2563eb; /* blue-600 */
+          background: #2563eb;
         }
       `}</style>
-    </div>
+    </>
   );
 }
 

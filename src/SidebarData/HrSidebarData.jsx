@@ -16,21 +16,16 @@ const HrData = [
         link: "/HrPortal/HrDashboard"
     },
     {
-        title: "StaffReg",
-        icon: <ReceiptIcon />,
-        link: "/HrPortal/Staffreg"
-    },
-    {
         title: "StaffMngnt",
         icon: <PeopleIcon />,
         link: "/HrPortal/Staffmngnt"
     },
      
-    {
-        title: "Payroll",
-        icon: <MonetizationOnIcon />,
-        link: "/HrPortal/Payroll"
-    },
+    // {
+    //     title: "Payroll",
+    //     icon: <MonetizationOnIcon />,
+    //     link: "/HrPortal/Payroll"
+    // },
     
     // {
     //     title: "Recruitemnt",
@@ -52,10 +47,10 @@ const HrData = [
     //     icon: <HelpIcon />,
     //     link: "/HrPortal/HelpSupport"
     // },
-    // {
-    //     title: "LogOut",
-    //     icon: <LogoutIcon sx={{color:'white',fontSize:30}}/>,
-    //     link: "/Login"
-    // },
+    {
+        title: "LogOut",
+        icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
+        link: "/Logout"
+    },
 ];
 export default HrData;

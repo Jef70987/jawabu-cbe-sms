@@ -41,7 +41,7 @@ ChartJS.register(
   Legend
 );
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Session Expired Modal
 const SessionExpiredModal = ({ isOpen, onLogout }) => {
@@ -108,9 +108,8 @@ const Dashboard = () => {
     collection_rate: 0,
     avg_transaction: 0,
     active_invoices: 0,
-    monthly_target: 1000000
+    monthly_target: 0
   });
-  
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [dailyCollection, setDailyCollection] = useState([]);
@@ -484,7 +483,7 @@ const Dashboard = () => {
       {/* Monthly Target Progress */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">Monthly Collection Target</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Collection Target</h3>
           <FiTarget className="text-gray-400" />
         </div>
         <div className="mb-2">
