@@ -158,7 +158,7 @@ function PrincipalSidebar({ children }) {
           <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-400 to-blue-600"></div>
           
           <div className={`
-            flex items-center p-5 border-b border-red-700 bg-red-800 backdrop-blur-sm
+            flex items-center p-5 border-b border-red-700 bg-blue-900 backdrop-blur-sm
             ${isCollapsed ? 'justify-center' : 'justify-between'}
           `}>
             <div className={`flex items-center ${isCollapsed ? 'flex-col' : 'space-x-4'}`}>
@@ -313,11 +313,11 @@ function PrincipalSidebar({ children }) {
             {!isCollapsed ? (
               <div className="space-y-1">
                 <p className="font-bold">© {new Date().getFullYear()} jawabu</p>
-                <p className="text-xs text-blue-300 font-semibold">Version 2.1.0 | powered by syntelsafe</p>
+                <p className="text-xs text-blue-300 font-semibold">powered by syntelsafe</p>
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <span className="text-xs font-bold text-blue-300">v2.1.0</span>
+                <span className="text-xs font-bold text-blue-300">© {new Date().getFullYear()}</span>
               </div>
             )}
           </div>

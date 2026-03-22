@@ -56,7 +56,7 @@ function HrSidebar() {
       <div 
         className={`
           h-screen bg-blue-900
-          shadow-2xl border-r border-red-600 transition-all duration-300 ease-in-out z-50
+          shadow-2xl border-r border-blue-900 transition-all duration-300 ease-in-out z-50
           ${isCollapsed ? 'w-20' : 'w-64'}
           /* Mobile styles */
           fixed lg:relative top-0 left-0

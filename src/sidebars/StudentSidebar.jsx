@@ -154,7 +154,7 @@ function StudentSidebar({ children }) {
           <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-400 to-blue-600"></div>
           
           <div className={`
-            flex items-center p-5 border-b border-red-700 bg-red-800 backdrop-blur-sm
+            flex items-center p-5 border-b border-red-700 bg-blue-900 backdrop-blur-sm
             ${isCollapsed ? 'justify-center' : 'justify-between'}
           `}>
             <div className={`flex items-center ${isCollapsed ? 'flex-col' : 'space-x-4'}`}>
