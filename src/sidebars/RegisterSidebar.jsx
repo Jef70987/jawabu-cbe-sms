@@ -79,7 +79,7 @@ function RegisterSidebar({ children }) {
       {isMobile && (
         <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-blue-900 to-blue-800 shadow-lg z-50 lg:hidden">
           <div className="flex justify-around items-center h-12 px-2">
-            {RegisterSidebarData.slice(0, 5).map((val, key) => (
+            {RegisterSidebarData.slice(0, 15).map((val, key) => (
               <button
                 key={key}
                 onClick={() => handleNavigation(val.link)}
