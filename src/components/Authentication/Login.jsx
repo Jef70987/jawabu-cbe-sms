@@ -25,7 +25,7 @@ const Login = () => {
       'hr_manager': '/HrPortal',
       'system_admin': '/SystemAdminPortal',
       'principal': '/PrincipalPortal',
-      'deputy_principal': '/DeputyPrincipalPortal',
+      'deputy_principal': '/DeputyPortal',
       'director_studies': '/DirectorPortal',
       'student': '/StudentPortal',
     };

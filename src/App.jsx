@@ -61,7 +61,7 @@ function App() {
                       </ProtectedRoute>
                         }/>
 
-                    <Route path="/DeputyPrincipalPortal/*" element={
+                    <Route path="/DeputyPortal/*" element={
                        <ProtectedRoute allowedRoles={['deputy_principal']}>
                            <DeputyPrincipal/>
                        </ProtectedRoute>
