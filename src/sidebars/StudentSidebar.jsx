@@ -177,7 +177,7 @@ function StudentSidebar({ children }) {
                 <div className="flex flex-col">
                   <h1 className="text-white font-bold text-lg leading-tight">JAWABU</h1>
                   <h2 className="text-white text-xs font-semibold">SCHOOL</h2>
-                  <p className="text-sm font-extrabold text-white truncate">{user?.username} | {user?.role}</p>
+                  <p className="text-sm font-extrabold text-white truncate">{user?.first_name} | {user?.role}</p>
                 </div>
               )}
             </div>
