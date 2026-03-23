@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import { Chart } from 'chart.js/auto';
@@ -129,9 +130,9 @@ function Dashboard() {
     setCurrentTime(`${hours}:${minutes} ${ampm}`);
   };
 
-  const handleNavigate = (path) => {
-    navigate(path);
-  };
+  // const handleNavigate = (path) => {
+  //   navigate(path);
+  // };
 
   // Get recent students (last 5 by admission date)
   const getRecentStudents = () => {
@@ -469,7 +470,7 @@ function Dashboard() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Registrar Quick Actions</h3>
               <div className="grid grid-cols-2 gap-3">
-                <QuickActionButton 
+                {/* <QuickActionButton 
                   icon="user-plus" 
                   label="New Admission" 
                   color="bg-blue-500 hover:bg-blue-600" 
@@ -492,7 +493,7 @@ function Dashboard() {
                   label="Class Setup" 
                   color="bg-purple-500 hover:bg-purple-600" 
                   onClick={handleNavigate('/RegisterPortal/Class')} 
-                />
+                /> */}
               </div>
             </div>
           </div>
