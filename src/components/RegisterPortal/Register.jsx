@@ -17,7 +17,7 @@ const Register  = () => {
             <div style={{ flexShrink: 0 }}>
                 <RegisterSidebar/>
             </div>
-            
+
             {/* Main Content Area */}
             <div style={{ 
                 flex: 1, 
