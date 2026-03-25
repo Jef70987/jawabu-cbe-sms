@@ -396,7 +396,7 @@ const StudentDashboard = () => {
       }
       
       // 2. Fetch fee summary
-      const feeRes = await fetch(`${API_BASE_URL}/api/student/fees/summary/`, {
+      const feeRes = await fetch(`${API_BASE_URL}/api/student/dashboard/fees/summary/`, {
         headers: getAuthHeaders()
       });
       
@@ -557,7 +557,7 @@ const StudentDashboard = () => {
               <h1 className="text-xl md:text-3xl font-bold text-gray-900">
                 {greeting}, {studentProfile?.first_name || user?.first_name || 'Student'}!
               </h1>
-              <p className="text-sm md:text-base text-gray-600 mt-1">
+              <p className="text-sm md:text-base text-blue-600 mt-1">
                 Welcome to your Student Dashboard
               </p>
               <div className="flex flex-wrap items-center gap-2 mt-2 text-xs md:text-sm text-gray-500">
@@ -601,7 +601,7 @@ const StudentDashboard = () => {
                       <div className="flex flex-wrap gap-2 md:gap-4 mt-1 md:mt-2 text-xs md:text-sm">
                         <span className="flex items-center gap-1">
                           <GraduationCap className="w-3 h-3 md:w-4 md:h-4" />
-                          <span className="truncate">{studentProfile.current_class?.class_name || 'N/A'}</span>
+                          <span className="truncate">Class {studentProfile.current_class?.class_name || 'N/A'}</span>
                         </span>
                         <span className="flex items-center gap-1">
                           <Users className="w-3 h-3 md:w-4 md:h-4" />
@@ -814,7 +814,7 @@ const StudentDashboard = () => {
 
             {/* Footer */}
             <div className="mt-6 md:mt-8 text-center text-xs md:text-sm text-gray-500">
-              <p>© {new Date().getFullYear()} School Management System. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} jawabu. All rights reserved.</p>
               <p className="mt-1 truncate">Student Portal | {studentProfile?.first_name} {studentProfile?.last_name}</p>
             </div>
           </>

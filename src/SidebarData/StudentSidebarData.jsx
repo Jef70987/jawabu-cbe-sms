@@ -50,11 +50,11 @@ const StudentSidebarData = [
   //   icon: <DescriptionIcon sx={{fontSize:30}}/>,
   //   link: "/StudentPortal/ExtraCurriculumn"
   // },
-  // {
-  //   title: "Finance",
-  //   icon: <MonetizationOnIcon />,
-  //   link: "/StudentPortal/FeeManagement"
-  // },
+  {
+    title: "Finance",
+    icon: <MonetizationOnIcon />,
+    link: "/StudentPortal/Finance"
+  },
 
   // {
   //   title: "Notices",
@@ -78,7 +78,7 @@ const StudentSidebarData = [
   // },
   {
     title: "LogOut",
-    icon: <LogoutIcon sx={{fontSize:30}}/>,
+    icon: <LogoutIcon sx={{color:"red", fontSize:30}}/>,
     link: "/Logout"
   },
 ];
