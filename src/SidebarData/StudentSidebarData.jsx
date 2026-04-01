@@ -61,11 +61,11 @@ const StudentSidebarData = [
   //   icon: <EventIcon sx={{fontSize:30}}/>,
   //   link: "/StudentPortal/Notices"
   // },
-  // {
-  //   title: "Profile",
-  //   icon: <PersonIcon sx={{fontSize:30}}/>,
-  //   link: "/StudentPortal/StudentProfile"
-  // },
+  {
+    title: "Profile",
+    icon: <PersonIcon sx={{fontSize:30}}/>,
+    link: "/StudentPortal/Profile"
+  },
   // {
   //   title: "Settings",
   //   icon: <SettingsIcon sx={{fontSize:30}} />,

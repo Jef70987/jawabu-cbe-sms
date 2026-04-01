@@ -4,6 +4,7 @@ import StudentSidebar from "../../sidebars/StudentSidebar";
 import StudentDashboard from "./Dashboard";
 import Logout from "../Authentication/Logout";
 import StudentFeeManagement from "./Fees";
+import StudentProfile from "./Profile";
 
 const Student = () => {
     return(
@@ -25,6 +26,7 @@ const Student = () => {
                     <Route path="/" element={<StudentDashboard/>}/>
                     <Route path="/Dashboard" element={<StudentDashboard/>}/>
                     <Route path="/Finance" element={<StudentFeeManagement/>}/>
+                    <Route path="/Profile" element={<StudentProfile/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                    
                 </Routes>
