@@ -508,8 +508,8 @@ const FeeStatementModal = ({ isOpen, onClose, feeSummary, transactions, studentP
       </head>
       <body>
         <div class="header">
-          <div class="school">PREMIER SCHOOL</div>
-          <div>P.O. Box 12345 - 00100, Nairobi, Kenya</div>
+          <div class="school">JAWABU SCHOOL</div>
+          <div>STRIVING FOR EXCELLENCE</div>
           <div class="title">FEE STATEMENT</div>
         </div>
         <div class="student-info">
@@ -817,7 +817,7 @@ const StudentFeeManagement = () => {
       <body>
         <div class="receipt">
           <div class="header">
-            <div class="school">JAWABU SCHOOL</div>
+            <div class="school">JAWABU SCHOOL</div> 
             <div class="title">OFFICIAL PAYMENT RECEIPT</div>
           </div>
           <div><strong>Receipt No:</strong> ${invoice.invoice_no}</div>
