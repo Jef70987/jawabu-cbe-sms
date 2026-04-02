@@ -1,104 +1,33 @@
 import React, { useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
-  Search, Filter, Plus, AlertTriangle, CheckCircle, XCircle,
-  Clock, UserX, FileText, MessageSquare, Calendar, Download,
-  MoreVertical, Edit2, Trash2, Eye
+  Gavel, AlertTriangle, CheckCircle, Clock,
+  FileText, Plus, Search, Filter,
+  TrendingUp, BarChart3, Calendar, Users
 } from 'lucide-react';
 
 const DeputyDiscipline = () => {
-  const [cases, setCases] = useState([
-    {
-      id: 'DC001',
-      student: 'James Wilson',
-      grade: '11A',
-      offense: 'Bullying',
-      description: 'Repeated verbal harassment of fellow student',
-      date: '2024-03-15',
-      reportedBy: 'Ms. Thompson',
-      severity: 'High',
-      status: 'Investigation',
-      actions: ['Parent notified', 'Witness statements collected']
-    },
-    {
-      id: 'DC002',
-      student: 'Sarah Chen',
-      grade: '10B',
-      offense: 'Truancy',
-      description: 'Skipped 5 classes this week',
-      date: '2024-03-15',
-      reportedBy: 'Mr. Davis',
-      severity: 'Medium',
-      status: 'Pending Review',
-      actions: ['Attendance record flagged']
-    },
-    {
-      id: 'DC003',
-      student: 'Michael Brown',
-      grade: '12C',
-      offense: 'Class Disruption',
-      description: 'Repeated interruptions during lessons',
-      date: '2024-03-14',
-      reportedBy: 'Dr. Martinez',
-      severity: 'Low',
-      status: 'Resolved',
-      actions: ['Verbal warning issued', 'Parent meeting scheduled']
-    },
-    {
-      id: 'DC004',
-      student: 'Emily Davis',
-      grade: '9D',
-      offense: 'Uniform Violation',
-      description: 'Repeated dress code violations',
-      date: '2024-03-14',
-      reportedBy: 'Ms. Thompson',
-      severity: 'Low',
-      status: 'Resolved',
-      actions: ['Uniform provided', 'Warning issued']
-    },
-    {
-      id: 'DC005',
-      student: 'David Lee',
-      grade: '11B',
-      offense: 'Academic Dishonesty',
-      description: 'Plagiarism in term paper',
-      date: '2024-03-13',
-      reportedBy: 'Prof. Johnson',
-      severity: 'High',
-      status: 'Investigation',
-      actions: ['Paper confiscated', 'Academic committee notified']
-    },
-  ]);
+  const location = useLocation();
+  const [activeSubTab, setActiveSubTab] = useState('overview');
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterSeverity, setFilterSeverity] = useState('all');
-  const [showCaseModal, setShowCaseModal] = useState(false);
-  const [selectedCase, setSelectedCase] = useState(null);
+  const subTabs = [
+    { id: 'overview', name: 'Overview', path: '/deputy/discipline', icon: <BarChart3 size={16} /> },
+    { id: 'cases', name: 'All Cases', path: '/deputy/discipline/cases', icon: <FileText size={16} /> },
+    { id: 'new', name: 'New Case', path: '/deputy/discipline/new', icon: <Plus size={16} /> },
+    { id: 'active', name: 'Active Cases', path: '/deputy/discipline/active', icon: <AlertTriangle size={16} /> },
+    { id: 'hearings', name: 'Hearings', path: '/deputy/discipline/hearings', icon: <Calendar size={16} /> },
+    { id: 'appeals', name: 'Appeals', path: '/deputy/discipline/appeals', icon: <Gavel size={16} /> },
+    { id: 'resolved', name: 'Resolved', path: '/deputy/discipline/resolved', icon: <CheckCircle size={16} /> }
+  ];
 
-  const filteredCases = cases.filter(c => 
-    (filterStatus === 'all' || c.status === filterStatus) &&
-    (filterSeverity === 'all' || c.severity === filterSeverity) &&
-    (c.student.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     c.offense.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const getSeverityColor = (severity) => {
-    switch(severity) {
-      case 'High': return 'bg-red-100 text-red-800 border-red-200';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'Low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'Investigation': return <AlertTriangle size={16} className="text-red-500" />;
-      case 'Pending Review': return <Clock size={16} className="text-yellow-500" />;
-      case 'Resolved': return <CheckCircle size={16} className="text-green-500" />;
-      default: return null;
-    }
+  const disciplineStats = {
+    totalCases: 156,
+    activeCases: 42,
+    resolvedCases: 98,
+    pendingReview: 16,
+    highSeverity: 12,
+    hearingsThisWeek: 8,
+    appealsPending: 5
   };
 
   return (
@@ -107,325 +36,246 @@ const DeputyDiscipline = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Discipline Management</h1>
-          <p className="text-gray-600 mt-1">Track and manage disciplinary cases</p>
+          <p className="text-gray-600 mt-1">Manage disciplinary cases, hearings, and appeals</p>
         </div>
         <div className="flex space-x-3">
           <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg flex items-center space-x-2 hover:bg-gray-50">
             <Download size={18} className="text-gray-600" />
             <span>Export Report</span>
           </button>
-          <button 
-            onClick={() => {
-              setSelectedCase(null);
-              setShowCaseModal(true);
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center space-x-2 hover:bg-blue-700"
-          >
-            <Plus size={18} />
-            <span>New Case</span>
-          </button>
+          <Link to="/deputy/discipline/new">
+            <button className="px-4 py-2 bg-purple-600 text-white rounded-lg flex items-center space-x-2 hover:bg-purple-700">
+              <Plus size={18} />
+              <span>New Case</span>
+            </button>
+          </Link>
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg p-4 border border-gray-200">
-          <p className="text-sm text-gray-600">Total Cases</p>
-          <p className="text-2xl font-bold text-gray-800">156</p>
-          <p className="text-xs text-gray-500 mt-1">This month</p>
-        </div>
-        <div className="bg-white rounded-lg p-4 border border-gray-200">
-          <p className="text-sm text-gray-600">Active</p>
-          <p className="text-2xl font-bold text-orange-600">24</p>
-          <p className="text-xs text-orange-500 mt-1">+6 from last week</p>
-        </div>
-        <div className="bg-white rounded-lg p-4 border border-gray-200">
-          <p className="text-sm text-gray-600">Resolved</p>
-          <p className="text-2xl font-bold text-green-600">118</p>
-          <p className="text-xs text-green-500 mt-1">75% resolution rate</p>
-        </div>
-        <div className="bg-white rounded-lg p-4 border border-gray-200">
-          <p className="text-sm text-gray-600">High Severity</p>
-          <p className="text-2xl font-bold text-red-600">8</p>
-          <p className="text-xs text-red-500 mt-1">Require attention</p>
-        </div>
-        <div className="bg-white rounded-lg p-4 border border-gray-200">
-          <p className="text-sm text-gray-600">Suspensions</p>
-          <p className="text-2xl font-bold text-purple-600">5</p>
-          <p className="text-xs text-purple-500 mt-1">2 pending review</p>
-        </div>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg p-4 border border-gray-200">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[300px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Search by student name, case ID, or offense..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 font-medium">Total Cases</p>
+              <p className="text-3xl font-bold text-gray-800 mt-2">{disciplineStats.totalCases}</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-lg">
+              <FileText className="text-blue-600" size={24} />
             </div>
           </div>
-          <div className="w-48">
-            <select
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="all">All Status</option>
-              <option value="Investigation">Investigation</option>
-              <option value="Pending Review">Pending Review</option>
-              <option value="Resolved">Resolved</option>
-            </select>
+          <p className="text-sm text-gray-500 mt-2">This academic year</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 font-medium">Active Cases</p>
+              <p className="text-3xl font-bold text-orange-600 mt-2">{disciplineStats.activeCases}</p>
+            </div>
+            <div className="bg-orange-100 p-3 rounded-lg">
+              <AlertTriangle className="text-orange-600" size={24} />
+            </div>
           </div>
-          <div className="w-48">
-            <select
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filterSeverity}
-              onChange={(e) => setFilterSeverity(e.target.value)}
-            >
-              <option value="all">All Severity</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
+          <p className="text-sm text-orange-600 mt-2">Require attention</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 font-medium">Resolved Cases</p>
+              <p className="text-3xl font-bold text-green-600 mt-2">{disciplineStats.resolvedCases}</p>
+            </div>
+            <div className="bg-green-100 p-3 rounded-lg">
+              <CheckCircle className="text-green-600" size={24} />
+            </div>
           </div>
-          <button className="px-4 py-2 border border-gray-200 rounded-lg flex items-center space-x-2 hover:bg-gray-50">
-            <Filter size={18} className="text-gray-600" />
-            <span>More Filters</span>
-          </button>
+          <p className="text-sm text-green-600 mt-2">63% resolution rate</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 font-medium">Pending Appeals</p>
+              <p className="text-3xl font-bold text-purple-600 mt-2">{disciplineStats.appealsPending}</p>
+            </div>
+            <div className="bg-purple-100 p-3 rounded-lg">
+              <Gavel className="text-purple-600" size={24} />
+            </div>
+          </div>
+          <p className="text-sm text-gray-500 mt-2">Need review</p>
         </div>
       </div>
 
-      {/* Cases Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Case ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Offense</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredCases.map((case_) => (
-                <tr key={case_.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-4">
-                    <span className="font-mono text-sm font-medium text-gray-900">{case_.id}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-medium text-gray-800">{case_.student}</p>
-                      <p className="text-sm text-gray-500">Grade {case_.grade}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="text-gray-800">{case_.offense}</p>
-                      <p className="text-sm text-gray-500 truncate max-w-[200px]">{case_.description}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{case_.date}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getSeverityColor(case_.severity)}`}>
-                      {case_.severity}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(case_.status)}
-                      <span className="text-sm text-gray-700">{case_.status}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => {
-                          setSelectedCase(case_);
-                          setShowCaseModal(true);
-                        }}
-                        className="p-1 hover:bg-gray-100 rounded-lg transition"
-                        title="View Details"
-                      >
-                        <Eye size={16} className="text-gray-600" />
-                      </button>
-                      <button className="p-1 hover:bg-gray-100 rounded-lg transition" title="Edit">
-                        <Edit2 size={16} className="text-gray-600" />
-                      </button>
-                      <button className="p-1 hover:bg-gray-100 rounded-lg transition" title="More">
-                        <MoreVertical size={16} className="text-gray-600" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Secondary Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <p className="text-xs text-gray-500">High Severity Cases</p>
+          <p className="text-lg font-semibold text-red-600">{disciplineStats.highSeverity}</p>
         </div>
-
-        {/* Pagination */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-          <p className="text-sm text-gray-600">Showing 1 to {filteredCases.length} of {cases.length} entries</p>
-          <div className="flex space-x-2">
-            <button className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-100 transition">Previous</button>
-            <button className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">1</button>
-            <button className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-100 transition">2</button>
-            <button className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-100 transition">3</button>
-            <button className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-100 transition">Next</button>
-          </div>
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <p className="text-xs text-gray-500">Hearings This Week</p>
+          <p className="text-lg font-semibold text-blue-600">{disciplineStats.hearingsThisWeek}</p>
+        </div>
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <p className="text-xs text-gray-500">Pending Review</p>
+          <p className="text-lg font-semibold text-yellow-600">{disciplineStats.pendingReview}</p>
+        </div>
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <p className="text-xs text-gray-500">Avg Resolution Time</p>
+          <p className="text-lg font-semibold text-purple-600">5.2 days</p>
         </div>
       </div>
 
-      {/* Case Details Modal */}
-      {showCaseModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-800">
-                {selectedCase ? 'Case Details' : 'New Discipline Case'}
-              </h2>
-              <button 
-                onClick={() => setShowCaseModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+      {/* Sub Navigation Tabs */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8 px-6 overflow-x-auto" aria-label="Tabs">
+            {subTabs.map((tab) => (
+              <Link
+                key={tab.id}
+                to={tab.path}
+                onClick={() => setActiveSubTab(tab.id)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 whitespace-nowrap ${
+                  location.pathname === tab.path || (tab.id === 'overview' && location.pathname === '/deputy/discipline')
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               >
-                <XCircle size={20} />
-              </button>
-            </div>
+                {tab.icon}
+                <span>{tab.name}</span>
+              </Link>
+            ))}
+          </nav>
+        </div>
 
-            {selectedCase ? (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Case ID</p>
-                    <p className="font-medium text-gray-800">{selectedCase.id}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Date Reported</p>
-                    <p className="font-medium text-gray-800">{selectedCase.date}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Student</p>
-                    <p className="font-medium text-gray-800">{selectedCase.student} (Grade {selectedCase.grade})</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Reported By</p>
-                    <p className="font-medium text-gray-800">{selectedCase.reportedBy}</p>
+        <div className="p-6">
+          {/* Content based on current route */}
+          {location.pathname === '/deputy/discipline' || location.pathname === '/deputy/discipline/overview' ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Quick Actions Card */}
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-6 text-white">
+                  <h3 className="text-xl font-bold mb-2">Quick Actions</h3>
+                  <p className="text-purple-100 mb-4">Manage disciplinary cases efficiently</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Link to="/deputy/discipline/new">
+                      <button className="w-full px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition">
+                        + New Case
+                      </button>
+                    </Link>
+                    <Link to="/deputy/discipline/hearings">
+                      <button className="w-full px-4 py-2 bg-white/20 border border-white rounded-lg hover:bg-white/30 transition">
+                        Schedule Hearing
+                      </button>
+                    </Link>
+                    <Link to="/deputy/discipline/appeals">
+                      <button className="w-full px-4 py-2 bg-white/20 border border-white rounded-lg hover:bg-white/30 transition">
+                        Review Appeals
+                      </button>
+                    </Link>
+                    <Link to="/deputy/discipline/resolved">
+                      <button className="w-full px-4 py-2 bg-white/20 border border-white rounded-lg hover:bg-white/30 transition">
+                        View Resolved
+                      </button>
+                    </Link>
                   </div>
                 </div>
 
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Offense</p>
-                  <p className="font-medium text-gray-800">{selectedCase.offense}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Description</p>
-                  <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">{selectedCase.description}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-500 mb-2">Actions Taken</p>
-                  <ul className="space-y-2">
-                    {selectedCase.actions.map((action, index) => (
-                      <li key={index} className="flex items-center text-gray-700">
-                        <CheckCircle size={16} className="text-green-500 mr-2" />
-                        {action}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="flex space-x-3 pt-4 border-t border-gray-200">
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Update Case
-                  </button>
-                  <button className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">
-                    Schedule Hearing
-                  </button>
-                  <button className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">
-                    Contact Parent
-                  </button>
+                {/* Recent Activity Card */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h3 className="font-semibold text-gray-800 mb-4">Recent Activity</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3 p-2 bg-white rounded-lg">
+                      <div className="p-2 bg-yellow-100 rounded-lg">
+                        <AlertTriangle size={16} className="text-yellow-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800">New case filed</p>
+                        <p className="text-xs text-gray-500">James Wilson - Physical Altercation</p>
+                      </div>
+                      <span className="text-xs text-gray-400">5 min ago</span>
+                    </div>
+                    <div className="flex items-center space-x-3 p-2 bg-white rounded-lg">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <CheckCircle size={16} className="text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800">Case resolved</p>
+                        <p className="text-xs text-gray-500">Emily Davis - Uniform violation</p>
+                      </div>
+                      <span className="text-xs text-gray-400">2 hours ago</span>
+                    </div>
+                    <div className="flex items-center space-x-3 p-2 bg-white rounded-lg">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Calendar size={16} className="text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800">Hearing scheduled</p>
+                        <p className="text-xs text-gray-500">Michael Brown - April 5, 2024</p>
+                      </div>
+                      <span className="text-xs text-gray-400">1 day ago</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <form className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Student Name</label>
-                    <input type="text" className="w-full px-4 py-2 border border-gray-200 rounded-lg" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
-                    <select className="w-full px-4 py-2 border border-gray-200 rounded-lg">
-                      <option>Select Grade</option>
-                      <option>9A</option>
-                      <option>9B</option>
-                      <option>10A</option>
-                      <option>10B</option>
-                    </select>
-                  </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Offense Type</label>
-                  <select className="w-full px-4 py-2 border border-gray-200 rounded-lg">
-                    <option>Select Offense</option>
-                    <option>Bullying</option>
-                    <option>Truancy</option>
-                    <option>Disruption</option>
-                    <option>Academic Dishonesty</option>
-                    <option>Uniform Violation</option>
-                  </select>
+              {/* Upcoming Hearings */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-gray-800">Upcoming Hearings</h3>
+                  <Link to="/deputy/discipline/hearings" className="text-sm text-purple-600 hover:text-purple-700">
+                    View All →
+                  </Link>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea rows={4} className="w-full px-4 py-2 border border-gray-200 rounded-lg"></textarea>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
-                    <select className="w-full px-4 py-2 border border-gray-200 rounded-lg">
-                      <option>Select Severity</option>
-                      <option>High</option>
-                      <option>Medium</option>
-                      <option>Low</option>
-                    </select>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-800">Michael Brown - Academic Dishonesty</p>
+                      <p className="text-sm text-gray-600">Grade 12C</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-blue-600">April 5, 2024</p>
+                      <p className="text-xs text-gray-500">10:00 AM</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Reported By</label>
-                    <input type="text" className="w-full px-4 py-2 border border-gray-200 rounded-lg" />
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-800">Emily Davis - Bullying</p>
+                      <p className="text-sm text-gray-600">Grade 9D</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-blue-600">April 6, 2024</p>
+                      <p className="text-xs text-gray-500">2:00 PM</p>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex space-x-3 pt-4">
-                  <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Create Case
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setShowCaseModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
+              {/* Discipline Guidelines */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h3 className="font-semibold text-gray-800 mb-3">Disciplinary Guidelines</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-start space-x-2">
+                    <AlertTriangle size={16} className="text-red-500 mt-0.5" />
+                    <span className="text-gray-600">First offense: Warning & Counseling</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <AlertTriangle size={16} className="text-yellow-500 mt-0.5" />
+                    <span className="text-gray-600">Second offense: Detention & Parent Meeting</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <AlertTriangle size={16} className="text-red-600 mt-0.5" />
+                    <span className="text-gray-600">Third offense: Suspension & Review Board</span>
+                  </div>
                 </div>
-              </form>
-            )}
-          </div>
+              </div>
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
