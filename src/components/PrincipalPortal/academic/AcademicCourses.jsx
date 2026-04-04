@@ -156,7 +156,7 @@ const AcademicCourses = () => {
         </div>
       </div>
 
-      {/* Courses Grid */}
+      {/* Courses Grid .*/}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredCourses.map((course) => (
           <div key={course.id} className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition">

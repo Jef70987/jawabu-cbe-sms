@@ -190,7 +190,7 @@ const AcademicResults = () => {
                 </div>
               </div>
 
-              {/* Top Performers */}
+              {/* Top Performers. */}
               <div>
                 <h3 className="font-semibold text-gray-800 mb-4">Top Performers</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

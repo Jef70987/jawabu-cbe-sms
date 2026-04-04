@@ -171,7 +171,7 @@ const AcademicCurriculum = () => {
         </div>
       </div>
 
-      {/* Curriculum Structure */}
+      {/* Curriculum Structure. */}
       <div className="space-y-4">
         {curriculumStructure.map((grade) => (
           <div key={grade.id} className="border border-gray-200 rounded-lg overflow-hidden">

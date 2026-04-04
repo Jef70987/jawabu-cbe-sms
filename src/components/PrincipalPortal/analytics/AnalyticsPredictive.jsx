@@ -184,7 +184,7 @@ const AnalyticsPredictive = () => {
         </div>
       </div>
 
-      {/* Intervention Impact Analysis */}
+      {/* Intervention. Impact Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Intervention Impact Analysis</h2>

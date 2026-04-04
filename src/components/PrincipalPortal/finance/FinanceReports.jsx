@@ -173,7 +173,7 @@ const FinanceReports = () => {
                 </select>
               </div>
 
-              {/* Reports List */}
+              {/* Reports .List */}
               <div className="space-y-4">
                 {reports.map((report) => (
                   <div key={report.id} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition">

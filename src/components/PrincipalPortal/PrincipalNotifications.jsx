@@ -11,7 +11,7 @@ const PrincipalNotifications = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [showSettings, setShowSettings] = useState(false);
 
-  // Notifications Data
+  // Notifications Data.
   const notifications = [
     {
       id: 1,

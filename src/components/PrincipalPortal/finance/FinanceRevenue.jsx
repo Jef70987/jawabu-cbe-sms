@@ -196,7 +196,7 @@ const FinanceRevenue = () => {
         </div>
       </div>
 
-      {/* Revenue Insights */}
+      {/* Revenue .Insights */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4">
           <div className="flex items-center space-x-2">

@@ -149,7 +149,7 @@ const CalendarCounseling = () => {
 
         <button className="p-3 bg-orange-600 text-white rounded-xl">
           <Bell size={20} />
-          Send Reminders
+          Send Reminder
         </button>
       </div>
     </div>

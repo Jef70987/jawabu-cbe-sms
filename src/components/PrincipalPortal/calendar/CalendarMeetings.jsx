@@ -127,7 +127,7 @@ const CalendarMeetings = () => {
         ))}
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions. */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <button className="p-3 bg-blue-500 text-white rounded-xl">
           <Video size={20} />

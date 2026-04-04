@@ -52,7 +52,7 @@ const DeputyDiscipline = () => {
         </div>
       </div>
 
-      {/* Statistics Cards */}
+      {/* Statistics Cards. */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between">

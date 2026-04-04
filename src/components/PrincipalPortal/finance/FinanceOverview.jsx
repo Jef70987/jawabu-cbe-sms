@@ -226,7 +226,7 @@ const FinanceOverview = () => {
         </div>
       </div>
 
-      {/* Financial Summary Cards */}
+      {/* Financial .Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-4 text-white">
           <p className="text-blue-100 text-sm">Payroll Expenses</p>

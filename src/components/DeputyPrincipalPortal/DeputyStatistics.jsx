@@ -15,7 +15,7 @@ const DeputyStatistics = () => {
   const [timeframe, setTimeframe] = useState('month');
   const [statType, setStatType] = useState('overview');
 
-  // Main Statistics Data
+  // Main Statistics Data.
   const stats = {
     totalCases: 156,
     activeCases: 42,

@@ -110,7 +110,7 @@ const AnalyticsTrends = () => {
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart. */}
       <div className="bg-white p-6 rounded-xl">
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={data}>

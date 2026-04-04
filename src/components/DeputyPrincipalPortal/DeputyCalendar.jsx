@@ -13,7 +13,7 @@ const DeputyCalendar = () => {
   const [showEventModal, setShowEventModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Calendar Events Data
+  // Calendar Events Data.
   const events = [
     {
       id: 1,

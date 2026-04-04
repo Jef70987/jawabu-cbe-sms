@@ -241,7 +241,7 @@ const AcademicTimetable = () => {
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions. */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <button className="p-3 bg-blue-50 rounded-lg text-blue-700 hover:bg-blue-100 transition">
           <Users size={20} className="mb-1" />

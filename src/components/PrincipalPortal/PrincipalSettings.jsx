@@ -9,7 +9,7 @@ import {
 
 const PrincipalSettings = () => {
   const [settings, setSettings] = useState({
-    // Profile Settings
+    // Profile Settings.
     profile: {
       name: 'Dr. John Smith',
       title: 'Principal',

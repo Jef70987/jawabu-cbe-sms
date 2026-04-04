@@ -16,7 +16,7 @@ const PrincipalAnalytics = () => {
   const [timeframe, setTimeframe] = useState('year');
   const [dataType, setDataType] = useState('overview');
 
-  // Performance Metrics
+  // Performance. Metrics
   const performanceMetrics = {
     academicScore: 87.5,
     attendanceRate: 94.2,

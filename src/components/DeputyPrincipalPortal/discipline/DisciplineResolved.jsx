@@ -194,7 +194,7 @@ const DisciplineResolved = () => {
         ))}
       </div>
 
-      {/* Success Metrics */}
+      {/* Success Metrics. */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white">
         <div className="flex items-center justify-between">
           <div>

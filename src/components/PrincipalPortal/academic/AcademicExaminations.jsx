@@ -228,7 +228,7 @@ const AcademicExaminations = () => {
             </div>
           )}
 
-          {/* Other tabs placeholder */}
+          {/* Other. tabs placeholder */}
           {activeTab !== 'schedule' && (
             <div className="text-center py-12">
               <ClipboardList size={48} className="mx-auto text-gray-300 mb-3" />

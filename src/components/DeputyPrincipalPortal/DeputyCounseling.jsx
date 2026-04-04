@@ -80,7 +80,7 @@ const DeputyCounseling = () => {
         </div>
       </div>
 
-      {/* Today's Schedule */}
+      {/* Today's Schedule. */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Today's Schedule</h2>
         <div className="space-y-4">

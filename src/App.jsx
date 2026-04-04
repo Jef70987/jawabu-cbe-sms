@@ -15,9 +15,6 @@ import DeputyPrincipal from "./components/DeputyPrincipalPortal/Deputy";
 import Principal from "./components/PrincipalPortal/Principal";
 import ForgotPassword from "./components/Authentication/Reset";
 
-// ✅ NEW IMPORT (Academic Portal)
-import Academic from "./components/AcademicPortal/Academic";
-
 function App() {
   return (
     <AuthProvider>
@@ -80,13 +77,6 @@ function App() {
           <Route path="/DeputyPortal/*" element={
             <ProtectedRoute allowedRoles={['deputy_principal']}>
               <DeputyPrincipal />
-            </ProtectedRoute>
-          } />
-
-          {/* ✅ NEW ACADEMIC PORTAL */}
-          <Route path="/AcademicPortal/*" element={
-            <ProtectedRoute allowedRoles={['academic']}>
-              <Academic />
             </ProtectedRoute>
           } />
 

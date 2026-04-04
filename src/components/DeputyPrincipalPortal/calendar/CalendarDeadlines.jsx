@@ -328,7 +328,7 @@ const CalendarDeadlines = () => {
         <button className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl text-white hover:shadow-lg transition">
           <Calendar size={20} className="mb-1" />
           <p className="text-sm font-semibold">Calendar View</p>
-          <p className="text-xs text-blue-100">See all deadlines</p>
+          <p className="text-xs text-blue-100">See all deadline</p>
         </button>
         <button className="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl text-white hover:shadow-lg transition">
           <TrendingUp size={20} className="mb-1" />

@@ -260,7 +260,7 @@ const StaffAll = () => {
           </table>
         </div>
 
-        {/* Pagination */}
+        {/* Pagination. */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
           <p className="text-sm text-gray-600">Showing 1 to {filteredStaff.length} of {allStaff.length} entries</p>
           <div className="flex space-x-2">

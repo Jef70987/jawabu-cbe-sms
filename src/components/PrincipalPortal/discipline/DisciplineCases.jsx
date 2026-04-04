@@ -446,7 +446,7 @@ const DisciplineCases = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action .Buttons */}
               <div className="flex space-x-3 pt-4 border-t border-gray-200">
                 <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                   Update Case

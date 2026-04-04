@@ -150,7 +150,7 @@ const CalendarHearings = () => {
 
         <button className="p-4 bg-gradient-to-r from-green-500 to-green-600 rounded-xl text-white hover:shadow-lg transition">
           <MessageSquare size={24} className="mb-2" />
-          <p className="font-semibold">Notify Participants</p>
+          <p className="font-semibold">Notify Participant</p>
           <p className="text-xs text-green-100 mt-1">Send reminders</p>
         </button>
       </div>

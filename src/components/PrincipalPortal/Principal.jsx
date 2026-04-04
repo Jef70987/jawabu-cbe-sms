@@ -16,7 +16,7 @@ import PrincipalCalendar from './PrincipalCalendar';
 import PrincipalNotifications from './PrincipalNotifications';
 import PrincipalSettings from './PrincipalSettings';
 
-// Staff
+// Staff.
 import StaffAll from './staff/StaffAll';
 import StaffFaculty from './staff/StaffFaculty';
 import StaffAdmin from './staff/StaffAdmin';

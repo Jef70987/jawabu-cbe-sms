@@ -317,7 +317,7 @@ const SettingsSecurity = () => {
             </div>
           </div>
 
-          {/* Danger Zone */}
+          {/* Danger. Zone */}
           <div className="border-2 border-red-200 rounded-xl p-6 bg-red-50">
             <div className="flex items-center space-x-2 mb-3">
               <AlertTriangle size={20} className="text-red-600" />

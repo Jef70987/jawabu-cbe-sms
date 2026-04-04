@@ -18,7 +18,7 @@ const PrincipalDiscipline = () => {
   const [selectedCase, setSelectedCase] = useState(null);
   const [showCaseModal, setShowCaseModal] = useState(false);
 
-  // Statistics Data
+  // Statistics Data.
   const disciplineStats = {
     totalCases: 156,
     activeCases: 42,

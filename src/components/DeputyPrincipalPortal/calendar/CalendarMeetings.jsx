@@ -285,7 +285,7 @@ const CalendarMeetings = () => {
         </button>
         <button className="p-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white hover:shadow-lg transition">
           <MessageSquare size={20} className="mb-1" />
-          <p className="text-sm font-semibold">Send Reminders</p>
+          <p className="text-sm font-semibold">Send Reminder</p>
         </button>
       </div>
     </div>

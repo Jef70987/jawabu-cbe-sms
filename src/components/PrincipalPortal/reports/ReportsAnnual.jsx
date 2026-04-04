@@ -160,7 +160,7 @@ const ReportsAnnual = () => {
         </ResponsiveContainer>
       </div>
 
-      {/* Reports List */}
+      {/* Reports .List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
           <h2 className="text-lg font-semibold text-gray-800">Available Annual Reports</h2>

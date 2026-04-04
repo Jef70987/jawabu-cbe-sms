@@ -14,7 +14,7 @@ const DeputyInterventions = () => {
   const [selectedIntervention, setSelectedIntervention] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
-  // Intervention Programs Data
+  // Intervention Programs Data.
   const interventionPrograms = [
     {
       id: 'INT001',

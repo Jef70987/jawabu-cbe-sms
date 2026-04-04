@@ -198,7 +198,7 @@ const DeputyStudentAffairs = () => {
                 </div>
               </div>
 
-              {/* Quick Actions */}
+              {/* Quick Actions. */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Link to="/deputy/student-affairs/all">
                   <button className="w-full p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition text-left">

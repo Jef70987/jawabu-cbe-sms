@@ -140,7 +140,7 @@ const StaffFaculty = () => {
         </div>
       </div>
 
-      {/* Faculty Cards */}
+      {/* Faculty Cards. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredFaculty.map((faculty) => (
           <div key={faculty.id} className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition">

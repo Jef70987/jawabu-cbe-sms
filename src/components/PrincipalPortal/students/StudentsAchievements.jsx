@@ -58,7 +58,7 @@ const StudentsAchievements = () => {
     }
   ];
 
-  // ✅ FIXED Tailwind safe classes
+  // ✅ FIXED .Tailwind safe classes
   const colorMap = {
     blue: "from-blue-50 to-blue-100",
     green: "from-green-50 to-green-100",

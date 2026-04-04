@@ -293,7 +293,7 @@ const DisciplineAppeals = () => {
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick .Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl text-white hover:shadow-lg transition">
           <Calendar size={24} className="mb-2" />

@@ -249,7 +249,7 @@ const FinancePayroll = () => {
         </div>
       </div>
 
-      {/* Payroll Summary */}
+      {/* Payroll. Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4">
           <p className="text-sm text-gray-600">Benefits Cost</p>

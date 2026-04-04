@@ -8,7 +8,7 @@ import {
 
 const DeputySettings = () => {
   const [settings, setSettings] = useState({
-    // Profile Settings
+    // Profile Settings.
     profile: {
       name: 'Dr. Sarah Martinez',
       email: 's.martinez@school.edu',

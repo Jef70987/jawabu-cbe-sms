@@ -240,7 +240,7 @@ const CalendarHolidays = () => {
         </div>
       </div>
 
-      {/* Note */}
+      {/* Note. */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <p className="text-sm text-yellow-800">
           <strong>Note:</strong> Holidays are subject to change. Please check the calendar regularly for updates.

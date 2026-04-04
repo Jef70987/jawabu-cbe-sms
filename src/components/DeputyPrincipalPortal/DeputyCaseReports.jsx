@@ -21,7 +21,7 @@ const DeputyCaseReports = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
 
-  // Report Templates
+  // Report Templates.
   const reportTemplates = [
     {
       id: 1,

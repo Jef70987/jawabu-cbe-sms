@@ -151,7 +151,7 @@ const DeputyPrincipal = () => {
           <Route path="/student-affairs/*" element={<DeputyStudentAffairs />} />
           <Route path="/conduct/*" element={<DeputyConductRecords />} />
           
-          {/* Catch all */}
+          {/* Catch all. */}
           <Route path="*" element={<Navigate to="/deputy/dashboard" replace />} />
         </Routes>
       </div>

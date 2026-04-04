@@ -43,7 +43,7 @@ function PrincipalSidebar({ children }) {
 
   return (
     <>
-      {/* Mobile Top Bar - Thin, Logo on left, Username on right */}
+      {/* Mobile .Top Bar - Thin, Logo on left, Username on right */}
       {isMobile && (
         <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-800 to-blue-900 shadow-md z-50 lg:hidden">
           <div className="flex items-center justify-between px-4 py-2">

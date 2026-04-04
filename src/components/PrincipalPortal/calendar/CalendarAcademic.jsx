@@ -260,7 +260,7 @@ const CalendarAcademic = () => {
         </div>
       )}
 
-      {/* Upcoming Events Summary */}
+      {/* Upcoming Events .Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4">
           <h3 className="font-semibold text-gray-800 mb-2">Upcoming This Month</h3>

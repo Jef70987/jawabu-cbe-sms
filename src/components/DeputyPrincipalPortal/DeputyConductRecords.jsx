@@ -148,7 +148,7 @@ const DeputyConductRecords = () => {
         </div>
       </div>
 
-      {/* Stats Overview */}
+      {/* Stats Overview. */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-lg p-4 border border-gray-200">
           <p className="text-sm text-gray-600">Total Records</p>

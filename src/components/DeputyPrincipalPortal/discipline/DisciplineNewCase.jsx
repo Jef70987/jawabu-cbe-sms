@@ -229,7 +229,7 @@ const DisciplineNewCase = () => {
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Actions. */}
         <div className="flex justify-end space-x-3">
           <button type="button" className="px-6 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">
             Save as Draft

@@ -13,7 +13,7 @@ import {
 const CaseReportsDaily = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Daily Case Data
+  // Daily Case Data.
   const dailyData = {
     date: '2024-04-02',
     totalCases: 8,

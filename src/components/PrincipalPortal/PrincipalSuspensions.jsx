@@ -18,7 +18,7 @@ const PrincipalSuspensions = () => {
   const [selectedSuspension, setSelectedSuspension] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
-  // Suspension Statistics
+  // Suspension Statistics.
   const suspensionStats = {
     totalSuspensions: 45,
     activeSuspensions: 12,

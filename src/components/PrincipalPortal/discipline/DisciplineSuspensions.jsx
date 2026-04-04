@@ -224,7 +224,7 @@ const DisciplineSuspensions = () => {
         </div>
 
         <div className="p-6">
-          {/* Search */}
+          {/* Search. */}
           <div className="flex gap-4 mb-6">
             <div className="flex-1">
               <div className="relative">
