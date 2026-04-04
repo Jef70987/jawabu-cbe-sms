@@ -23,11 +23,11 @@ const StudentSidebarData = [
     icon: <DashboardIcon />,
     link: "/StudentPortal/Dashboard"
   },
-  // {
-  //   title: "Academic",
-  //   icon: <SchoolIcon sx={{fontSize:30}}/>,
-  //   link: "/StudentPortal/AcademicRecord"
-  // },
+  {
+    title: "Academic",
+    icon: <SchoolIcon sx={{fontSize:30}}/>,
+    link: "/StudentPortal/Academic"
+  },
 
   // {
   //   title: "Learning",
