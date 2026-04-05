@@ -74,6 +74,9 @@ import CalendarEvents from './calendar/CalendarEvents';
 import CalendarMeetings from './calendar/CalendarMeetings';
 import CalendarHolidays from './calendar/CalendarHolidays';
 
+
+import Logout from "../Authentication/Logout";
+
 const Principal = () => {
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -165,7 +168,11 @@ const Principal = () => {
           <Route path="settings" element={<PrincipalSettings />} />
 
           {/* Catch all */}
-          <Route path="*" element={<Navigate to="dashboard" replace />} />
+          <Route path="*" element={<Navigate to="dashboard" replace />} />\
+          
+          <Route path="/Logout" element={<Logout/>}/>
+                    
+          <Route path="*" element={<Logout/>}/>
 
         </Routes>
       </div>
