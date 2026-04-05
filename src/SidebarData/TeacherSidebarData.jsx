@@ -7,6 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { GitGraph, Package } from 'lucide-react';
 
 const TeacherSidebarData = [
   
@@ -25,41 +26,44 @@ const TeacherSidebarData = [
     icon: <MonetizationOnIcon />,
     link: "/TeacherPortal/MarkEntry"
   },
-  {
-    title: "Portfolio",
-    icon: <DescriptionIcon />,
-    link: "/TeacherPortal/Portfolio"
-  },
-  {
-    title: "Assessment",
-    icon: <DescriptionIcon />,
-    link: "/TeacherPortal/AssessmentManager"
-  },
-  {
-    title: "Termly Summary",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/TermlySummary"
-  },
+  
+//  {
+//    title: "Portfolio",
+//    icon: <DescriptionIcon />,
+//    link: "/TeacherPortal/Portfolio"
+//  },
+  
+  
+//  {
+//    title: "Assessment",
+//    icon: <DescriptionIcon />,
+//    link: "/TeacherPortal/AssessmentManager"
+//  },
+  
+  
+  //{
+  //  title: "Termly Summary",
+  //  icon: <ReceiptIcon />,
+  //  link: "/TeacherPortal/TermlySummary"
+  //},
+
   {
     title: "Analytics",
-    icon: <ReceiptIcon />,
+    icon: <GitGraph />,
     link: "/TeacherPortal/Analytics"
   },
-  {
-    title: "Report Card",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/ReportCard"
-  },
-  {
-    title: "KNEC Export",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/KnecExport"
-  },
+  //{
+  // title: "KNEC Export",
+  //  icon: <Package />,
+  //  link: "/TeacherPortal/KnecExport"
+  //},
+
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
     link: "/Logout"
   },
+ 
 ];
 
 export default TeacherSidebarData;
