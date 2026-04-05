@@ -30,15 +30,15 @@ const Teacher = () => {
                 minHeight: "100vh"
             }}>
                 <Routes>
-                    <Route path="/" element={<TeacherDashboard/>}/>
+                    {/*<Route path="/" element={<TeacherDashboard/>}/>*/}
                     <Route path="/Login" element={<Login/>}/>
                     <Route path="/MarkEntry" element={<MarksEntrySheet/>}/>
-                    <Route path="/Portfolio" element={<PortfolioUploader/>}/>
-                    <Route path="/AssessmentManager" element={<AssessmentManager/>}/>
+                    {/*<Route path="/Portfolio" element={<PortfolioUploader/>}/>*/}
+                    {/*<Route path="/AssessmentManager" element={<AssessmentManager/>}/>*/}
                     <Route path="/ReportCard" element={<ReportCardGenerator/>}/>
-                    <Route path="/KnecExport" element={<KNECExportView/>}/>
+                    {/*<Route path="/KnecExport" element={<KNECExportView/>}/>*/}
                     <Route path="/CompetencyMatrix" element={<CompetencyMatrix/>}/>
-                    <Route path="/TermlySummary" element={<TermlySummary/>}/>
+                    {/*<Route path="/TermlySummary" element={<TermlySummary/>}/>*/}
                     <Route path="/Analytics" element={<Analytics/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     <Route path="*" element={<TeacherDashboard/>}/>
