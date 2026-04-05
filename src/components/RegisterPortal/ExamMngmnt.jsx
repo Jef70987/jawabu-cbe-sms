@@ -18,7 +18,7 @@ function ExamAndReportManagement() {
 
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const [activeTab, setActiveTab] = useState('timetable');
+  const [activeTab, setActiveTab] = useState('assessment-windows');
   
   // Data States
   const [academicYears, setAcademicYears] = useState([]);
@@ -42,6 +42,7 @@ function ExamAndReportManagement() {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [formData, setFormData] = useState({});
+  const [editingId, setEditingId] = useState(null);   // tracks which assessment window is being edited
 
   const addNotification = (type, message) => {
     const id = Date.now();
@@ -120,6 +121,20 @@ function ExamAndReportManagement() {
     }
   }, [terms]);
 
+  // AUTO-FETCH assessment windows when tab is active OR term changes
+  useEffect(() => {
+    if (isAuthenticated && activeTab === 'assessment-windows') {
+      fetchAssessmentWindows();
+    }
+  }, [activeTab, selectedTerm, isAuthenticated]);
+
+  // AUTO-FETCH timetable when tab is active
+  useEffect(() => {
+    if (isAuthenticated && activeTab === 'timetable' && selectedClass?.id && selectedTerm?.id) {
+      fetchTimetable();
+    }
+  }, [activeTab, selectedClass, selectedTerm, isAuthenticated]);
+
   const fetchClasses = async () => {
     const data = await fetchWithErrorHandling(`${API_BASE_URL}/api/registrar/classes/`);
     if (data) setClasses(data.data);
@@ -139,21 +154,21 @@ function ExamAndReportManagement() {
 
   const fetchAssessmentWindows = async () => {
     let url = `${API_BASE_URL}/api/registrar/academic/assessment-windows/`;
-    if (selectedTerm) url += `?term=${selectedTerm.id}`;
+    if (selectedTerm?.id) url += `?term=${selectedTerm.id}`;
     const data = await fetchWithErrorHandling(url);
-    if (data) setAssessmentWindows(data.data || []);
+    setAssessmentWindows(data ? (data.data || []) : []);
   };
 
   const fetchSummativeAssessments = async () => {
     let url = `${API_BASE_URL}/api/registrar/academic/summative-assessments/`;
-    if (selectedClass) url += `?class_id=${selectedClass.id}`;
-    if (selectedTerm) url += `${selectedClass ? '&' : '?'}term=${selectedTerm.id}`;
+    if (selectedClass?.id) url += `?class_id=${selectedClass.id}`;
+    if (selectedTerm?.id) url += `${selectedClass?.id ? '&' : '?'}term=${selectedTerm.id}`;
     const data = await fetchWithErrorHandling(url);
     if (data) setSummativeAssessments(data.data || []);
   };
 
   const fetchTimetable = async () => {
-    if (!selectedClass || !selectedTerm) return;
+    if (!selectedClass?.id || !selectedTerm?.id) return;
     const data = await fetchWithErrorHandling(
       `${API_BASE_URL}/api/registrar/academic/timetable/?class_id=${selectedClass.id}&term=${selectedTerm.id}`
     );
@@ -164,9 +179,9 @@ function ExamAndReportManagement() {
     setLoading(true);
     let url = `${API_BASE_URL}/api/registrar/academic/performance-analysis/`;
     const params = new URLSearchParams();
-    if (selectedTerm) params.append('term', selectedTerm.id);
-    if (analysisLevel === 'class' && selectedClass) params.append('class_id', selectedClass.id);
-    if (analysisLevel === 'student' && selectedStudent) params.append('student_id', selectedStudent.id);
+    if (selectedTerm?.id) params.append('term', selectedTerm.id);
+    if (analysisLevel === 'class' && selectedClass?.id) params.append('class_id', selectedClass.id);
+    if (analysisLevel === 'student' && selectedStudent?.id) params.append('student_id', selectedStudent.id);
     if (params.toString()) url += `?${params.toString()}`;
     
     const data = await fetchWithErrorHandling(url);
@@ -175,24 +190,64 @@ function ExamAndReportManagement() {
     setLoading(false);
   };
 
-  // CRUD Operations
-  const handleCreateAssessmentWindow = async () => {
+  // ─────────────────────────────────────────────────────────────
+  // UNIFIED SAVE (Create OR Update) + DELETE for Assessment Windows
+  // ─────────────────────────────────────────────────────────────
+  const handleSaveAssessmentWindow = async () => {
+    const url = editingId 
+      ? `${API_BASE_URL}/api/registrar/academic/assessment-windows/${editingId}/`
+      : `${API_BASE_URL}/api/registrar/academic/assessment-windows/create/`;
+    
+    const method = editingId ? 'PUT' : 'POST';
+
     try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/assessment-windows/create/`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ ...formData, term: selectedTerm?.id })
+      const res = await fetch(url, {
+        method,
+        headers: { 
+          ...getAuthHeaders(), 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ 
+          ...formData, 
+          term: selectedTerm?.id 
+        })
       });
+
       const data = await res.json();
       if (data.success) {
-        addNotification('success', 'Assessment window created');
+        addNotification('success', editingId ? 'Assessment window updated' : 'Assessment window created');
         setShowModal(false);
-        fetchAssessmentWindows();
+        setEditingId(null);
+        setFormData({});
+        fetchAssessmentWindows();   // refresh instantly
       } else {
-        addNotification('error', data.error || 'Creation failed');
+        addNotification('error', data.error || 'Save failed');
       }
     } catch (error) {
-      addNotification('error', 'Failed to create assessment window');
+      addNotification('error', 'Failed to save assessment window');
+    }
+  };
+
+  const handleDeleteAssessmentWindow = async (windowId) => {
+    if (!window.confirm('Delete this assessment window permanently? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/assessment-windows/${windowId}/`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        addNotification('success', 'Assessment window deleted');
+        fetchAssessmentWindows();
+      } else {
+        addNotification('error', data.error || 'Delete failed');
+      }
+    } catch (error) {
+      addNotification('error', 'Failed to delete assessment window');
     }
   };
 
@@ -200,13 +255,14 @@ function ExamAndReportManagement() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/registrar/academic/summative-assessments/create/`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, term: selectedTerm?.id, class_id: selectedClass?.id })
       });
       const data = await res.json();
       if (data.success) {
         addNotification('success', 'Summative assessment created');
         setShowModal(false);
+        setFormData({});
         fetchSummativeAssessments();
       } else {
         addNotification('error', data.error || 'Creation failed');
@@ -217,14 +273,14 @@ function ExamAndReportManagement() {
   };
 
   const handleGenerateTimetable = async () => {
-    if (!selectedClass || !selectedTerm) {
+    if (!selectedClass?.id || !selectedTerm?.id) {
       addNotification('warning', 'Please select class and term');
       return;
     }
     try {
       const res = await fetch(`${API_BASE_URL}/api/registrar/academic/timetable/generate/`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ class_id: selectedClass.id, term: selectedTerm.id })
       });
       const data = await res.json();
@@ -397,23 +453,34 @@ function ExamAndReportManagement() {
             </h3>
             <p className="text-sm text-gray-500 mt-1">Opener, Mid-Term, and End-Term assessment periods</p>
           </div>
-          <button
-            onClick={() => {
-              setModalType('assessmentWindow');
-              setFormData({ assessment_type: '', weight_percentage: '', open_date: '', close_date: '', is_active: true });
-              setShowModal(true);
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Window
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchAssessmentWindows}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+            <button
+              onClick={() => {
+                setEditingId(null);
+                setModalType('assessmentWindow');
+                setFormData({ assessment_type: '', weight_percentage: '', open_date: '', close_date: '', is_active: true });
+                setShowModal(true);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Window
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
           {assessmentWindows.length === 0 ? (
             <div className="col-span-3 py-12 text-center">
               <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">No assessment windows created yet</p>
+              <p className="text-xs text-gray-400 mt-1">Create your first window above</p>
             </div>
           ) : (
             assessmentWindows.map(window => (
@@ -441,10 +508,29 @@ function ExamAndReportManagement() {
                   )}
                 </div>
                 <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end gap-2">
-                  <button className="p-1 text-gray-400 hover:text-blue-600">
+                  <button 
+                    onClick={() => {
+                      setEditingId(window.id);
+                      setFormData({
+                        assessment_type: window.assessment_type,
+                        weight_percentage: window.weight_percentage,
+                        open_date: window.open_date,
+                        close_date: window.close_date,
+                        is_active: window.is_active,
+                      });
+                      setModalType('assessmentWindow');
+                      setShowModal(true);
+                    }}
+                    className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="Edit window"
+                  >
                     <Edit2 className="h-4 w-4" />
                   </button>
-                  <button className="p-1 text-gray-400 hover:text-red-600">
+                  <button 
+                    onClick={() => handleDeleteAssessmentWindow(window.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    title="Delete window"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -827,9 +913,17 @@ function ExamAndReportManagement() {
       {/* Form Modal */}
       <FormModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onSubmit={modalType === 'assessmentWindow' ? handleCreateAssessmentWindow : handleCreateSummativeAssessment}
-        title={modalType === 'assessmentWindow' ? 'Add Assessment Window' : 'Create Summative Assessment'}
+        onClose={() => {
+          setShowModal(false);
+          setEditingId(null);
+          setFormData({});
+        }}
+        onSubmit={modalType === 'assessmentWindow' ? handleSaveAssessmentWindow : handleCreateSummativeAssessment}
+        title={
+          modalType === 'assessmentWindow' 
+            ? (editingId ? 'Edit Assessment Window' : 'Add Assessment Window')
+            : 'Create Summative Assessment'
+        }
       >
         {modalType === 'assessmentWindow' ? (
           <div className="space-y-4">

@@ -26,43 +26,38 @@ const TeacherSidebarData = [
     icon: <MonetizationOnIcon />,
     link: "/TeacherPortal/MarkEntry"
   },
-  {/*
-  {
-    title: "Portfolio",
-    icon: <DescriptionIcon />,
-    link: "/TeacherPortal/Portfolio"
-  },
-  */},
-  {/*
-  {
-    title: "Assessment",
-    icon: <DescriptionIcon />,
-    link: "/TeacherPortal/AssessmentManager"
-  },
-  */},
-  {/*
-  {
-    title: "Termly Summary",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/TermlySummary"
-  },
-  */},
+  
+//  {
+//    title: "Portfolio",
+//    icon: <DescriptionIcon />,
+//    link: "/TeacherPortal/Portfolio"
+//  },
+  
+  
+//  {
+//    title: "Assessment",
+//    icon: <DescriptionIcon />,
+//    link: "/TeacherPortal/AssessmentManager"
+//  },
+  
+  
+  //{
+  //  title: "Termly Summary",
+  //  icon: <ReceiptIcon />,
+  //  link: "/TeacherPortal/TermlySummary"
+  //},
+
   {
     title: "Analytics",
     icon: <GitGraph />,
     link: "/TeacherPortal/Analytics"
   },
-  {
-    title: "Report Card",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/ReportCard"
-  },
-  {/*{
-    title: "KNEC Export",
-    icon: <Package />,
-    link: "/TeacherPortal/KnecExport"
-  },
-   */},
+  //{
+  // title: "KNEC Export",
+  //  icon: <Package />,
+  //  link: "/TeacherPortal/KnecExport"
+  //},
+
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
