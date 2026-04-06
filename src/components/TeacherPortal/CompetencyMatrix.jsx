@@ -279,50 +279,40 @@ const CompetencyCard = ({ comp, onDelete }) => (
 const CompetencyMatrix = () => {
   const { user, getAuthHeaders, isAuthenticated, logout } = useAuth();
 
-  // Session
   const [showSessionExpired, setShowSessionExpired] = useState(false);
-
-  // Toast
   const [toast, setToast] = useState(null);
   const showToast = useCallback((type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 5000);
   }, []);
 
-  // Loading / saving
-  const [loadingClasses, setLoadingClasses]         = useState(false);
-  const [loadingSubjects, setLoadingSubjects]       = useState(false);
-  const [loadingStrands, setLoadingStrands]         = useState(false);
-  const [loadingSubstrands, setLoadingSubstrands]   = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [loadingStrands, setLoadingStrands] = useState(false);
+  const [loadingSubstrands, setLoadingSubstrands] = useState(false);
   const [loadingCompetencies, setLoadingCompetencies] = useState(false);
-  const [saving, setSaving]   = useState(false);
+  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
 
-  // Teacher selection (admin/registrar can switch)
   const isAdminOrRegistrar = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'registrar';
-  const [teachers, setTeachers]             = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
 
-  // Dropdown data
-  const [classes, setClasses]       = useState([]);
-  const [subjects, setSubjects]     = useState([]);
-  const [strands, setStrands]       = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [strands, setStrands] = useState([]);
   const [substrands, setSubstrands] = useState([]);
   const [competencies, setCompetencies] = useState([]);
 
-  // Selections
-  const [selectedClass, setSelectedClass]     = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedNumericLevel, setSelectedNumericLevel] = useState(null);   // ← GRADE FIX
   const [selectedSubject, setSelectedSubject] = useState('');
-  const [selectedStrand, setSelectedStrand]   = useState('');
+  const [selectedStrand, setSelectedStrand] = useState('');
   const [selectedSubstrand, setSelectedSubstrand] = useState('');
 
-  // New competencies being authored
   const [newCompetencies, setNewCompetencies] = useState([]);
-
-  // Delete confirm
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  // ── Auth helpers ────────────────────────────────────────────────────────────
   const handleApiError = useCallback((res) => {
     if (res?.status === 401) setShowSessionExpired(true);
   }, []);
@@ -339,25 +329,22 @@ const CompetencyMatrix = () => {
     return res.json();
   }, [getAuthHeaders, handleApiError]);
 
-  // ── Fetch teachers (admin only) ─────────────────────────────────────────────
+  // Fetch teachers (admin only)
   useEffect(() => {
-    if (!isAuthenticated) return;
-    if (!isAdminOrRegistrar) return;
+    if (!isAuthenticated || !isAdminOrRegistrar) return;
     (async () => {
       const data = await apiFetch(`${API_BASE_URL}/api/registrar/users/teachers/`);
-      if (data?.success) {
-        setTeachers(data.data);
-      }
+      if (data?.success) setTeachers(data.data);
     })();
   }, [isAuthenticated, isAdminOrRegistrar, apiFetch]);
 
-  // ── Effective teacher ID ────────────────────────────────────────────────────
   const effectiveTeacherId = isAdminOrRegistrar ? selectedTeacherId : (user?.id || '');
 
-  // ── Fetch classes when teacher is known ─────────────────────────────────────
+  // Fetch classes
   useEffect(() => {
     setClasses([]);
     setSelectedClass('');
+    setSelectedNumericLevel(null);
     setSubjects([]);
     setSelectedSubject('');
     resetBelow('class');
@@ -371,13 +358,13 @@ const CompetencyMatrix = () => {
         ? `${API_BASE_URL}/api/registrar/academic/teacher-classes/?teacher_id=${effectiveTeacherId}`
         : `${API_BASE_URL}/api/registrar/academic/teacher-classes/`;
       const data = await apiFetch(url);
-      if (data?.success) setClasses(data.data);
+      if (data?.success) setClasses(data.data || []);
       setLoadingClasses(false);
     };
     fetchClasses();
   }, [isAuthenticated, effectiveTeacherId]);
 
-  // ── Fetch subjects when class changes ───────────────────────────────────────
+  // Fetch subjects when class changes
   useEffect(() => {
     setSubjects([]);
     setSelectedSubject('');
@@ -395,24 +382,26 @@ const CompetencyMatrix = () => {
     fetchSubjects();
   }, [selectedClass, effectiveTeacherId]);
 
-  // ── Fetch strands when subject changes ──────────────────────────────────────
+  // Fetch strands when subject changes — NOW GRADE-SPECIFIC (fixed)
   useEffect(() => {
     setStrands([]);
     setSelectedStrand('');
     resetBelow('strand');
 
-    if (!selectedSubject) return;
+    if (!selectedSubject || !selectedNumericLevel) return;
 
     const fetchStrands = async () => {
       setLoadingStrands(true);
-      const data = await apiFetch(`${API_BASE_URL}/api/registrar/academic/strands-for-area/?learning_area_id=${selectedSubject}`);
+      // Correct param names for registrar endpoint
+      const url = `${API_BASE_URL}/api/registrar/academic/strands-for-area/?learning_area=${selectedSubject}&numeric_level=${selectedNumericLevel}`;
+      const data = await apiFetch(url);
       if (data?.success) setStrands(data.data);
       setLoadingStrands(false);
     };
     fetchStrands();
-  }, [selectedSubject]);
+  }, [selectedSubject, selectedNumericLevel]);
 
-  // ── Fetch substrands when strand changes ────────────────────────────────────
+  // Fetch substrands when strand changes
   useEffect(() => {
     setSubstrands([]);
     setSelectedSubstrand('');
@@ -430,7 +419,7 @@ const CompetencyMatrix = () => {
     fetchSubstrands();
   }, [selectedStrand]);
 
-  // ── Fetch competencies when substrand changes ───────────────────────────────
+  // Fetch competencies when substrand changes
   useEffect(() => {
     setCompetencies([]);
     setNewCompetencies([]);
@@ -461,7 +450,22 @@ const CompetencyMatrix = () => {
     }
   };
 
-  // ── New competency CRUD ─────────────────────────────────────────────────────
+  // Handle class selection + capture numeric_level
+  const handleClassChange = (e) => {
+    const classId = e.target.value;
+    setSelectedClass(classId);
+
+    if (classId) {
+      const selectedClassObj = classes.find(c => String(c.id) === String(classId));
+      setSelectedNumericLevel(selectedClassObj ? selectedClassObj.numeric_level : null);
+    } else {
+      setSelectedNumericLevel(null);
+    }
+
+    setSelectedSubject('');
+    resetBelow('class');
+  };
+
   const addNewRow = () => {
     if (!selectedSubstrand) { showToast('warning', 'Select a sub-strand first'); return; }
     setNewCompetencies(prev => [...prev, {
@@ -490,7 +494,6 @@ const CompetencyMatrix = () => {
 
   const handleSave = async () => {
     if (newCompetencies.length === 0) return;
-
     const invalid = newCompetencies.find(c => !c.competency_code.trim() || !c.competency_statement.trim());
     if (invalid) { showToast('warning', 'All competencies require a code and statement'); return; }
 
@@ -513,7 +516,7 @@ const CompetencyMatrix = () => {
 
     setNewCompetencies([]);
 
-    // Refresh
+    // Refresh list
     setLoadingCompetencies(true);
     const data = await apiFetch(`${API_BASE_URL}/api/registrar/academic/competencies-for-substrand/?substrand_id=${selectedSubstrand}`);
     if (data?.success) setCompetencies(data.data);
@@ -535,13 +538,11 @@ const CompetencyMatrix = () => {
     setDeleteConfirm(null);
   };
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
   const getClassName = (id) => classes.find(c => String(c.id) === String(id))?.class_name || '';
   const getSubjectName = (id) => subjects.find(s => String(s.id) === String(id))?.area_name || '';
   const getStrandName = (id) => strands.find(s => String(s.id) === String(id))?.strand_name || '';
   const getSubstrandName = (id) => substrands.find(s => String(s.id) === String(id))?.substrand_name || '';
 
-  // ── Auth guard ──────────────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -556,9 +557,9 @@ const CompetencyMatrix = () => {
   }
 
   const breadcrumb = [
-    selectedClass    && getClassName(selectedClass),
-    selectedSubject  && getSubjectName(selectedSubject),
-    selectedStrand   && getStrandName(selectedStrand),
+    selectedClass && getClassName(selectedClass),
+    selectedSubject && getSubjectName(selectedSubject),
+    selectedStrand && getStrandName(selectedStrand),
     selectedSubstrand && getSubstrandName(selectedSubstrand),
   ].filter(Boolean);
 
@@ -578,7 +579,7 @@ const CompetencyMatrix = () => {
         message={`Delete competency "${deleteConfirm?.code}"? This cannot be undone.`}
       />
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
@@ -590,17 +591,14 @@ const CompetencyMatrix = () => {
               <p className="text-sm text-gray-500 mt-0.5 ml-10">
                 Map learning outcomes to KICD core competencies and values
               </p>
-              {user && (
-                <p className="text-xs text-gray-400 mt-0.5 ml-10">
-                  {user.first_name} {user.last_name} · {user.role}
-                  {!isAdminOrRegistrar && ' · Showing your assigned subjects only'}
-                </p>
-              )}
             </div>
             <button
               onClick={() => {
-                setSelectedClass(''); setSelectedSubject('');
-                setSelectedStrand(''); setSelectedSubstrand('');
+                setSelectedClass('');
+                setSelectedNumericLevel(null);
+                setSelectedSubject('');
+                setSelectedStrand('');
+                setSelectedSubstrand('');
               }}
               className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
               title="Reset filters"
@@ -613,7 +611,7 @@ const CompetencyMatrix = () => {
 
       <div className="px-6 py-6 space-y-6 max-w-screen-2xl mx-auto">
 
-        {/* ── Filter / Scope panel ─────────────────────────────────────────── */}
+        {/* Scope Selection */}
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
             <Filter className="h-4 w-4 text-gray-500" />
@@ -632,12 +630,9 @@ const CompetencyMatrix = () => {
           <div className="p-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
 
-              {/* Teacher selector — admin only */}
               {isAdminOrRegistrar && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                    Teacher
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Teacher</label>
                   <div className="relative">
                     <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <select
@@ -654,14 +649,13 @@ const CompetencyMatrix = () => {
                 </div>
               )}
 
-              {/* Class */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Class</label>
                 <div className="relative">
                   <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <select
                     value={selectedClass}
-                    onChange={e => { setSelectedClass(e.target.value); setSelectedSubject(''); resetBelow('class'); }}
+                    onChange={handleClassChange}
                     disabled={loadingClasses || (isAdminOrRegistrar && !selectedTeacherId)}
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm appearance-none disabled:opacity-50"
                   >
@@ -671,12 +665,8 @@ const CompetencyMatrix = () => {
                     ))}
                   </select>
                 </div>
-                {classes.length === 0 && !loadingClasses && selectedTeacherId && (
-                  <p className="text-xs text-amber-600 mt-1">No classes assigned to this teacher</p>
-                )}
               </div>
 
-              {/* Subject */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Subject</label>
                 <div className="relative">
@@ -695,7 +685,6 @@ const CompetencyMatrix = () => {
                 </div>
               </div>
 
-              {/* Strand */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Strand</label>
                 <div className="relative">
@@ -714,7 +703,6 @@ const CompetencyMatrix = () => {
                 </div>
               </div>
 
-              {/* Sub-strand */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Sub-strand</label>
                 <div className="relative">
@@ -736,7 +724,7 @@ const CompetencyMatrix = () => {
           </div>
         </div>
 
-        {/* ── Main content ─────────────────────────────────────────────────── */}
+        {/* Main content */}
         {!selectedSubstrand ? (
           <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
@@ -744,14 +732,11 @@ const CompetencyMatrix = () => {
             </div>
             <h3 className="text-gray-700 font-semibold mb-1">No Sub-strand Selected</h3>
             <p className="text-gray-400 text-sm">
-              {isAdminOrRegistrar && !selectedTeacherId
-                ? 'Select a teacher first, then choose a class, subject, strand, and sub-strand.'
-                : 'Use the filters above to navigate to a sub-strand and view or add competencies.'}
+              Use the filters above to navigate to a sub-strand and view or add competencies.
             </p>
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Action bar */}
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-semibold text-gray-800">
@@ -770,7 +755,6 @@ const CompetencyMatrix = () => {
               </button>
             </div>
 
-            {/* New competency forms */}
             {newCompetencies.length > 0 && (
               <div className="space-y-4">
                 {newCompetencies.map((comp, idx) => (
@@ -796,7 +780,6 @@ const CompetencyMatrix = () => {
               </div>
             )}
 
-            {/* Existing competencies */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle className="h-5 w-5 text-green-600" />

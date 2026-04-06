@@ -11,6 +11,8 @@ import CompetencyMatrix from "./CompetencyMatrix";
 import TermlySummary from "./TermlySummary";
 import Analytics from "./Analytics";
 import AssessmentManager from "./AssesmentMng";
+import ReportCardAnalyzer from "./ReportCard";
+
 
 const Teacher = () => {
     return(
@@ -37,6 +39,7 @@ const Teacher = () => {
                     {/*<Route path="/KnecExport" element={<KNECExportView/>}/>*/}
                     <Route path="/CompetencyMatrix" element={<CompetencyMatrix/>}/>
                     {/*<Route path="/TermlySummary" element={<TermlySummary/>}/>*/}
+                    <Route path="/ReportCardAnalyzer" element={<ReportCardAnalyzer/>}/>
                     <Route path="/Analytics" element={<Analytics/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     <Route path="*" element={<TeacherDashboard/>}/>

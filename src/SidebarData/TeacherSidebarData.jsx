@@ -7,7 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { GitGraph, Package } from 'lucide-react';
+import { Package,MarsStroke,MailCheck,Info,TicketPlus } from 'lucide-react';
 
 const TeacherSidebarData = [
   
@@ -18,12 +18,12 @@ const TeacherSidebarData = [
   },
   {
     title: "Competency Matrix",
-    icon: <ReceiptIcon />,
+    icon: <TicketPlus />,
     link: "/TeacherPortal/CompetencyMatrix"
   },
   {
     title: "Mark Entry",
-    icon: <MonetizationOnIcon />,
+    icon: <MarsStroke />,
     link: "/TeacherPortal/MarkEntry"
   },
   
@@ -46,10 +46,14 @@ const TeacherSidebarData = [
   //  icon: <ReceiptIcon />,
   //  link: "/TeacherPortal/TermlySummary"
   //},
-
+  {
+    title: "Report Card",
+    icon: <DescriptionIcon />,
+    link: "/TeacherPortal/ReportCardAnalyzer"
+  },
   {
     title: "Analytics",
-    icon: <GitGraph />,
+    icon: <Package />,
     link: "/TeacherPortal/Analytics"
   },
   //{
