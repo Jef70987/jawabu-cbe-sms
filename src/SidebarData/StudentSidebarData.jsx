@@ -62,6 +62,11 @@ const StudentSidebarData = [
   //   link: "/StudentPortal/Notices"
   // },
   {
+    title: "Results",
+    icon: <AssignmentIcon sx={{fontSize:30}}/>,
+    link: "/StudentPortal/Results"
+  },
+  {
     title: "Profile",
     icon: <PersonIcon sx={{fontSize:30}}/>,
     link: "/StudentPortal/Profile"

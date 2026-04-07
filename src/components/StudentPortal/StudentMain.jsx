@@ -5,6 +5,7 @@ import StudentDashboard from "./Dashboard";
 import Logout from "../Authentication/Logout";
 import StudentFeeManagement from "./Fees";
 import StudentProfile from "./Profile";
+import StudentResults from "./Studentresults";
 
 const Student = () => {
     return(
@@ -27,6 +28,7 @@ const Student = () => {
                     <Route path="/Dashboard" element={<StudentDashboard/>}/>
                     <Route path="/Finance" element={<StudentFeeManagement/>}/>
                     <Route path="/Profile" element={<StudentProfile/>}/>
+                    <Route path="/Results" element={<StudentResults/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                    
                 </Routes>
