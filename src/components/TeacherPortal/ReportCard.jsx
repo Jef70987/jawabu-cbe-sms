@@ -1,669 +1,536 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../Authentication/AuthContext';
+import {
+  Award, Users, Eye, RefreshCw, Loader2, AlertCircle, X,
+  TrendingUp, UserCheck, UserX, BarChart3, Printer, BookOpen, Hash
+} from 'lucide-react';
 
-const ReportCardGenerator = () => {
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedTerm, setSelectedTerm] = useState('Term 1');
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState('2024');
-  const [students, setStudents] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [reportCards, setReportCards] = useState([]);
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// ─── CBC 8-LEVEL SCALE ───────────────────────────────────────────────
+const LEGEND = [
+  { sub: 'EE1', pts: 8, label: 'Exceptional',       range: '90-100%', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  { sub: 'EE2', pts: 7, label: 'Very Good',          range: '75-89%',  cls: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+  { sub: 'ME1', pts: 6, label: 'Good',               range: '58-74%',  cls: 'bg-sky-50 text-sky-800 border-sky-200' },
+  { sub: 'ME2', pts: 5, label: 'Fair',               range: '41-57%',  cls: 'bg-sky-50 text-sky-700 border-sky-100' },
+  { sub: 'AE1', pts: 4, label: 'Needs Improvement',  range: '31-40%',  cls: 'bg-amber-50 text-amber-800 border-amber-200' },
+  { sub: 'AE2', pts: 3, label: 'Below Average',      range: '21-30%',  cls: 'bg-amber-50 text-amber-700 border-amber-100' },
+  { sub: 'BE1', pts: 2, label: 'Well Below Average', range: '11-20%',  cls: 'bg-rose-50 text-rose-800 border-rose-200' },
+  { sub: 'BE2', pts: 1, label: 'Minimal',            range: '1-10%',   cls: 'bg-rose-50 text-rose-700 border-rose-100' },
+];
+
+const META = {
+  EE1: { label: 'Exceptional',       badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', bar: 'bg-emerald-500' },
+  EE2: { label: 'Very Good',         badge: 'bg-emerald-100 text-emerald-700 border-emerald-200', bar: 'bg-emerald-400' },
+  ME1: { label: 'Good',              badge: 'bg-sky-100 text-sky-800 border-sky-300',             bar: 'bg-sky-500' },
+  ME2: { label: 'Fair',              badge: 'bg-sky-100 text-sky-700 border-sky-200',             bar: 'bg-sky-400' },
+  AE1: { label: 'Needs Improvement', badge: 'bg-amber-100 text-amber-800 border-amber-300',       bar: 'bg-amber-500' },
+  AE2: { label: 'Below Average',     badge: 'bg-amber-100 text-amber-700 border-amber-200',       bar: 'bg-amber-400' },
+  BE1: { label: 'Well Below Average',badge: 'bg-rose-100 text-rose-800 border-rose-300',          bar: 'bg-rose-500' },
+  BE2: { label: 'Minimal',           badge: 'bg-rose-100 text-rose-700 border-rose-200',          bar: 'bg-rose-400' },
+};
+
+const percentageToCbcCode = (perc) => {
+  if (!perc && perc !== 0) return null;
+  const p = parseFloat(perc);
+  if (isNaN(p)) return null;
+  if (p >= 90) return 'EE1';
+  if (p >= 75) return 'EE2';
+  if (p >= 58) return 'ME1';
+  if (p >= 41) return 'ME2';
+  if (p >= 31) return 'AE1';
+  if (p >= 21) return 'AE2';
+  if (p >= 11) return 'BE1';
+  return 'BE2';
+};
+
+const getCbcGrade = (perc) => {
+  const code = percentageToCbcCode(perc);
+  return code ? { code, ...META[code] } : null;
+};
+
+// Convert a CBC code (e.g. "ME1") → percentage midpoint for the progress bar
+const codeToPercent = (code) => {
+  const map = { EE1: 95, EE2: 82, ME1: 66, ME2: 49, AE1: 35, AE2: 25, BE1: 15, BE2: 5 };
+  return map[code] || 0;
+};
+
+// ────────────────────────────────────────────────────────────────────
+const ReportCardAnalyzer = () => {
+  const { getAuthHeaders, isAuthenticated, logout } = useAuth();
+
+  const [loading, setLoading]               = useState(true);
+  const [classes, setClasses]               = useState([]);
+  const [selectedClass, setSelectedClass]   = useState('');
+  const [students, setStudents]             = useState([]);
+  const [classAnalytics, setClassAnalytics] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [previewData, setPreviewData] = useState(null);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-
-  // CBC Core Competencies
-  const coreCompetencies = [
-    { name: 'Communication and Collaboration', icon: '💬' },
-    { name: 'Critical Thinking and Problem Solving', icon: '🧠' },
-    { name: 'Creativity and Imagination', icon: '✨' },
-    { name: 'Citizenship', icon: '🌍' },
-    { name: 'Digital Literacy', icon: '💻' },
-    { name: 'Learning to Learn', icon: '📚' },
-    { name: 'Self-efficacy', icon: '⚡' }
-  ];
-
-  // Values
-  const values = [
-    { name: 'Respect', icon: '🤝' },
-    { name: 'Responsibility', icon: '✅' },
-    { name: 'Integrity', icon: '🎯' },
-    { name: 'Honesty', icon: '🫂' },
-    { name: 'Love', icon: '❤️' },
-    { name: 'Tolerance', icon: '🕊️' },
-    { name: 'Peace', icon: '☮️' }
-  ];
+  const [previewData, setPreviewData]       = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [error, setError]                   = useState(null);
 
   useEffect(() => {
-    fetchInitialData();
-  }, []);
+    if (!isAuthenticated) return;
+    fetchClasses();
+  }, [isAuthenticated]);
 
-  const fetchInitialData = async () => {
+  useEffect(() => {
+    if (selectedClass) fetchClassData();
+  }, [selectedClass]);
+
+  const apiFetch = async (url) => {
+    try {
+      const res = await fetch(url, { headers: getAuthHeaders() });
+      if (res.status === 401) { logout(); window.location.href = '/logout'; return null; }
+      return res.json();
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+
+  const fetchClasses = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with API calls
-      setTimeout(() => {
-        setClasses([
-          { id: 1, name: 'Grade 7 East', level: 7, stream: 'East', studentCount: 45 },
-          { id: 2, name: 'Grade 7 West', level: 7, stream: 'West', studentCount: 42 },
-          { id: 3, name: 'Grade 8 East', level: 8, stream: 'East', studentCount: 38 }
-        ]);
-
-        setStudents([
-          {
-            id: 1,
-            admissionNo: '2024/001',
-            name: 'John Kamau',
-            className: 'Grade 7 East',
-            classId: 1,
-            attendance: { present: 62, absent: 3, total: 65 }
-          },
-          {
-            id: 2,
-            admissionNo: '2024/002',
-            name: 'Mary Wanjiku',
-            className: 'Grade 7 East',
-            classId: 1,
-            attendance: { present: 65, absent: 0, total: 65 }
-          },
-          {
-            id: 3,
-            admissionNo: '2024/003',
-            name: 'Peter Omondi',
-            className: 'Grade 7 East',
-            classId: 1,
-            attendance: { present: 60, absent: 5, total: 65 }
-          }
-        ]);
-
-        setReportCards([
-          {
-            id: 1,
-            studentId: 1,
-            studentName: 'John Kamau',
-            admissionNo: '2024/001',
-            className: 'Grade 7 East',
-            term: 'Term 1',
-            academicYear: '2024',
-            generatedDate: '2024-04-15',
-            status: 'published',
-            learningAreas: [
-              { name: 'Integrated Science', score: 'ME1', points: 6, grade: 'Good', teacherComment: 'Good understanding of human body systems' },
-              { name: 'Agriculture', score: 'EE2', points: 7, grade: 'Very Good', teacherComment: 'Excellent project on kitchen garden' },
-              { name: 'Mathematics', score: 'ME2', points: 5, grade: 'Fair', teacherComment: 'Needs more practice with fractions' },
-              { name: 'English', score: 'ME1', points: 6, grade: 'Good', teacherComment: 'Good reading comprehension' },
-              { name: 'Kiswahili', score: 'AE1', points: 4, grade: 'Needs Improvement', teacherComment: 'Should practice more vocabulary' }
-            ],
-            competencyRatings: [
-              { name: 'Communication and Collaboration', rating: 'ME1', descriptor: 'Good' },
-              { name: 'Critical Thinking', rating: 'EE2', descriptor: 'Very Good' },
-              { name: 'Creativity', rating: 'ME2', descriptor: 'Fair' },
-              { name: 'Citizenship', rating: 'EE1', descriptor: 'Exceptional' },
-              { name: 'Digital Literacy', rating: 'ME1', descriptor: 'Good' },
-              { name: 'Learning to Learn', rating: 'ME1', descriptor: 'Good' },
-              { name: 'Self-efficacy', rating: 'ME2', descriptor: 'Fair' }
-            ],
-            valuesRatings: [
-              { name: 'Respect', rating: 'ME1' },
-              { name: 'Responsibility', rating: 'ME1' },
-              { name: 'Integrity', rating: 'EE2' },
-              { name: 'Honesty', rating: 'ME1' },
-              { name: 'Love', rating: 'EE1' }
-            ],
-            teacherRemarks: 'John has shown good progress this term. He excels in practical activities and works well in groups. Needs to improve in mathematics.',
-            headTeacherRemarks: 'A promising student. Keep up the good work.',
-            parentFeedback: ''
-          }
-        ]);
-
-        setLoading(false);
-      }, 1000);
-    } catch (err) {
-      setError('Failed to load data');
+      const res = await apiFetch(`${API_BASE_URL}/api/teacher/report-cards/my-class/`);
+      if (res?.success) {
+        const list = res.data || [];
+        setClasses(list);
+        // ── AUTO-SELECT: if only one class, pick it immediately ──
+        if (list.length === 1) setSelectedClass(String(list[0].id));
+      }
+    } catch (e) {
+      setError('Failed to load classes');
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleGenerateReportCard = async () => {
-    if (!selectedClass || !selectedTerm || !selectedAcademicYear) {
-      setError('Please select class, term, and academic year');
-      return;
-    }
-
-    setGenerating(true);
-    setError(null);
-
+  const fetchClassData = async () => {
+    if (!selectedClass) return;
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setSuccess('Report cards generated successfully');
-    } catch (err) {
-      setError('Failed to generate report cards');
+      const [studentsRes, analyticsRes] = await Promise.all([
+        apiFetch(`${API_BASE_URL}/api/teacher/report-cards/students/?class_id=${selectedClass}`),
+        apiFetch(`${API_BASE_URL}/api/teacher/report-cards/class-analytics/?class_id=${selectedClass}`)
+      ]);
+      if (studentsRes?.success)  setStudents(studentsRes.data || []);
+      if (analyticsRes?.success) setClassAnalytics(analyticsRes.data);
+    } catch (e) {
+      setError('Failed to load class data');
+    }
+  };
+
+  const handlePreview = async (student) => {
+    try {
+      setPreviewLoading(true);
+      setSelectedStudent(student);
+      const res = await apiFetch(
+        `${API_BASE_URL}/api/teacher/report-cards/preview/?student_id=${student.id}`
+      );
+      if (res?.success) setPreviewData(res.data);
+      else setError('Failed to load preview');
+    } catch (e) {
+      setError('Preview failed');
     } finally {
-      setGenerating(false);
+      setPreviewLoading(false);
     }
   };
 
-  const handlePreview = (student) => {
-    const report = reportCards.find(r => r.studentId === student.id);
-    if (report) {
-      setSelectedStudent(student);
-      setPreviewData(report);
-    } else {
-      setPreviewData({
-        studentId: student.id,
-        studentName: student.name,
-        admissionNo: student.admissionNo,
-        className: student.className,
-        term: selectedTerm,
-        academicYear: selectedAcademicYear,
-        generatedDate: new Date().toISOString().split('T')[0],
-        learningAreas: [
-          { name: 'Integrated Science', score: 'ME1', points: 6, teacherComment: 'Pending' },
-          { name: 'Agriculture', score: 'ME2', points: 5, teacherComment: 'Pending' },
-          { name: 'Mathematics', score: 'AE1', points: 4, teacherComment: 'Pending' }
-        ],
-        competencyRatings: coreCompetencies.map(c => ({
-          name: c.name,
-          rating: 'ME2',
-          descriptor: 'Fair'
-        })),
-        valuesRatings: values.slice(0, 5).map(v => ({
-          name: v.name,
-          rating: 'ME1'
-        })),
-        teacherRemarks: 'To be completed',
-        headTeacherRemarks: '',
-        parentFeedback: ''
-      });
-      setSelectedStudent(student);
-    }
-  };
+  const closePreview = () => { setPreviewData(null); setSelectedStudent(null); };
 
-  const getScoreBadge = (score) => {
-    if (score.startsWith('EE')) return 'bg-green-50 text-green-700 border-green-200';
-    if (score.startsWith('ME')) return 'bg-blue-50 text-blue-700 border-blue-200';
-    if (score.startsWith('AE')) return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-    if (score.startsWith('BE')) return 'bg-red-50 text-red-700 border-red-200';
-    return 'bg-gray-50 text-gray-700 border-gray-200';
-  };
+  const getOverallMastery = () => Math.round(classAnalytics?.mastery_percentage || 0);
 
-  const getScoreIcon = (score) => {
-    if (score.startsWith('EE')) return '🏆';
-    if (score.startsWith('ME')) return '📈';
-    if (score.startsWith('AE')) return '📊';
-    if (score.startsWith('BE')) return '📉';
-    return '📋';
+  // ── Overall % from learningAreas in previewData ──
+  const getPreviewOverall = () => {
+    if (!previewData?.learningAreas?.length) return null;
+    const pts = previewData.learningAreas.map(la => la.points || 0);
+    const avg = pts.reduce((a, b) => a + b, 0) / pts.length;
+    return Math.round(avg * 12.5);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
-          <p className="mt-2 text-sm text-gray-500">Loading report card data...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="border-b border-gray-200 bg-white sticky top-0 z-10">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Report Card Generator</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Generate CBE format report cards with 4-point scale
-              </p>
+    <div className="min-h-screen bg-gray-50">
+
+      {/* ── HEADER ── */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+              <Award className="w-5 h-5 text-white" />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-blue-50 text-blue-700 text-sm font-medium rounded-full border border-blue-200">
-                📋 CBE Format
-              </span>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Class Report Card</h1>
+              <p className="text-xs text-gray-400 mt-0.5">CBE Competency-Based Performance Overview</p>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="px-6 py-6">
-        {/* Controls */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
-                Academic Year
-              </label>
-              <select
-                value={selectedAcademicYear}
-                onChange={(e) => setSelectedAcademicYear(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="2024">2024</option>
-                <option value="2023">2023</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
-                Term
-              </label>
-              <select
-                value={selectedTerm}
-                onChange={(e) => setSelectedTerm(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="Term 1">Term 1</option>
-                <option value="Term 2">Term 2</option>
-                <option value="Term 3">Term 3</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
-                Class
-              </label>
+          <div className="flex items-center gap-3">
+            {classes.length > 1 && (
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
-                <option value="">Select Class</option>
-                {classes.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.studentCount} students)</option>
+                <option value="">Select class</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.class_name} ({c.studentCount} students)
+                  </option>
                 ))}
               </select>
-            </div>
-
-            <div className="flex items-end">
-              <button
-                onClick={handleGenerateReportCard}
-                disabled={generating || !selectedClass}
-                className="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {generating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Generate Report Cards
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Students List */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-medium text-gray-900">Students</h2>
-            <span className="text-sm text-gray-500">
-              {students.length} students
-            </span>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {students.map(student => {
-              const hasReport = reportCards.some(r => r.studentId === student.id);
-              return (
-                <div key={student.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-medium">
-                      {student.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">{student.name}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500">{student.admissionNo}</span>
-                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                        <span className="text-xs text-gray-500">{student.className}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${
-                      hasReport 
-                        ? 'bg-green-50 text-green-700 border border-green-200' 
-                        : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
-                    }`}>
-                      <span className="mr-1">{hasReport ? '✅' : '⏳'}</span>
-                      {hasReport ? 'Generated' : 'Pending'}
-                    </span>
-                    <button
-                      onClick={() => handlePreview(student)}
-                      className="inline-flex items-center px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      Preview
-                    </button>
-                    {hasReport && (
-                      <button className="inline-flex items-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                        </svg>
-                        Print
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Report Card Preview Modal */}
-        {previewData && selectedStudent && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Report Card Preview - {previewData.studentName}
-                </h2>
-                <button
-                  onClick={() => {
-                    setPreviewData(null);
-                    setSelectedStudent(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-500 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="p-6">
-                {/* Report Card Content */}
-                <div className="border border-gray-200 rounded-xl p-6">
-                  {/* Header */}
-                  <div className="text-center mb-6">
-                    <div className="inline-block p-3 bg-blue-50 rounded-full mb-3">
-                      <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-900">MINISTRY OF EDUCATION</h3>
-                    <p className="text-lg text-gray-700">Kenya Certificate of Basic Education</p>
-                    <p className="text-sm text-gray-500 mt-1">COMPETENCY BASED ASSESSMENT</p>
-                  </div>
-
-                  {/* Student Info */}
-                  <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        <span className="text-sm text-gray-600">Name:</span>
-                        <span className="text-sm font-medium text-gray-900">{previewData.studentName}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l5 5a2 2 0 01.586 1.414V19a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
-                        </svg>
-                        <span className="text-sm text-gray-600">Admission:</span>
-                        <span className="text-sm font-medium text-gray-900">{previewData.admissionNo}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                        <span className="text-sm text-gray-600">Class:</span>
-                        <span className="text-sm font-medium text-gray-900">{previewData.className}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-sm text-gray-600">Term:</span>
-                        <span className="text-sm font-medium text-gray-900">{previewData.term}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-sm text-gray-600">Year:</span>
-                        <span className="text-sm font-medium text-gray-900">{previewData.academicYear}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-sm text-gray-600">Date:</span>
-                        <span className="text-sm font-medium text-gray-900">{previewData.generatedDate}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Learning Areas */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
-                      Learning Areas Achievement
-                    </h4>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Learning Area</th>
-                            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Score</th>
-                            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Points</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Teacher's Comment</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {previewData.learningAreas.map((area, index) => (
-                            <tr key={index}>
-                              <td className="px-4 py-2 text-sm text-gray-900">{area.name}</td>
-                              <td className="px-4 py-2 text-center">
-                                <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full border ${getScoreBadge(area.score)}`}>
-                                  <span>{getScoreIcon(area.score)}</span>
-                                  {area.score}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 text-center text-sm font-medium text-gray-900">{area.points}</td>
-                              <td className="px-4 py-2 text-sm text-gray-600">{area.teacherComment}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Core Competencies */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                      </svg>
-                      Core Competencies
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {previewData.competencyRatings.map((comp, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                          <span className="text-sm text-gray-700">{comp.name}</span>
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full border ${getScoreBadge(comp.rating)}`}>
-                            <span>{getScoreIcon(comp.rating)}</span>
-                            {comp.rating} - {comp.descriptor}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Values */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                      Values
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {previewData.valuesRatings.map((value, index) => (
-                        <div key={index} className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg">
-                          <span className="text-sm text-gray-700">{value.name}</span>
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${getScoreBadge(value.rating)}`}>
-                            <span>{getScoreIcon(value.rating)}</span>
-                            {value.rating}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Attendance Summary */}
-                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      Attendance Summary
-                    </h4>
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div className="p-2 bg-white rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Total Days</p>
-                        <p className="text-xl font-bold text-gray-900">{selectedStudent.attendance.total}</p>
-                      </div>
-                      <div className="p-2 bg-white rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Present</p>
-                        <p className="text-xl font-bold text-green-600">{selectedStudent.attendance.present}</p>
-                      </div>
-                      <div className="p-2 bg-white rounded-lg">
-                        <p className="text-xs text-gray-500 mb-1">Absent</p>
-                        <p className="text-xl font-bold text-red-600">{selectedStudent.attendance.absent}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Teacher's Remarks */}
-                  <div className="mb-4">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      Class Teacher's Remarks
-                    </h4>
-                    <p className="text-sm text-gray-700 p-3 bg-gray-50 rounded-lg">
-                      {previewData.teacherRemarks}
-                    </p>
-                  </div>
-
-                  {/* Head Teacher's Remarks */}
-                  <div className="mb-4">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      Head Teacher's Remarks
-                    </h4>
-                    <p className="text-sm text-gray-700 p-3 bg-gray-50 rounded-lg">
-                      {previewData.headTeacherRemarks || '_____________________'}
-                    </p>
-                  </div>
-
-                  {/* Parent Feedback Section */}
-                  <div className="mt-6 pt-4 border-t border-gray-200">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                      </svg>
-                      Parent/Guardian Feedback
-                    </h4>
-                    <textarea
-                      rows="3"
-                      placeholder="Parent comments..."
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    ></textarea>
-                    <div className="mt-3 flex justify-end gap-6 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <span>Parent Signature:</span>
-                        <span className="border-b border-gray-300 w-32"></span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span>Date:</span>
-                        <span className="border-b border-gray-300 w-24"></span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
-                    onClick={() => {
-                      setPreviewData(null);
-                      setSelectedStudent(null);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Close
-                  </button>
-                  <button className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    Print Report Card
-                  </button>
-                  <button className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download PDF
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Toast Notifications */}
-        {error && (
-          <div className="fixed bottom-4 right-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50">
-            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm font-medium">{error}</span>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            )}
+            {classes.length === 1 && (
+              <span className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg">
+                {classes[0].class_name} · {classes[0].studentCount} students
+              </span>
+            )}
+            <button
+              onClick={fetchClassData}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" /> Refresh
             </button>
           </div>
-        )}
-        
-        {success && (
-          <div className="fixed bottom-4 right-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50">
-            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-sm font-medium">{success}</span>
-            <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        </div>
+      </div>
+
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {!selectedClass ? (
+          <div className="bg-white rounded-xl border border-gray-200 text-center py-20">
+            <Users className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+            <p className="text-gray-400 font-medium">Select a class to view CBC analytics</p>
           </div>
+        ) : (
+          <>
+            {/* CBC LEGEND */}
+            <div className="bg-white border border-gray-200 rounded-xl">
+              <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
+                <Award className="w-4 h-4 text-blue-500" />
+                <span className="text-sm font-semibold text-gray-800">CBC Rating Scale Reference</span>
+              </div>
+              <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                {LEGEND.map(r => (
+                  <div key={r.sub} className={`px-3 py-2 rounded-lg border text-center ${r.cls}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-bold text-xs">{r.sub}</span>
+                      <span className="text-xs opacity-50">{r.pts}pt</span>
+                    </div>
+                    <p className="text-xs font-medium leading-tight">{r.label}</p>
+                    <p className="text-xs opacity-50 mt-0.5">{r.range}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CLASS ANALYTICS CARDS */}
+            {classAnalytics && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white border border-gray-200 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Class Mastery</p>
+                    <TrendingUp className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <span className="text-4xl font-bold text-emerald-600">{getOverallMastery()}%</span>
+                  <div className="h-2 bg-gray-100 rounded-full mt-4 overflow-hidden">
+                    <div className="h-2 bg-emerald-500 rounded-full transition-all" style={{ width: `${getOverallMastery()}%` }} />
+                  </div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Average Points</p>
+                    <BarChart3 className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <div className="text-4xl font-bold text-blue-600">{classAnalytics.average_points?.toFixed(1) || '0.0'}</div>
+                  <p className="text-xs text-gray-400 mt-1">out of 8.0</p>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Top Performer</p>
+                    <UserCheck className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <p className="font-semibold text-gray-800 truncate">{classAnalytics.top_student || '—'}</p>
+                  <p className="text-emerald-600 text-sm mt-1">{classAnalytics.top_score || '—'}</p>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Needs Support</p>
+                    <UserX className="w-4 h-4 text-rose-500" />
+                  </div>
+                  <p className="font-semibold text-rose-600 text-4xl">{classAnalytics.needs_support_count || 0}</p>
+                  <p className="text-xs text-gray-400 mt-1">students below 41%</p>
+                </div>
+              </div>
+            )}
+
+            {/* STUDENTS TABLE */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-gray-400" />
+                  <h2 className="font-semibold text-gray-800">Student Performance</h2>
+                </div>
+                <span className="text-xs text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200">
+                  {students.length} learners
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-5 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">ADM NO.</th>
+                      <th className="px-5 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">STUDENT</th>
+                      <th className="px-5 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">OVERALL %</th>
+                      <th className="px-5 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">GRADE</th>
+                      <th className="px-5 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">GRADED SUBJECTS</th>
+                      <th className="px-5 py-3.5 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {students.map((student) => {
+                      const grade = getCbcGrade(student.overall_percentage);
+                      return (
+                        <tr key={student.id} className="hover:bg-gray-50/70 transition-colors">
+                          <td className="px-5 py-3.5 font-mono text-xs text-gray-500">{student.admissionNo}</td>
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                <Users className="w-3.5 h-3.5 text-blue-600" />
+                              </div>
+                              <span className="font-medium text-gray-800">{student.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5 text-center font-semibold text-gray-700">{student.overall_percentage || '—'}%</td>
+                          <td className="px-5 py-3.5 text-center">
+                            {grade ? (
+                              <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-lg border ${grade.badge}`}>{grade.code}</span>
+                            ) : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-5 py-3.5 text-center font-semibold text-blue-600">{student.graded_subjects_count} subjects</td>
+                          <td className="px-5 py-3.5 text-right">
+                            <button
+                              onClick={() => handlePreview(student)}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> Preview
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {students.length === 0 && (
+                <div className="py-12 text-center">
+                  <Users className="w-10 h-10 text-gray-200 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">No students found for this class</p>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
+
+      {/* ══════════════════════════════════════════════
+          PREVIEW MODAL
+      ══════════════════════════════════════════════ */}
+      {selectedStudent && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[9999]">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] overflow-hidden flex flex-col">
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-600 to-indigo-600">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                  <Award className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">Student Report Card</h3>
+                  <p className="text-xs text-blue-100 mt-0.5">CBC Competency-Based Assessment</p>
+                </div>
+              </div>
+              <button onClick={closePreview} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="flex-1 overflow-auto">
+              {previewLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                </div>
+              ) : previewData ? (
+                <div className="p-6 space-y-6">
+
+                  {/* ── STUDENT INFO CARD ── */}
+                  <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Student Name</p>
+                        <p className="font-semibold text-gray-900 text-sm">{previewData.studentName}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Admission No.</p>
+                        <p className="font-mono font-semibold text-gray-900 text-sm flex items-center gap-1">
+                          <Hash className="w-3 h-3 text-gray-400" />{previewData.admissionNo}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Class</p>
+                        <p className="font-semibold text-gray-900 text-sm">{previewData.className}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Term / Year</p>
+                        <p className="font-semibold text-gray-900 text-sm">{previewData.term} · {previewData.academicYear}</p>
+                      </div>
+                    </div>
+
+                    {/* Overall grade pill */}
+                    {(() => {
+                      const overall = getPreviewOverall();
+                      const grade   = overall !== null ? getCbcGrade(overall) : null;
+                      return overall !== null && grade ? (
+                        <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Overall Performance</span>
+                          <div className="flex items-center gap-3">
+                            <div className="h-2 w-32 bg-gray-200 rounded-full overflow-hidden">
+                              <div className={`h-2 rounded-full ${grade.bar}`} style={{ width: `${overall}%` }} />
+                            </div>
+                            <span className="text-sm font-bold text-gray-700">{overall}%</span>
+                            <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${grade.badge}`}>
+                              {grade.code} · {grade.label}
+                            </span>
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+
+                  {/* ── LEARNING AREAS / SUBJECTS TABLE ── */}
+                  {previewData.learningAreas?.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <BookOpen className="w-4 h-4 text-blue-500" />
+                        <h4 className="font-semibold text-gray-800 text-sm">Subject Performance</h4>
+                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                          {previewData.learningAreas.length} subjects
+                        </span>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-gray-50 border-b border-gray-200">
+                              <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Subject</th>
+                              <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Grade</th>
+                              <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Points</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Performance</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Teacher Comment</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {previewData.learningAreas.map((la, idx) => {
+                              const code  = la.score || percentageToCbcCode(la.points * 12.5);
+                              const meta  = code ? META[code] : null;
+                              const pct   = code ? codeToPercent(code) : 0;
+                              const pts   = la.points || (LEGEND.find(l => l.sub === code)?.pts || 0);
+                              return (
+                                <tr key={idx} className="hover:bg-gray-50/60 transition-colors">
+                                  <td className="px-4 py-3 font-medium text-gray-800">{la.name}</td>
+                                  <td className="px-4 py-3 text-center">
+                                    {meta ? (
+                                      <span className={`inline-flex px-2.5 py-1 text-xs font-bold rounded-lg border ${meta.badge}`}>
+                                        {code}
+                                      </span>
+                                    ) : <span className="text-gray-300">—</span>}
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className="font-bold text-gray-700">{pts}</span>
+                                    <span className="text-gray-400 text-xs">/8</span>
+                                  </td>
+                                  <td className="px-4 py-3 hidden sm:table-cell">
+                                    {meta && (
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                          <div className={`h-1.5 rounded-full ${meta.bar}`} style={{ width: `${pct}%` }} />
+                                        </div>
+                                        <span className="text-xs text-gray-400 w-14">{meta.label}</span>
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell max-w-[180px] truncate">
+                                    {la.teacherComment || '—'}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── REMARKS ── */}
+                  {(previewData.teacherRemarks || previewData.headTeacherRemarks) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {previewData.teacherRemarks && (
+                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                          <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Class Teacher's Remarks</p>
+                          <p className="text-sm text-blue-900">{previewData.teacherRemarks}</p>
+                        </div>
+                      )}
+                      {previewData.headTeacherRemarks && (
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">Head Teacher's Remarks</p>
+                          <p className="text-sm text-indigo-900">{previewData.headTeacherRemarks}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
+                  No report data available for this student.
+                </div>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div className="border-t border-gray-100 px-6 py-4 flex justify-between items-center bg-gray-50/50">
+              <p className="text-xs text-gray-400">Generated: {previewData?.generatedDate || '—'}</p>
+              <div className="flex gap-3">
+                <button onClick={closePreview} className="px-5 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                  Close
+                </button>
+                <button className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                  <Printer className="w-4 h-4" /> Print Report Card
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ERROR TOAST */}
+      {error && (
+        <div className="fixed bottom-6 right-6 bg-red-50 text-red-700 border border-red-200 px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 z-50">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <span className="text-sm font-medium">{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
+        </div>
+      )}
     </div>
   );
 };
 
-export default ReportCardGenerator;
+export default ReportCardAnalyzer;

@@ -5,7 +5,11 @@ import StudentDashboard from "./Dashboard";
 import Logout from "../Authentication/Logout";
 import StudentFeeManagement from "./Fees";
 import StudentProfile from "./Profile";
+<<<<<<< HEAD
 import StudentResults from "./Studentresults";
+=======
+import Academic from "./Academic";
+>>>>>>> 4163cb22fbb9c269b6463798b1570244d22f2dc4
 
 const Student = () => {
     return(
@@ -28,7 +32,11 @@ const Student = () => {
                     <Route path="/Dashboard" element={<StudentDashboard/>}/>
                     <Route path="/Finance" element={<StudentFeeManagement/>}/>
                     <Route path="/Profile" element={<StudentProfile/>}/>
+<<<<<<< HEAD
                     <Route path="/Results" element={<StudentResults/>}/>
+=======
+                    <Route path="/Academic" element={<Academic/>}/>
+>>>>>>> 4163cb22fbb9c269b6463798b1570244d22f2dc4
                     <Route path="/Logout" element={<Logout/>}/>
                    
                 </Routes>

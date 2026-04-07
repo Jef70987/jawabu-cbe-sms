@@ -7,7 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { GitGraph, Package } from 'lucide-react';
+import { Package,MarsStroke,MailCheck,Info,TicketPlus } from 'lucide-react';
 
 const TeacherSidebarData = [
   
@@ -18,51 +18,50 @@ const TeacherSidebarData = [
   },
   {
     title: "Competency Matrix",
-    icon: <ReceiptIcon />,
+    icon: <TicketPlus />,
     link: "/TeacherPortal/CompetencyMatrix"
   },
   {
     title: "Mark Entry",
-    icon: <MonetizationOnIcon />,
+    icon: <MarsStroke />,
     link: "/TeacherPortal/MarkEntry"
   },
-  {/*
-  {
-    title: "Portfolio",
-    icon: <DescriptionIcon />,
-    link: "/TeacherPortal/Portfolio"
-  },
-  */},
-  {/*
-  {
-    title: "Assessment",
-    icon: <DescriptionIcon />,
-    link: "/TeacherPortal/AssessmentManager"
-  },
-  */},
-  {/*
-  {
-    title: "Termly Summary",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/TermlySummary"
-  },
-  */},
-  {
-    title: "Analytics",
-    icon: <GitGraph />,
-    link: "/TeacherPortal/Analytics"
-  },
+  
+//  {
+//    title: "Portfolio",
+//    icon: <DescriptionIcon />,
+//    link: "/TeacherPortal/Portfolio"
+//  },
+  
+  
+//  {
+//    title: "Assessment",
+//    icon: <DescriptionIcon />,
+//    link: "/TeacherPortal/AssessmentManager"
+//  },
+  
+  
+  //{
+  //  title: "Termly Summary",
+  //  icon: <ReceiptIcon />,
+  //  link: "/TeacherPortal/TermlySummary"
+  //},
   {
     title: "Report Card",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/ReportCard"
+    icon: <DescriptionIcon />,
+    link: "/TeacherPortal/ReportCardAnalyzer"
   },
-  {/*{
-    title: "KNEC Export",
+  {
+    title: "Analytics",
     icon: <Package />,
-    link: "/TeacherPortal/KnecExport"
+    link: "/TeacherPortal/Analytics"
   },
-   */},
+  //{
+  // title: "KNEC Export",
+  //  icon: <Package />,
+  //  link: "/TeacherPortal/KnecExport"
+  //},
+
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,

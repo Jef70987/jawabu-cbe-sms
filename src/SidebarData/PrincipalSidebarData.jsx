@@ -1,7 +1,7 @@
-import React from 'react';
-import { 
-  LayoutDashboard, 
-  Users, 
+import React from "react";
+import {
+  LayoutDashboard,
+  Users,
   GraduationCap,
   DollarSign,
   BarChart3,
@@ -15,21 +15,21 @@ import {
   PieChart,
   TrendingUp,
   UserCheck,
-  Clock
-} from 'lucide-react';
-
+  Clock,
+} from "lucide-react";
+import LogoutIcon from "@mui/icons-material/Logout";
 export const PrincipalSidebarData = [
   {
     title: "Dashboard",
     path: "/PrincipalPortal/dashboard",
     icon: <LayoutDashboard size={20} />,
-    role: "principal"
+    role: "principal",
   },
   {
     title: "Overview",
     path: "/PrincipalPortal/overview",
     icon: <PieChart size={20} />,
-    role: "principal"
+    role: "principal",
   },
   {
     title: "Staff Management",
@@ -42,8 +42,8 @@ export const PrincipalSidebarData = [
       { title: "Administrative", path: "/PrincipalPortal/staff/admin" },
       { title: "Departments", path: "/PrincipalPortal/staff/departments" },
       { title: "Performance", path: "/PrincipalPortal/staff/performance" },
-      { title: "Attendance", path: "/PrincipalPortal/staff/attendance" }
-    ]
+      { title: "Attendance", path: "/PrincipalPortal/staff/attendance" },
+    ],
   },
   {
     title: "Students",
@@ -56,8 +56,8 @@ export const PrincipalSidebarData = [
       { title: "Performance", path: "/PrincipalPortal/students/performance" },
       { title: "Attendance", path: "/PrincipalPortal/students/attendance" },
       { title: "Graduation", path: "/PrincipalPortal/students/graduation" },
-      { title: "Achievements", path: "/PrincipalPortal/students/achievements" }
-    ]
+      { title: "Achievements", path: "/PrincipalPortal/students/achievements" },
+    ],
   },
   {
     title: "Academic",
@@ -70,8 +70,8 @@ export const PrincipalSidebarData = [
       { title: "Courses", path: "/PrincipalPortal/academic/courses" },
       { title: "Examinations", path: "/PrincipalPortal/academic/exams" },
       { title: "Results", path: "/PrincipalPortal/academic/results" },
-      { title: "Timetable", path: "/PrincipalPortal/academic/timetable" }
-    ]
+      { title: "Timetable", path: "/PrincipalPortal/academic/timetable" },
+    ],
   },
   {
     title: "Finance",
@@ -84,8 +84,8 @@ export const PrincipalSidebarData = [
       { title: "Revenue", path: "/PrincipalPortal/finance/revenue" },
       { title: "Expenses", path: "/PrincipalPortal/finance/expenses" },
       { title: "Payroll", path: "/PrincipalPortal/finance/payroll" },
-      { title: "Reports", path: "/PrincipalPortal/finance/reports" }
-    ]
+      { title: "Reports", path: "/PrincipalPortal/finance/reports" },
+    ],
   },
   {
     title: "Discipline",
@@ -96,8 +96,8 @@ export const PrincipalSidebarData = [
       { title: "Cases", path: "/PrincipalPortal/discipline/cases" },
       { title: "Suspensions", path: "/PrincipalPortal/discipline/suspensions" },
       { title: "Statistics", path: "/PrincipalPortal/discipline/statistics" },
-      { title: "Appeals", path: "/PrincipalPortal/discipline/appeals" }
-    ]
+      { title: "Appeals", path: "/PrincipalPortal/discipline/appeals" },
+    ],
   },
   {
     title: "Reports",
@@ -106,12 +106,15 @@ export const PrincipalSidebarData = [
     role: "principal",
     submenu: [
       { title: "Academic Reports", path: "/PrincipalPortal/reports/academic" },
-      { title: "Financial Reports", path: "/PrincipalPortal/reports/financial" },
+      {
+        title: "Financial Reports",
+        path: "/PrincipalPortal/reports/financial",
+      },
       { title: "Staff Reports", path: "/PrincipalPortal/reports/staff" },
       { title: "Student Reports", path: "/PrincipalPortal/reports/students" },
       { title: "Annual Reports", path: "/PrincipalPortal/reports/annual" },
-      { title: "Custom Reports", path: "/PrincipalPortal/reports/custom" }
-    ]
+      { title: "Custom Reports", path: "/PrincipalPortal/reports/custom" },
+    ],
   },
   {
     title: "Analytics",
@@ -119,11 +122,23 @@ export const PrincipalSidebarData = [
     icon: <TrendingUp size={20} />,
     role: "principal",
     submenu: [
-      { title: "Performance Trends", path: "/PrincipalPortal/analytics/trends" },
-      { title: "Comparative Analysis", path: "/PrincipalPortal/analytics/comparative" },
-      { title: "Predictive Analytics", path: "/PrincipalPortal/analytics/predictive" },
-      { title: "Data Visualization", path: "/PrincipalPortal/analytics/visualization" }
-    ]
+      {
+        title: "Performance Trends",
+        path: "/PrincipalPortal/analytics/trends",
+      },
+      {
+        title: "Comparative Analysis",
+        path: "/PrincipalPortal/analytics/comparative",
+      },
+      {
+        title: "Predictive Analytics",
+        path: "/PrincipalPortal/analytics/predictive",
+      },
+      {
+        title: "Data Visualization",
+        path: "/PrincipalPortal/analytics/visualization",
+      },
+    ],
   },
   {
     title: "Calendar",
@@ -131,18 +146,21 @@ export const PrincipalSidebarData = [
     icon: <Calendar size={20} />,
     role: "principal",
     submenu: [
-      { title: "Academic Calendar", path: "/PrincipalPortal/calendar/academic" },
+      {
+        title: "Academic Calendar",
+        path: "/PrincipalPortal/calendar/academic",
+      },
       { title: "Events", path: "/PrincipalPortal/calendar/events" },
       { title: "Meetings", path: "/PrincipalPortal/calendar/meetings" },
-      { title: "Holidays", path: "/PrincipalPortal/calendar/holidays" }
-    ]
+      { title: "Holidays", path: "/PrincipalPortal/calendar/holidays" },
+    ],
   },
   {
     title: "Notifications",
     path: "/PrincipalPortal/notifications",
     icon: <Bell size={20} />,
     role: "principal",
-    badge: 8
+    badge: 8,
   },
   {
     title: "Settings",
@@ -154,7 +172,12 @@ export const PrincipalSidebarData = [
       { title: "School Info", path: "/PrincipalPortal/settings/school" },
       { title: "Preferences", path: "/PrincipalPortal/settings/preferences" },
       { title: "Security", path: "/PrincipalPortal/settings/security" },
-      { title: "System", path: "/PrincipalPortal/settings/system" }
-    ]
-  }
+      { title: "System", path: "/PrincipalPortal/settings/system" },
+    ],
+  },
+  {
+    title: "LogOut",
+    icon: <LogoutIcon sx={{ color: "red", fontSize: 30 }} />,
+    link: "/Logout",
+  },
 ];
