@@ -6,6 +6,8 @@ import Logout from "../Authentication/Logout";
 import StudentFeeManagement from "./Fees";
 import StudentProfile from "./Profile";
 import Grades from "./Grades";
+import StudentResults from "./Studentresults";
+import Academic from "./Academic";
 
 const Student = () => {
     return(
@@ -29,6 +31,8 @@ const Student = () => {
                     <Route path="/Finance" element={<StudentFeeManagement/>}/>
                     <Route path="/Profile" element={<StudentProfile/>}/>
                     <Route path="/Grades" element={<Grades/>}/>
+                    <Route path="/Results" element={<StudentResults/>}/>
+                    <Route path="/Academic" element={<Academic/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                    
                 </Routes>

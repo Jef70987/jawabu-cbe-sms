@@ -23,11 +23,11 @@ const StudentSidebarData = [
     icon: <DashboardIcon />,
     link: "/StudentPortal/Dashboard"
   },
-  // {
-  //   title: "Academic",
-  //   icon: <SchoolIcon sx={{fontSize:30}}/>,
-  //   link: "/StudentPortal/AcademicRecord"
-  // },
+  {
+    title: "Academic",
+    icon: <SchoolIcon sx={{fontSize:30}}/>,
+    link: "/StudentPortal/Academic"
+  },
 
   // {
   //   title: "Learning",
@@ -61,6 +61,11 @@ const StudentSidebarData = [
   //   icon: <EventIcon sx={{fontSize:30}}/>,
   //   link: "/StudentPortal/Notices"
   // },
+  {
+    title: "Results",
+    icon: <AssignmentIcon sx={{fontSize:30}}/>,
+    link: "/StudentPortal/Results"
+  },
   {
     title: "Profile",
     icon: <PersonIcon sx={{fontSize:30}}/>,
