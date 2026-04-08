@@ -77,6 +77,11 @@ const StudentSidebarData = [
   //   link: "/StudentPortal/Help&Support"
   // },
   {
+    title: "Grades",
+    icon: <AssignmentIcon />,
+    link: "/StudentPortal/Grades"
+  },
+  {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:"red", fontSize:30}}/>,
     link: "/Logout"

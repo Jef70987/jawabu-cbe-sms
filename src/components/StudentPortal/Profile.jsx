@@ -432,7 +432,7 @@ export default function StudentProfile() {
       }
 
       // Fetch user account info
-      const userResponse = await fetch(`${API_BASE_URL}/api/auth/user/`, {
+      const userResponse = await fetch(`${API_BASE_URL}/api/student/profile/user/`, {
         headers: getAuthHeaders()
       });
 
