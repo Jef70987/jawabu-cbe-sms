@@ -3,11 +3,13 @@ import { useAuth } from '../Authentication/AuthContext';
 import {
   BookOpen, Users, Target, User, Loader2, AlertCircle
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; 
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const TeacherDashboard = () => {
   const { getAuthHeaders, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [teacherData, setTeacherData] = useState(null);
@@ -141,7 +143,7 @@ const TeacherDashboard = () => {
       </section>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         {/* Assigned Classes */}
         <section className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">My Classes</h2>
@@ -167,10 +169,10 @@ const TeacherDashboard = () => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-                    View Details
-                  </button>
-                  <button className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <button
+                    onClick={() => navigate('/TeacherPortal/MarkEntry')} 
+                    className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
                     Enter Marks
                   </button>
                 </div>
@@ -183,7 +185,7 @@ const TeacherDashboard = () => {
         </section>
 
         {/* Active Assessments */}
-        <section className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+      {/*  <section className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Active Assessments</h2>
           <div className="space-y-4">
             {activeAssessments.length === 0 ? (
@@ -191,12 +193,12 @@ const TeacherDashboard = () => {
             ) : (
               activeAssessments.map((assessment) => (
                 <article key={assessment.id} className="border border-gray-200 rounded-lg p-4">
-                  {/* Will be populated later */}
+                 
                 </article>
               ))
             )}
           </div>
-        </section>
+        </section>*/}
       </div>
     </div>
   );

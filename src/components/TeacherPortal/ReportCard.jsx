@@ -8,16 +8,16 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// ─── CBC 8-LEVEL SCALE ───────────────────────────────────────────────
+// ─── EXACT CBC SCALE MATCHING THE UPDATED BACKEND ─────────────────────
 const LEGEND = [
   { sub: 'EE1', pts: 8, label: 'Exceptional',       range: '90-100%', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  { sub: 'EE2', pts: 7, label: 'Very Good',          range: '75-89%',  cls: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-  { sub: 'ME1', pts: 6, label: 'Good',               range: '58-74%',  cls: 'bg-sky-50 text-sky-800 border-sky-200' },
-  { sub: 'ME2', pts: 5, label: 'Fair',               range: '41-57%',  cls: 'bg-sky-50 text-sky-700 border-sky-100' },
-  { sub: 'AE1', pts: 4, label: 'Needs Improvement',  range: '31-40%',  cls: 'bg-amber-50 text-amber-800 border-amber-200' },
-  { sub: 'AE2', pts: 3, label: 'Below Average',      range: '21-30%',  cls: 'bg-amber-50 text-amber-700 border-amber-100' },
-  { sub: 'BE1', pts: 2, label: 'Well Below Average', range: '11-20%',  cls: 'bg-rose-50 text-rose-800 border-rose-200' },
-  { sub: 'BE2', pts: 1, label: 'Minimal',            range: '1-10%',   cls: 'bg-rose-50 text-rose-700 border-rose-100' },
+  { sub: 'EE2', pts: 7, label: 'Very Good',         range: '75-89%',  cls: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+  { sub: 'ME1', pts: 6, label: 'Good',              range: '60-74%',  cls: 'bg-sky-50 text-sky-800 border-sky-200' },
+  { sub: 'ME2', pts: 5, label: 'Fair',              range: '40-59%',  cls: 'bg-sky-50 text-sky-700 border-sky-100' },
+  { sub: 'AE2', pts: 4, label: 'Needs Improvement', range: '30-39%',  cls: 'bg-amber-50 text-amber-800 border-amber-200' },
+  { sub: 'AE1', pts: 3, label: 'Below Average',     range: '20-29%',  cls: 'bg-amber-50 text-amber-700 border-amber-100' },
+  { sub: 'BE2', pts: 2, label: 'Well Below Average',range: '10-19%',  cls: 'bg-rose-50 text-rose-800 border-rose-200' },
+  { sub: 'BE1', pts: 1, label: 'Minimal',           range: '1-9%',    cls: 'bg-rose-50 text-rose-700 border-rose-100' },
 ];
 
 const META = {
@@ -25,24 +25,26 @@ const META = {
   EE2: { label: 'Very Good',         badge: 'bg-emerald-100 text-emerald-700 border-emerald-200', bar: 'bg-emerald-400' },
   ME1: { label: 'Good',              badge: 'bg-sky-100 text-sky-800 border-sky-300',             bar: 'bg-sky-500' },
   ME2: { label: 'Fair',              badge: 'bg-sky-100 text-sky-700 border-sky-200',             bar: 'bg-sky-400' },
-  AE1: { label: 'Needs Improvement', badge: 'bg-amber-100 text-amber-800 border-amber-300',       bar: 'bg-amber-500' },
-  AE2: { label: 'Below Average',     badge: 'bg-amber-100 text-amber-700 border-amber-200',       bar: 'bg-amber-400' },
-  BE1: { label: 'Well Below Average',badge: 'bg-rose-100 text-rose-800 border-rose-300',          bar: 'bg-rose-500' },
-  BE2: { label: 'Minimal',           badge: 'bg-rose-100 text-rose-700 border-rose-200',          bar: 'bg-rose-400' },
+  AE2: { label: 'Needs Improvement', badge: 'bg-amber-100 text-amber-800 border-amber-300',       bar: 'bg-amber-500' },
+  AE1: { label: 'Below Average',     badge: 'bg-amber-100 text-amber-700 border-amber-200',       bar: 'bg-amber-400' },
+  BE2: { label: 'Well Below Average',badge: 'bg-rose-100 text-rose-800 border-rose-300',          bar: 'bg-rose-500' },
+  BE1: { label: 'Minimal',           badge: 'bg-rose-100 text-rose-700 border-rose-200',          bar: 'bg-rose-400' },
 };
 
+// ─── PERCENTAGE → CBC CODE (EXACTLY MATCHES BACKEND percentage_to_overall_grade) ───
 const percentageToCbcCode = (perc) => {
-  if (!perc && perc !== 0) return null;
+  if (perc === null || perc === undefined) return null;
   const p = parseFloat(perc);
   if (isNaN(p)) return null;
+
   if (p >= 90) return 'EE1';
   if (p >= 75) return 'EE2';
-  if (p >= 58) return 'ME1';
-  if (p >= 41) return 'ME2';
-  if (p >= 31) return 'AE1';
-  if (p >= 21) return 'AE2';
-  if (p >= 11) return 'BE1';
-  return 'BE2';
+  if (p >= 60) return 'ME1';
+  if (p >= 40) return 'ME2';
+  if (p >= 30) return 'AE2';
+  if (p >= 20) return 'AE1';
+  if (p >= 10) return 'BE2';
+  return 'BE1';
 };
 
 const getCbcGrade = (perc) => {
@@ -50,13 +52,13 @@ const getCbcGrade = (perc) => {
   return code ? { code, ...META[code] } : null;
 };
 
-// Convert a CBC code (e.g. "ME1") → percentage midpoint for the progress bar
+// Convert CBC code → midpoint % for progress bars
 const codeToPercent = (code) => {
-  const map = { EE1: 95, EE2: 82, ME1: 66, ME2: 49, AE1: 35, AE2: 25, BE1: 15, BE2: 5 };
+  const map = { EE1: 95, EE2: 82, ME1: 67, ME2: 49.5, AE2: 34.5, AE1: 24.5, BE2: 14.5, BE1: 5 };
   return map[code] || 0;
 };
 
-// ────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 const ReportCardAnalyzer = () => {
   const { getAuthHeaders, isAuthenticated, logout } = useAuth();
 
@@ -82,7 +84,11 @@ const ReportCardAnalyzer = () => {
   const apiFetch = async (url) => {
     try {
       const res = await fetch(url, { headers: getAuthHeaders() });
-      if (res.status === 401) { logout(); window.location.href = '/logout'; return null; }
+      if (res.status === 401) {
+        logout();
+        window.location.href = '/logout';
+        return null;
+      }
       return res.json();
     } catch (e) {
       console.error(e);
@@ -97,7 +103,6 @@ const ReportCardAnalyzer = () => {
       if (res?.success) {
         const list = res.data || [];
         setClasses(list);
-        // ── AUTO-SELECT: if only one class, pick it immediately ──
         if (list.length === 1) setSelectedClass(String(list[0].id));
       }
     } catch (e) {
@@ -114,7 +119,8 @@ const ReportCardAnalyzer = () => {
         apiFetch(`${API_BASE_URL}/api/teacher/report-cards/students/?class_id=${selectedClass}`),
         apiFetch(`${API_BASE_URL}/api/teacher/report-cards/class-analytics/?class_id=${selectedClass}`)
       ]);
-      if (studentsRes?.success)  setStudents(studentsRes.data || []);
+
+      if (studentsRes?.success) setStudents(studentsRes.data || []);
       if (analyticsRes?.success) setClassAnalytics(analyticsRes.data);
     } catch (e) {
       setError('Failed to load class data');
@@ -137,11 +143,14 @@ const ReportCardAnalyzer = () => {
     }
   };
 
-  const closePreview = () => { setPreviewData(null); setSelectedStudent(null); };
+  const closePreview = () => {
+    setPreviewData(null);
+    setSelectedStudent(null);
+  };
 
   const getOverallMastery = () => Math.round(classAnalytics?.mastery_percentage || 0);
 
-  // ── Overall % from learningAreas in previewData ──
+  // ── Overall % from learningAreas (used only in preview) ──
   const getPreviewOverall = () => {
     if (!previewData?.learningAreas?.length) return null;
     const pts = previewData.learningAreas.map(la => la.points || 0);
@@ -160,7 +169,7 @@ const ReportCardAnalyzer = () => {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* ── HEADER ── */}
+      {/* HEADER */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -211,7 +220,7 @@ const ReportCardAnalyzer = () => {
           </div>
         ) : (
           <>
-            {/* CBC LEGEND */}
+            {/* CBC LEGEND - updated ranges to match backend exactly */}
             <div className="bg-white border border-gray-200 rounded-xl">
               <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
                 <Award className="w-4 h-4 text-blue-500" />
@@ -231,7 +240,7 @@ const ReportCardAnalyzer = () => {
               </div>
             </div>
 
-            {/* CLASS ANALYTICS CARDS */}
+            {/* CLASS ANALYTICS CARDS - top_score now comes directly from backend (correct overall grade) */}
             {classAnalytics && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white border border-gray-200 rounded-xl p-5">
@@ -271,7 +280,7 @@ const ReportCardAnalyzer = () => {
               </div>
             )}
 
-            {/* STUDENTS TABLE */}
+            {/* STUDENTS TABLE - now prefers the 'grade' field sent by backend */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                 <div className="flex items-center gap-2">
@@ -296,7 +305,14 @@ const ReportCardAnalyzer = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {students.map((student) => {
-                      const grade = getCbcGrade(student.overall_percentage);
+                      // Prefer backend-sent grade (exact match with analytics top_score)
+                      let gradeInfo = null;
+                      if (student.grade) {
+                        gradeInfo = { code: student.grade, ...META[student.grade] };
+                      } else if (student.overall_percentage !== undefined) {
+                        gradeInfo = getCbcGrade(student.overall_percentage);
+                      }
+
                       return (
                         <tr key={student.id} className="hover:bg-gray-50/70 transition-colors">
                           <td className="px-5 py-3.5 font-mono text-xs text-gray-500">{student.admissionNo}</td>
@@ -308,13 +324,21 @@ const ReportCardAnalyzer = () => {
                               <span className="font-medium text-gray-800">{student.name}</span>
                             </div>
                           </td>
-                          <td className="px-5 py-3.5 text-center font-semibold text-gray-700">{student.overall_percentage || '—'}%</td>
-                          <td className="px-5 py-3.5 text-center">
-                            {grade ? (
-                              <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-lg border ${grade.badge}`}>{grade.code}</span>
-                            ) : <span className="text-gray-300">—</span>}
+                          <td className="px-5 py-3.5 text-center font-semibold text-gray-700">
+                            {student.overall_percentage || '—'}%
                           </td>
-                          <td className="px-5 py-3.5 text-center font-semibold text-blue-600">{student.graded_subjects_count} subjects</td>
+                          <td className="px-5 py-3.5 text-center">
+                            {gradeInfo ? (
+                              <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-lg border ${gradeInfo.badge}`}>
+                                {gradeInfo.code}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3.5 text-center font-semibold text-blue-600">
+                            {student.graded_subjects_count} subjects
+                          </td>
                           <td className="px-5 py-3.5 text-right">
                             <button
                               onClick={() => handlePreview(student)}
@@ -340,9 +364,7 @@ const ReportCardAnalyzer = () => {
         )}
       </div>
 
-      {/* ══════════════════════════════════════════════
-          PREVIEW MODAL
-      ══════════════════════════════════════════════ */}
+      {/* PREVIEW MODAL */}
       {selectedStudent && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[9999]">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] overflow-hidden flex flex-col">
@@ -372,7 +394,7 @@ const ReportCardAnalyzer = () => {
               ) : previewData ? (
                 <div className="p-6 space-y-6">
 
-                  {/* ── STUDENT INFO CARD ── */}
+                  {/* STUDENT INFO CARD */}
                   <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <div>
@@ -395,10 +417,10 @@ const ReportCardAnalyzer = () => {
                       </div>
                     </div>
 
-                    {/* Overall grade pill */}
+                    {/* Overall grade pill - uses same logic as backend */}
                     {(() => {
                       const overall = getPreviewOverall();
-                      const grade   = overall !== null ? getCbcGrade(overall) : null;
+                      const grade = overall !== null ? getCbcGrade(overall) : null;
                       return overall !== null && grade ? (
                         <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
                           <span className="text-xs text-gray-500">Overall Performance</span>
@@ -416,7 +438,7 @@ const ReportCardAnalyzer = () => {
                     })()}
                   </div>
 
-                  {/* ── LEARNING AREAS / SUBJECTS TABLE ── */}
+                  {/* LEARNING AREAS TABLE */}
                   {previewData.learningAreas?.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 mb-3">
@@ -439,10 +461,10 @@ const ReportCardAnalyzer = () => {
                           </thead>
                           <tbody className="divide-y divide-gray-100">
                             {previewData.learningAreas.map((la, idx) => {
-                              const code  = la.score || percentageToCbcCode(la.points * 12.5);
-                              const meta  = code ? META[code] : null;
-                              const pct   = code ? codeToPercent(code) : 0;
-                              const pts   = la.points || (LEGEND.find(l => l.sub === code)?.pts || 0);
+                              const code = la.score || percentageToCbcCode(la.points * 12.5);
+                              const meta = code ? META[code] : null;
+                              const pct = code ? codeToPercent(code) : 0;
+                              const pts = la.points || (LEGEND.find(l => l.sub === code)?.pts || 0);
                               return (
                                 <tr key={idx} className="hover:bg-gray-50/60 transition-colors">
                                   <td className="px-4 py-3 font-medium text-gray-800">{la.name}</td>
@@ -479,7 +501,7 @@ const ReportCardAnalyzer = () => {
                     </div>
                   )}
 
-                  {/* ── REMARKS ── */}
+                  {/* REMARKS */}
                   {(previewData.teacherRemarks || previewData.headTeacherRemarks) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {previewData.teacherRemarks && (

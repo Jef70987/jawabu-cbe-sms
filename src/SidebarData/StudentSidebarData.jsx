@@ -55,7 +55,12 @@ const StudentSidebarData = [
     icon: <MonetizationOnIcon />,
     link: "/StudentPortal/Finance"
   },
-
+  
+   {
+    title: "Grades",
+    icon: <AssignmentIcon />,
+    link: "/StudentPortal/Grades"
+  },
   // {
   //   title: "Notices",
   //   icon: <EventIcon sx={{fontSize:30}}/>,
@@ -76,11 +81,7 @@ const StudentSidebarData = [
   //   icon: <HelpIcon sx={{fontSize:30}}/>,
   //   link: "/StudentPortal/Help&Support"
   // },
-  {
-    title: "Grades",
-    icon: <AssignmentIcon />,
-    link: "/StudentPortal/Grades"
-  },
+ 
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:"red", fontSize:30}}/>,

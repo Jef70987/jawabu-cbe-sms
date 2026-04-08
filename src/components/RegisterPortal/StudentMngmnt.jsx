@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../Authentication/AuthContext';
+import {Users} from 'lucide-react'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -419,11 +420,11 @@ function StudentManagement() {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           {[
-            { label: 'Total Students', value: stats.totalStudents, icon: 'fa-users', bg: 'bg-blue-100', color: 'text-blue-600' },
-            { label: 'Active Students', value: stats.activeStudents, icon: 'fa-user-check', bg: 'bg-green-100', color: 'text-green-600' },
-            { label: 'Male Students', value: stats.maleStudents, icon: 'fa-male', bg: 'bg-amber-100', color: 'text-amber-600' },
-            { label: 'Female Students', value: stats.femaleStudents, icon: 'fa-female', bg: 'bg-pink-100', color: 'text-pink-600' },
-            { label: 'Archived', value: stats.archivedStudents, icon: 'fa-archive', bg: 'bg-gray-100', color: 'text-gray-600' },
+            { label: 'Total Students', value: stats.totalStudents, icon: <Users />, bg: 'bg-blue-100', color: 'text-blue-600' },
+            { label: 'Active Students', value: stats.activeStudents, icon: <Users />, bg: 'bg-green-100', color: 'text-green-600' },
+            { label: 'Male Students', value: stats.maleStudents, icon: <Users />, bg: 'bg-amber-100', color: 'text-amber-600' },
+            { label: 'Female Students', value: stats.femaleStudents, icon: <Users />, bg: 'bg-pink-100', color: 'text-pink-600' },
+            { label: 'Archived', value: stats.archivedStudents, icon: <Users />, bg: 'bg-gray-100', color: 'text-gray-600' },
           ].map(({ label, value, icon, bg, color }) => (
             <div key={label} className="bg-white rounded-xl shadow border border-gray-200 p-5">
               <div className="flex items-center justify-between">
