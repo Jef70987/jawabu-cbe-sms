@@ -31,8 +31,6 @@ const Student = () => {
                     <Route path="/Finance" element={<StudentFeeManagement/>}/>
                     <Route path="/Profile" element={<StudentProfile/>}/>
                     <Route path="/Grades" element={<Grades/>}/>
-                    <Route path="/Results" element={<StudentResults/>}/>
-                    <Route path="/Academic" element={<Academic/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                    
                 </Routes>
