@@ -238,13 +238,13 @@ const DisciplineItem = ({ date, incident, points, status }) => {
   );
 };
 
-// Fee Item Component
+// Fee Item Component - UPDATED STATUS COLORS
 const FeeItem = ({ description, amount, dueDate, status }) => {
   const statusColors = {
     Paid: 'bg-green-100 text-green-800',
-    Pending: 'bg-yellow-100 text-yellow-800',
-    Overdue: 'bg-red-100 text-red-800',
-    Partial: 'bg-blue-100 text-blue-800'
+    Pending: 'bg-purple-100 text-purple-800',   // ← changed to purple as requested
+    Overdue: 'bg-red-100 text-red-800',         // ← red
+    Partial: 'bg-orange-100 text-orange-800'    // ← changed to orange as requested
   };
 
   const formatCurrency = (amount) => {
@@ -316,8 +316,13 @@ const StudentDashboard = () => {
   const [greeting, setGreeting] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Colors for charts
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+  // Fee category colors - EXACTLY as requested
+  const FEE_COLORS = {
+    Paid: '#10B981',     // green
+    Pending: '#8B5CF6',  // purple
+    Overdue: '#EF4444',  // red
+    Partial: '#F59E0B'   // orange
+  };
 
   // Update greeting and time
   useEffect(() => {
@@ -405,7 +410,7 @@ const StudentDashboard = () => {
         if (feeData.success) {
           setFeeSummary(feeData.data);
           
-          // Calculate fee breakdown for chart
+          // Calculate fee breakdown for chart (keeps same logic as before)
           if (feeData.data) {
             const breakdown = [
               { name: 'Paid', value: parseFloat(feeData.data.total_paid) || 0 },
@@ -654,7 +659,7 @@ const StudentDashboard = () => {
 
             {/* Main Content Grid - Responsive */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8">
-              {/* Fee Breakdown Chart */}
+              {/* Fee Breakdown Chart - UPDATED COLORS */}
               <InfoCard title="Fee Breakdown" icon={PieChartIcon} color="blue">
                 {feeBreakdown.length > 0 ? (
                   <div className="w-full overflow-x-auto">
@@ -671,7 +676,10 @@ const StudentDashboard = () => {
                           dataKey="value"
                         >
                           {feeBreakdown.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={FEE_COLORS[entry.name] || '#64748B'} 
+                            />
                           ))}
                         </Pie>
                         <Tooltip formatter={(value) => formatCurrency(value)} />

@@ -126,12 +126,25 @@ const getCbcGrade = (perc) => {
   return { code, label: META[code]?.label, cls: META[code]?.badge };
 };
 
+const getMidpoint = (rating) => {
+  const map = {
+    EE1: "95",
+    EE2: "82",
+    ME1: "66",
+    ME2: "49",
+    AE1: "35",
+    AE2: "25",
+    BE1: "15",
+    BE2: "5",
+  };
+  return map[rating] || "";
+};
+
 // ─── ENDPOINTS ───────────────────────────────────────────────────────────────
 const EP = {
   teacherClasses: "/api/registrar/academic/teacher-classes/",
   teacherLearningAreas: "/api/registrar/academic/teacher-learning-areas/",
   terms: "/api/registrar/academic/terms/",
-  // ↓ fetches windows from the registrar portal, filtered by ?term=<id>
   assessmentWindows: "/api/registrar/academic/assessment-windows/",
   strandsForArea: "/api/registrar/academic/strands-for-area/",
   substrandsForStrand: "/api/registrar/academic/substrands-for-strand/",
@@ -150,13 +163,9 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
         <div className="flex items-center mb-4">
           <AlertCircle className="h-8 w-8 text-red-500 mr-3" />
-          <h3 className="text-xl font-semibold text-gray-900">
-            Session Expired
-          </h3>
+          <h3 className="text-xl font-semibold text-gray-900">Session Expired</h3>
         </div>
-        <p className="text-gray-600 mb-6">
-          Your session has expired. Please login again.
-        </p>
+        <p className="text-gray-600 mb-6">Your session has expired. Please login again.</p>
         <div className="flex justify-end">
           <button
             onClick={onLogout}
@@ -246,12 +255,12 @@ const MarksEntrySheet = () => {
 
   const [selClass, setSelClass] = useState("");
   const [selTerm, setSelTerm] = useState("");
-  const [selAssessmentWindowId, setSelAssessmentWindowId] = useState(""); // ← UUID from registrar
+  const [selAssessmentWindowId, setSelAssessmentWindowId] = useState("");
   const [selSubject, setSelSubject] = useState("");
 
   const [classes, setClasses] = useState([]);
   const [terms, setTerms] = useState([]);
-  const [assessmentWindows, setAssessmentWindows] = useState([]); // ← from registrar API
+  const [assessmentWindows, setAssessmentWindows] = useState([]);
   const [subjects, setSubjects] = useState([]);
 
   const [learningAreaId, setLearningAreaId] = useState(null);
@@ -265,12 +274,14 @@ const MarksEntrySheet = () => {
 
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [loadingTerms, setLoadingTerms] = useState(false);
-  const [loadingAssessmentWindows, setLoadingAssessmentWindows] =
-    useState(false);
+  const [loadingAssessmentWindows, setLoadingAssessmentWindows] = useState(false);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [saving, setSaving] = useState(false);
   const [didRestore, setDidRestore] = useState(false);
+
+  // ─── NEW: Persist exact typed percentages across saves/refresh ─────────────
+  const [persistedPercentages, setPersistedPercentages] = useState({});
 
   const effectiveTeacherId = isAdminOrRegistrar
     ? selectedTeacherId
@@ -314,7 +325,7 @@ const MarksEntrySheet = () => {
     );
   }, [selectedTeacherId, selClass, selTerm, selAssessmentWindowId, selSubject]);
 
-  // ─── Re-fetch students after restore (waits for subjects to load) ─────────
+  // ─── Re-fetch students after restore ────────────────────────────────
   useEffect(() => {
     if (didRestore) return;
     if (
@@ -373,7 +384,6 @@ const MarksEntrySheet = () => {
       }
     };
     restore();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selClass,
     selTerm,
@@ -430,9 +440,8 @@ const MarksEntrySheet = () => {
     })();
   }, [isAuthenticated]);
 
-  // ─── Load assessment windows whenever term changes ────────────────────────
+  // ─── Load assessment windows ────────────────────────
   useEffect(() => {
-    // Don't wipe the window selection when restoring from sessionStorage
     if (!didRestore) {
       setAssessmentWindows([]);
       setSelAssessmentWindowId("");
@@ -463,10 +472,9 @@ const MarksEntrySheet = () => {
         setLoadingAssessmentWindows(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selTerm, isAuthenticated]);
 
-  // ─── Load subjects when class is known (including after restore) ──────────
+  // ─── Load subjects ────────────────────────────────
   useEffect(() => {
     if (!selClass || !isAuthenticated) return;
     if (subjects.length > 0) return;
@@ -520,7 +528,6 @@ const MarksEntrySheet = () => {
     setStudents([]);
     setAssessmentId(null);
     setCompetencyId(null);
-    // assessment windows effect fires automatically
   };
 
   const handleAssessmentWindowChange = (e) => {
@@ -531,7 +538,6 @@ const MarksEntrySheet = () => {
     setAssessmentId(null);
     setCompetencyId(null);
 
-    // If subject is already chosen, re-fetch students for the new window
     if (windowId && selSubject && selClass) {
       _loadStudentsForSubject(selSubject, windowId);
     }
@@ -548,7 +554,6 @@ const MarksEntrySheet = () => {
     await _loadStudentsForSubject(subjectId, selAssessmentWindowId);
   };
 
-  // Shared fetch logic used by both subject change and window change
   const _loadStudentsForSubject = async (subjectId, windowId) => {
     setLoadingStudents(true);
     try {
@@ -605,6 +610,8 @@ const MarksEntrySheet = () => {
       setLoadingStudents(false);
     }
   };
+
+  // ─── FIXED FETCH: preserve exact typed % ───────────────────────────────
   const _fetchStudentsWithWindow = async (
     classId,
     laId,
@@ -621,27 +628,15 @@ const MarksEntrySheet = () => {
     if (!d?.success) throw new Error(d?.error || "Failed");
 
     const mapped = d.data.map((s) => {
-      let displayPercentage = "";
-      const ratingCode = s.rating;
-      if (ratingCode) {
-        const map = {
-          EE1: "95",
-          EE2: "82",
-          ME1: "66",
-          ME2: "49",
-          AE1: "35",
-          AE2: "25",
-          BE1: "15",
-          BE2: "5",
-        };
-        displayPercentage = map[ratingCode] || "";
-      }
+      const persisted = persistedPercentages[s.id] || "";
+      const displayPercentage = persisted || (s.rating ? getMidpoint(s.rating) : "");
       return {
         ...s,
         marks: { percentage: displayPercentage, comment: s.comment || "" },
-        savedRating: ratingCode,
+        savedRating: s.rating,
       };
     });
+
     setStudents(mapped);
     setAssessmentId(d.assessment_id);
     setAssessmentStatus(d.assessment_status);
@@ -778,7 +773,7 @@ const MarksEntrySheet = () => {
     </div>
   );
 
-  // ─── StudentRow ───────────────────────────────────────────────────────────
+  // ─── StudentRow (now preserves exact typed value) ───────────────────────
   const StudentRow = ({ student, index, isLocked, onUpdate }) => {
     const [localPercentage, setLocalPercentage] = useState(
       student.marks.percentage || "",
@@ -787,17 +782,25 @@ const MarksEntrySheet = () => {
       student.marks.comment || "",
     );
 
-    const commitChanges = () =>
+    const commitChanges = () => {
+      // Persist the exact value the teacher typed
+      setPersistedPercentages((prev) => ({
+        ...prev,
+        [student.id]: localPercentage,
+      }));
       onUpdate(student.id, {
         percentage: localPercentage,
         comment: localComment,
       });
+    };
+
     const handleKeyDown = (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
         commitChanges();
       }
     };
+
     const grade = getCbcGrade(localPercentage);
 
     return (
@@ -962,7 +965,6 @@ const MarksEntrySheet = () => {
             busy={loadingTerms}
             disabled={!selClass}
           />
-          {/* Assessment window — fetched from registrar filtered by selected term */}
           <Sel
             label="Assessment"
             value={selAssessmentWindowId}

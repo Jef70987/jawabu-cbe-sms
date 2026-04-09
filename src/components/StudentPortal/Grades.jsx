@@ -17,7 +17,7 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// ─── CBC 8-LEVEL SCALE (same as teacher preview) ─────────────────────────────
+// ─── CBC 8-LEVEL SCALE ─────────────────────────────
 const LEGEND = [
   { sub: "EE1", pts: 8, label: "Exceptional", range: "90-100%", cls: "bg-emerald-50 text-emerald-800 border-emerald-200" },
   { sub: "EE2", pts: 7, label: "Very Good", range: "75-89%", cls: "bg-emerald-50 text-emerald-700 border-emerald-100" },
@@ -42,18 +42,15 @@ const META = {
 
 const CODE_TO_PCT = { EE1: 95, EE2: 82, ME1: 66, ME2: 49, AE1: 35, AE2: 25, BE1: 15, BE2: 5 };
 
-const percentageToCbcCode = (perc) => {
-  if (perc === null || perc === undefined) return null;
-  const p = parseFloat(perc);
-  if (isNaN(p)) return null;
-  if (p >= 90) return "EE1";
-  if (p >= 75) return "EE2";
-  if (p >= 58) return "ME1";
-  if (p >= 41) return "ME2";
-  if (p >= 31) return "AE1";
-  if (p >= 21) return "AE2";
-  if (p >= 11) return "BE1";
-  return "BE2";
+// ─── Direct points → exact teacher rating ───
+const pointsToCbcCode = (points) => {
+  if (points === null || points === undefined) return null;
+  const p = Math.round(points);
+  const map = {
+    8: "EE1", 7: "EE2", 6: "ME1", 5: "ME2",
+    4: "AE1", 3: "AE2", 2: "BE1", 1: "BE2",
+  };
+  return map[p] || null;
 };
 
 const Grades = () => {
@@ -88,7 +85,6 @@ const Grades = () => {
     }
   }, [getAuthHeaders, logout]);
 
-  // Fetch student profile (needed for student_id in preview)
   const fetchProfile = useCallback(async () => {
     if (!isAuthenticated) return;
     setLoadingProfile(true);
@@ -97,20 +93,17 @@ const Grades = () => {
     setLoadingProfile(false);
   }, [apiFetch, isAuthenticated]);
 
-  // ── NOW USES THE WORKING TEACHER PREVIEW ENDPOINT (exactly as in ReportCardAnalyzer) ──
   const fetchResults = useCallback(async (termId, windowId = "") => {
     if (!profile?.id) return;
     setLoadingResults(true);
     setError(null);
 
-    let url = `${API_BASE_URL}/api/teacher/report-cards/preview/?student_id=${profile.id}`;
-    if (termId) url += `&term_id=${termId}`;
-    if (windowId) url += `&window_id=${windowId}`;
-
+    let url = `${API_BASE_URL}/api/student/results/preview/?student_id=${profile.id}&term_id=${termId}&window_id=${windowId || ''}`;
+    
     const res = await apiFetch(url);
     if (res?.success) {
       console.log("[DEBUG] PREVIEW DATA RECEIVED →", res.data);
-      setResults(res.data);   // previewData structure
+      setResults(res.data);
     } else {
       setError(res?.error || "Failed to load results");
       setResults(null);
@@ -118,7 +111,6 @@ const Grades = () => {
     setLoadingResults(false);
   }, [apiFetch, profile]);
 
-  // Load terms + profile
   useEffect(() => {
     if (!isAuthenticated) return;
     (async () => {
@@ -135,7 +127,6 @@ const Grades = () => {
     fetchProfile();
   }, [isAuthenticated, apiFetch, fetchProfile]);
 
-  // Load windows when term changes
   useEffect(() => {
     if (!selectedTerm) return;
     setWindows([]);
@@ -153,34 +144,51 @@ const Grades = () => {
     })();
   }, [selectedTerm, apiFetch, fetchResults]);
 
-  // Refetch on window change
   useEffect(() => {
     if (!selectedTerm || selectedWindow === prevWindowRef.current) return;
     prevWindowRef.current = selectedWindow;
     fetchResults(selectedTerm, selectedWindow);
   }, [selectedWindow, selectedTerm, fetchResults]);
 
-  // ── Derived values using teacher-preview structure ─────────────────────
+  // ── FIXED DERIVED VALUES ─────────────────────
   const preview = results || {};
   const learningAreas = preview.learningAreas || [];
+
+  // 1. Calculate each subject's displayed percentage (exact midpoint the teacher assigned)
+  const subjectPercentages = learningAreas.map((la) => {
+    const code = la.score || pointsToCbcCode(la.points);
+    return code ? CODE_TO_PCT[code] : 0;
+  });
+
+  // 2. Overall % = true average of the displayed subject percentages
+  //    → When 1 subject → overall % = exactly that subject's % (15% for BE1)
+  const average_percentage = subjectPercentages.length
+    ? Math.round(subjectPercentages.reduce((a, b) => a + b, 0) / subjectPercentages.length)
+    : null;
+
+  // Average points (still used for overall grade badge)
+  const average_points = learningAreas.length
+    ? (learningAreas.reduce((a, b) => a + (b.points || 0), 0) / learningAreas.length).toFixed(1)
+    : null;
+
   const summary = {
-    average_percentage: preview.learningAreas?.length
-      ? Math.round(learningAreas.reduce((a, b) => a + (b.points || 0), 0) / learningAreas.length * 12.5)
-      : null,
-    average_points: preview.learningAreas?.length
-      ? (learningAreas.reduce((a, b) => a + (b.points || 0), 0) / learningAreas.length).toFixed(1)
-      : null,
+    average_percentage,
+    average_points,
     total_subjects: learningAreas.length,
-    overall_code: percentageToCbcCode(preview.learningAreas?.length ? learningAreas.reduce((a, b) => a + (b.points || 0), 0) / learningAreas.length * 12.5 : null),
-    overall_label: null,
+    overall_code: pointsToCbcCode(
+      learningAreas.length
+        ? learningAreas.reduce((a, b) => a + (b.points || 0), 0) / learningAreas.length
+        : null
+    ),
   };
+
   const overallMeta = summary.overall_code ? META[summary.overall_code] : null;
 
   const selectedTermObj = terms.find((t) => String(t.id) === selectedTerm);
 
-  // Map preview learningAreas → same shape as your original subjects
+  // ── SUBJECTS (unchanged - uses exact teacher rating) ─────────────────────
   const subjects = learningAreas.map((la) => {
-    const code = la.score || percentageToCbcCode(la.points * 12.5);
+    const code = la.score || pointsToCbcCode(la.points);
     const meta = code ? META[code] : null;
     return {
       learning_area: la.name,
@@ -206,7 +214,7 @@ const Grades = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* HEADER + FILTERS (unchanged) */}
+      {/* HEADER + FILTERS */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -221,15 +229,27 @@ const Grades = () => {
 
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative">
-              <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="appearance-none pl-3 pr-8 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
-                {terms.map((t) => <option key={t.id} value={t.id}>{t.term} · {t.academic_year}</option>)}
+              <select 
+                value={selectedTerm} 
+                onChange={(e) => setSelectedTerm(e.target.value)} 
+                className="appearance-none pl-3 pr-8 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
+              >
+                {terms.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.term} · {t.academic_year}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
 
             {windows.length > 0 && (
               <div className="relative">
-                <select value={selectedWindow} onChange={(e) => setSelectedWindow(e.target.value)} className="appearance-none pl-3 pr-8 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700">
+                <select 
+                  value={selectedWindow} 
+                  onChange={(e) => setSelectedWindow(e.target.value)} 
+                  className="appearance-none pl-3 pr-8 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
+                >
                   <option value="">All Windows</option>
                   {windows.map((w) => (
                     <option key={w.id} value={w.id}>
@@ -241,7 +261,11 @@ const Grades = () => {
               </div>
             )}
 
-            <button onClick={() => fetchResults(selectedTerm, selectedWindow)} disabled={loadingResults || !selectedTerm} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+            <button 
+              onClick={() => fetchResults(selectedTerm, selectedWindow)} 
+              disabled={loadingResults || !selectedTerm} 
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
               <RefreshCw className={`w-4 h-4 ${loadingResults ? "animate-spin" : ""}`} />
               Refresh
             </button>
@@ -250,7 +274,7 @@ const Grades = () => {
       </div>
 
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* LEGEND (unchanged) */}
+        {/* LEGEND */}
         <div className="bg-white border border-gray-200 rounded-xl">
           <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
             <Award className="w-4 h-4 text-blue-500" />
@@ -281,7 +305,7 @@ const Grades = () => {
           </div>
         ) : results ? (
           <>
-            {/* STUDENT INFO HEADER – always populated */}
+            {/* STUDENT INFO HEADER */}
             <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
@@ -301,7 +325,10 @@ const Grades = () => {
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">TERM</p>
                   <p className="font-semibold text-gray-900 text-sm">
-                    {selectedTermObj ? `${selectedTermObj.term} · ${selectedTermObj.academic_year}` : (preview.term ? `${preview.term} · ${preview.academicYear || ""}` : "—")}
+                    {selectedTermObj 
+                      ? `${selectedTermObj.term} · ${selectedTermObj.academic_year}` 
+                      : (preview.term ? `${preview.term} · ${preview.academicYear || ""}` : "—")
+                    }
                   </p>
                 </div>
               </div>
@@ -311,7 +338,10 @@ const Grades = () => {
                   <span className="text-xs text-gray-500">Overall Performance</span>
                   <div className="flex items-center gap-3">
                     <div className="h-2 w-40 bg-gray-200 rounded-full overflow-hidden">
-                      <div className={`h-2 rounded-full transition-all duration-700 ${overallMeta.bar}`} style={{ width: `${summary.average_percentage}%` }} />
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-700 ${overallMeta.bar}`} 
+                        style={{ width: `${summary.average_percentage}%` }} 
+                      />
                     </div>
                     <span className="text-sm font-bold text-gray-700">{summary.average_percentage}%</span>
                     <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${overallMeta.badge}`}>
@@ -334,7 +364,10 @@ const Grades = () => {
                 </span>
                 {overallMeta && summary.average_percentage != null && (
                   <div className="h-2 bg-gray-100 rounded-full mt-4 overflow-hidden">
-                    <div className={`h-2 rounded-full transition-all duration-700 ${overallMeta.bar}`} style={{ width: `${summary.average_percentage}%` }} />
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-700 ${overallMeta.bar}`} 
+                      style={{ width: `${summary.average_percentage}%` }} 
+                    />
                   </div>
                 )}
               </div>
@@ -370,26 +403,32 @@ const Grades = () => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="px-5 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Subject</th>
-                        <th className="px-5 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Grade</th>
-                        <th className="px-5 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Points</th>
-                        <th className="px-5 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Performance</th>
+                        <th className="px-5 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">SUBJECT</th>
+                        <th className="px-5 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">GRADE</th>
+                        <th className="px-5 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">POINTS</th>
+                        <th className="px-5 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">PERFORMANCE</th>
                         <th className="px-5 py-3.5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">%</th>
-                        <th className="px-5 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Teacher Comment</th>
+                        <th className="px-5 py-3.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">TEACHER COMMENT</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {subjects.map((sub, idx) => {
                         const code = sub.rating_code;
                         const meta = code ? META[code] : null;
-                        const pct = code ? CODE_TO_PCT[code] : 0;
+                        const pct = sub.percentage;
                         return (
                           <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
                             <td className="px-5 py-3.5">
                               <div className="font-medium text-gray-800">{sub.learning_area}</div>
                             </td>
                             <td className="px-5 py-3.5 text-center">
-                              {meta ? <span className={`inline-flex px-2.5 py-1 text-xs font-bold rounded-lg border ${meta.badge}`}>{code}</span> : <span className="text-gray-300">—</span>}
+                              {meta ? (
+                                <span className={`inline-flex px-2.5 py-1 text-xs font-bold rounded-lg border ${meta.badge}`}>
+                                  {code}
+                                </span>
+                              ) : (
+                                <span className="text-gray-300">—</span>
+                              )}
                             </td>
                             <td className="px-5 py-3.5 text-center">
                               <span className="font-bold text-gray-700">{sub.points}</span>
@@ -399,7 +438,10 @@ const Grades = () => {
                               {meta && (
                                 <div className="flex items-center gap-2">
                                   <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-[80px]">
-                                    <div className={`h-1.5 rounded-full transition-all duration-500 ${meta.bar}`} style={{ width: `${pct}%` }} />
+                                    <div 
+                                      className={`h-1.5 rounded-full transition-all duration-500 ${meta.bar}`} 
+                                      style={{ width: `${pct}%` }} 
+                                    />
                                   </div>
                                   <span className="text-xs text-gray-400 w-28 shrink-0">{meta.label}</span>
                                 </div>
