@@ -242,9 +242,9 @@ const DisciplineItem = ({ date, incident, points, status }) => {
 const FeeItem = ({ description, amount, dueDate, status }) => {
   const statusColors = {
     Paid: 'bg-green-100 text-green-800',
-    Pending: 'bg-purple-100 text-purple-800',   // ← changed to purple as requested
-    Overdue: 'bg-red-100 text-red-800',         // ← red
-    Partial: 'bg-orange-100 text-orange-800'    // ← changed to orange as requested
+    Pending: 'bg-orange-100 text-orange-800',   
+    Overdue: 'bg-red-100 text-red-800',         
+    Partial: 'bg-blue-100 text-blue-800'    
   };
 
   const formatCurrency = (amount) => {
@@ -319,9 +319,9 @@ const StudentDashboard = () => {
   // Fee category colors - EXACTLY as requested
   const FEE_COLORS = {
     Paid: '#10B981',     // green
-    Pending: '#8B5CF6',  // purple
+    Pending: '#EF4444',  // red
     Overdue: '#EF4444',  // red
-    Partial: '#F59E0B'   // orange
+    Partial: '#8B5CF6'   // purple
   };
 
   // Update greeting and time

@@ -144,7 +144,7 @@ const StatCard = ({ title, value, icon: Icon, color, onClick, subtitle }) => {
 const InvoiceCard = ({ invoice, onViewDetails, onPrintReceipt }) => {
   const statusColors = {
     Paid: 'bg-green-100 text-green-700',
-    Pending: 'bg-yellow-100 text-yellow-700',
+    Pending: 'bg-orange-100 text-orange-700',
     Overdue: 'bg-red-100 text-red-700',
     Partial: 'bg-blue-100 text-blue-700'
   };
@@ -647,7 +647,7 @@ const StudentFeeManagement = () => {
   const [activeTab, setActiveTab] = useState('invoices');
 
   // Colors for charts
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+  const COLORS = ['#10B981', '#EF4444', '#F59E0B', '#EF4444'];
 
   // Helper Functions
   const showToast = (message, type = 'info') => {
