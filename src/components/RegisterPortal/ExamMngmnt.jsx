@@ -35,6 +35,7 @@ function ExamAndReportManagement() {
   // Performance Analysis
   const [analysisLevel, setAnalysisLevel] = useState('school');
   const [analysisData, setAnalysisData] = useState(null);
+  const [analysisEmpty, setAnalysisEmpty] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [students, setStudents] = useState([]);
   
@@ -42,7 +43,7 @@ function ExamAndReportManagement() {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [formData, setFormData] = useState({});
-  const [editingId, setEditingId] = useState(null);   // tracks which assessment window is being edited
+  const [editingId, setEditingId] = useState(null);
 
   const addNotification = (type, message) => {
     const id = Date.now();
@@ -105,8 +106,10 @@ function ExamAndReportManagement() {
   };
 
   // AUTO-FETCH TERMS whenever selectedAcademicYear changes
+  // Also clear selectedTerm so the auto-select effect below picks the right one
   useEffect(() => {
     if (selectedAcademicYear?.id) {
+      setSelectedTerm(null);
       fetchTerms(selectedAcademicYear.id);
     }
   }, [selectedAcademicYear]);
@@ -134,6 +137,12 @@ function ExamAndReportManagement() {
       fetchTimetable();
     }
   }, [activeTab, selectedClass, selectedTerm, isAuthenticated]);
+
+  // Reset performance analysis when term changes so stale data is never shown
+  useEffect(() => {
+    setAnalysisData(null);
+    setAnalysisEmpty(false);
+  }, [selectedTerm]);
 
   const fetchClasses = async () => {
     const data = await fetchWithErrorHandling(`${API_BASE_URL}/api/registrar/classes/`);
@@ -170,23 +179,35 @@ function ExamAndReportManagement() {
   const fetchTimetable = async () => {
     if (!selectedClass?.id || !selectedTerm?.id) return;
     const data = await fetchWithErrorHandling(
-      `${API_BASE_URL}/api/registrar/academic/timetable/?class_id=${selectedClass.id}&term=${selectedTerm.id}`
+      `${API_BASE_URL}/api/registrar/timetable/?class_id=${selectedClass.id}&term=${selectedTerm.id}`
     );
     if (data) setTimetable(data.data || []);
   };
 
   const fetchPerformanceData = async () => {
+    if (!selectedTerm?.id) {
+      addNotification('warning', 'Please select a term before loading analysis');
+      return;
+    }
+
     setLoading(true);
+    setAnalysisData(null);
+    setAnalysisEmpty(false);
+
     let url = `${API_BASE_URL}/api/registrar/academic/performance-analysis/`;
     const params = new URLSearchParams();
-    if (selectedTerm?.id) params.append('term', selectedTerm.id);
+    params.append('term', selectedTerm.id);
     if (analysisLevel === 'class' && selectedClass?.id) params.append('class_id', selectedClass.id);
     if (analysisLevel === 'student' && selectedStudent?.id) params.append('student_id', selectedStudent.id);
-    if (params.toString()) url += `?${params.toString()}`;
+    url += `?${params.toString()}`;
     
     const data = await fetchWithErrorHandling(url);
-    if (data) setAnalysisData(data.data);
-    else addNotification('error', 'Failed to load performance data');
+    if (data && data.data && !data.data.is_empty) {
+      setAnalysisData(data.data);
+    } else {
+      setAnalysisEmpty(true);
+      addNotification('info', 'No marks have been uploaded for the selected term yet');
+    }
     setLoading(false);
   };
 
@@ -219,7 +240,7 @@ function ExamAndReportManagement() {
         setShowModal(false);
         setEditingId(null);
         setFormData({});
-        fetchAssessmentWindows();   // refresh instantly
+        fetchAssessmentWindows();
       } else {
         addNotification('error', data.error || 'Save failed');
       }
@@ -278,7 +299,7 @@ function ExamAndReportManagement() {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/timetable/generate/`, {
+      const res = await fetch(`${API_BASE_URL}/api/registrar/timetable/generate/`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ class_id: selectedClass.id, term: selectedTerm.id })
@@ -450,6 +471,11 @@ function ExamAndReportManagement() {
             <h3 className="font-semibold text-gray-800 flex items-center">
               <Calendar className="h-5 w-5 text-blue-600 mr-2" />
               Assessment Windows
+              {selectedTerm && (
+                <span className="ml-2 text-sm font-normal text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                  {selectedTerm.term}
+                </span>
+              )}
             </h3>
             <p className="text-sm text-gray-500 mt-1">Opener, Mid-Term, and End-Term assessment periods</p>
           </div>
@@ -479,7 +505,7 @@ function ExamAndReportManagement() {
           {assessmentWindows.length === 0 ? (
             <div className="col-span-3 py-12 text-center">
               <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No assessment windows created yet</p>
+              <p className="text-gray-500">No assessment windows for {selectedTerm?.term || 'the selected term'}</p>
               <p className="text-xs text-gray-400 mt-1">Create your first window above</p>
             </div>
           ) : (
@@ -640,7 +666,11 @@ function ExamAndReportManagement() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Analysis Level</label>
             <select
               value={analysisLevel}
-              onChange={(e) => setAnalysisLevel(e.target.value)}
+              onChange={(e) => {
+                setAnalysisLevel(e.target.value);
+                setAnalysisData(null);
+                setAnalysisEmpty(false);
+              }}
               className="border border-gray-300 rounded-lg px-3 py-2"
             >
               <option value="school">School-wide Analysis</option>
@@ -702,31 +732,48 @@ function ExamAndReportManagement() {
               </div>
             </>
           )}
+          {/* Term is already selected globally in the header — show read-only pill here */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Term</label>
-            <select
-              value={selectedTerm?.id || ''}
-              onChange={(e) => {
-                const term = terms.find(t => t.id === e.target.value);
-                setSelectedTerm(term);
-              }}
-              className="border border-gray-300 rounded-lg px-3 py-2 w-40"
-            >
-              <option value="">Select Term</option>
-              {terms.map(t => (
-                <option key={t.id} value={t.id}>{t.term} {t.is_current ? '(Current)' : ''}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Term</label>
+            <div className="border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700 min-w-[120px]">
+              {selectedTerm ? `${selectedTerm.term}${selectedTerm.is_current ? ' (Current)' : ''}` : 'No term selected'}
+            </div>
           </div>
           <button
             onClick={fetchPerformanceData}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            disabled={!selectedTerm?.id}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <TrendingUp className="h-4 w-4" />
             Load Analysis
           </button>
         </div>
       </div>
+
+      {/* Empty state — no marks uploaded yet */}
+      {analysisEmpty && !analysisData && (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <BarChart3 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">No Data Available</h3>
+          <p className="text-gray-500 text-sm">
+            No marks have been uploaded by teachers for{' '}
+            <span className="font-medium text-gray-700">{selectedTerm?.term}</span> yet.
+          </p>
+          <p className="text-gray-400 text-xs mt-2">
+            Performance analysis will appear here once teachers submit marks for this term.
+          </p>
+        </div>
+      )}
+
+      {/* Prompt before any load attempt */}
+      {!analysisData && !analysisEmpty && (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <TrendingUp className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">
+            Select the filters above and click <span className="font-medium text-blue-600">Load Analysis</span> to view performance data.
+          </p>
+        </div>
+      )}
 
       {analysisData && (
         <>
@@ -847,22 +894,54 @@ function ExamAndReportManagement() {
               </p>
               {user && <p className="text-xs text-gray-400 mt-1">{user.first_name} {user.last_name} • {user.role}</p>}
             </div>
-            <div className="flex items-center gap-3">
-              <select
-                value={selectedAcademicYear?.id || ''}
-                onChange={(e) => {
-                  const year = academicYears.find(y => y.id === e.target.value);
-                  setSelectedAcademicYear(year);
-                }}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+
+            {/* ── Global Year + Term selectors ── */}
+            <div className="flex items-center gap-3 flex-wrap justify-end">
+              {/* Academic Year */}
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-500 mb-0.5">Academic Year</label>
+                <select
+                  value={selectedAcademicYear?.id || ''}
+                  onChange={(e) => {
+                    const year = academicYears.find(y => y.id === e.target.value);
+                    setSelectedAcademicYear(year);
+                  }}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                >
+                  {academicYears.map(year => (
+                    <option key={year.id} value={year.id}>
+                      {year.year_name} ({year.year_code}) {year.is_current ? '(Current)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Term — THIS is the key addition that was missing */}
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-500 mb-0.5">Term</label>
+                <select
+                  value={selectedTerm?.id || ''}
+                  onChange={(e) => {
+                    const term = terms.find(t => t.id === e.target.value);
+                    setSelectedTerm(term || null);
+                  }}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                  disabled={terms.length === 0}
+                >
+                  <option value="">Select Term</option>
+                  {terms.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.term} {t.is_current ? '(Current)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={fetchAllData}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mt-4"
+                title="Refresh all data"
               >
-                {academicYears.map(year => (
-                  <option key={year.id} value={year.id}>
-                    {year.year_name} ({year.year_code}) {year.is_current ? '(Current)' : ''}
-                  </option>
-                ))}
-              </select>
-              <button onClick={fetchAllData} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                 <RefreshCw className="h-5 w-5" />
               </button>
             </div>
