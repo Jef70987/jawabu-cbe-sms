@@ -791,7 +791,7 @@ const StudentDashboard = () => {
             {/* Quick Links - Mobile Optimized Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
               <button 
-                onClick={() => navigateTo('/student/fees')}
+                onClick={() => navigateTo('/#/StudentPortal/Finance')}
                 className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
               >
                 <DollarSign className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
@@ -805,14 +805,14 @@ const StudentDashboard = () => {
                 <p className="text-xs md:text-sm font-medium text-gray-700">Attendance</p>
               </button>
               <button 
-                onClick={() => navigateTo('/student/results')}
+                onClick={() => navigateTo('/#/StudentPortal/Grades')}
                 className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
               >
                 <BookOpen className="w-5 h-5 md:w-8 md:h-8 text-purple-600 mx-auto mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs md:text-sm font-medium text-gray-700">Results</p>
               </button>
               <button 
-                onClick={() => navigateTo('/student/profile')}
+                onClick={() => navigateTo('/#/StudentPortal/Profile')}
                 className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
               >
                 <User className="w-5 h-5 md:w-8 md:h-8 text-orange-600 mx-auto mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
