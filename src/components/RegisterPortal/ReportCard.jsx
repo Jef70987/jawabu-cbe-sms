@@ -3,6 +3,49 @@ import { useAuth } from '../Authentication/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+// ─── CBC GRADE MAPPING (8‑point scale) ───
+const CBC_META = {
+  EE1: { label: 'Exceptional',       badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', points: 8 },
+  EE2: { label: 'Very Good',         badge: 'bg-emerald-100 text-emerald-700 border-emerald-200', points: 7 },
+  ME1: { label: 'Good',              badge: 'bg-sky-100 text-sky-800 border-sky-300',             points: 6 },
+  ME2: { label: 'Fair',              badge: 'bg-sky-100 text-sky-700 border-sky-200',             points: 5 },
+  AE2: { label: 'Needs Improvement', badge: 'bg-amber-100 text-amber-800 border-amber-300',       points: 4 },
+  AE1: { label: 'Below Average',     badge: 'bg-amber-100 text-amber-700 border-amber-200',       points: 3 },
+  BE2: { label: 'Well Below Average',badge: 'bg-rose-100 text-rose-800 border-rose-300',          points: 2 },
+  BE1: { label: 'Minimal',           badge: 'bg-rose-100 text-rose-700 border-rose-200',          points: 1 },
+};
+
+// Convert points (0‑8) to CBC grade code
+const pointsToCbcCode = (points) => {
+  const num = parseInt(points);
+  if (isNaN(num)) return null;
+  if (num >= 8) return 'EE1';
+  if (num >= 7) return 'EE2';
+  if (num >= 6) return 'ME1';
+  if (num >= 5) return 'ME2';
+  if (num >= 4) return 'AE2';
+  if (num >= 3) return 'AE1';
+  if (num >= 2) return 'BE2';
+  if (num >= 1) return 'BE1';
+  return null;
+};
+
+// Accepts either numeric points (0‑8) or a grade code string (e.g., "ME1")
+const getGradeInfo = (rating) => {
+  if (!rating && rating !== 0) return null;
+  // If it's a string that matches a CBC code
+  if (typeof rating === 'string' && CBC_META[rating]) {
+    return { code: rating, ...CBC_META[rating] };
+  }
+  // If it's a number (points)
+  const num = parseInt(rating);
+  if (!isNaN(num)) {
+    const code = pointsToCbcCode(num);
+    if (code) return { code, ...CBC_META[code] };
+  }
+  return null;
+};
+
 const ReportCardGenerator = () => {
   const { getAuthHeaders, isAuthenticated } = useAuth();
 
@@ -20,13 +63,11 @@ const ReportCardGenerator = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Fetch classes + dynamic academic data on mount
   useEffect(() => {
     if (!isAuthenticated) return;
     fetchInitialData();
   }, [isAuthenticated]);
 
-  // Refetch students when filters change
   useEffect(() => {
     if (selectedClass && isAuthenticated) {
       fetchStudentsForClass();
@@ -36,8 +77,6 @@ const ReportCardGenerator = () => {
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-
-      // 1. Current academic year & term (default from registrar)
       const currentRes = await fetch(`${API_BASE_URL}/api/registrar/academic/academic/current/`, {
         headers: getAuthHeaders(),
       });
@@ -49,7 +88,6 @@ const ReportCardGenerator = () => {
         }
       }
 
-      // 2. All academic years
       const yearsRes = await fetch(`${API_BASE_URL}/api/registrar/academic/academic-years/`, {
         headers: getAuthHeaders(),
       });
@@ -58,7 +96,6 @@ const ReportCardGenerator = () => {
         if (yData.success) setAcademicYears(yData.data);
       }
 
-      // 3. All terms
       const termsRes = await fetch(`${API_BASE_URL}/api/registrar/academic/terms/`, {
         headers: getAuthHeaders(),
       });
@@ -67,7 +104,6 @@ const ReportCardGenerator = () => {
         if (tData.success) setTermsList(tData.data);
       }
 
-      // 4. Classes with live student count
       const classesRes = await fetch(`${API_BASE_URL}/api/registrar/report-cards/classes/`, {
         headers: getAuthHeaders(),
       });
@@ -128,7 +164,7 @@ const ReportCardGenerator = () => {
       const data = await response.json();
       if (data.success) {
         setSuccess(data.message);
-        await fetchStudentsForClass(); // refresh list
+        await fetchStudentsForClass();
       } else {
         setError(data.error || 'Generation failed');
       }
@@ -161,16 +197,6 @@ const ReportCardGenerator = () => {
     }
   };
 
-  // 6-grade CBE badge (no emojis)
-  const getScoreBadge = (score) => {
-    const num = parseInt(score) || 0;
-    if (num >= 5) return 'bg-green-50 text-green-700 border-green-200';
-    if (num >= 4) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    if (num >= 3) return 'bg-blue-50 text-blue-700 border-blue-200';
-    if (num >= 2) return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-    return 'bg-red-50 text-red-700 border-red-200';
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -184,19 +210,18 @@ const ReportCardGenerator = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
       <div className="border-b border-gray-200 bg-white sticky top-0 z-10">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">Report Card Generator</h1>
               <p className="text-sm text-gray-500 mt-1">
-                Generate CBE format report cards with 6-grade scale
+                Generate CBC format report cards with 8-point scale
               </p>
             </div>
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-blue-50 text-blue-700 text-sm font-medium rounded-full border border-blue-200">
-                CBE Format
+                CBC Format
               </span>
             </div>
           </div>
@@ -411,56 +436,77 @@ const ReportCardGenerator = () => {
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Learning Area</th>
-                            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Score</th>
+                            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Grade</th>
                             <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Points</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Teacher's Comment</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                          {previewData.learningAreas.map((area, index) => (
-                            <tr key={index}>
-                              <td className="px-4 py-2 text-sm text-gray-900">{area.name}</td>
-                              <td className="px-4 py-2 text-center">
-                                <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border ${getScoreBadge(area.score)}`}>
-                                  {area.score}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 text-center text-sm font-medium text-gray-900">{area.points}</td>
-                              <td className="px-4 py-2 text-sm text-gray-600">{area.teacherComment}</td>
-                            </tr>
-                          ))}
+                          {previewData.learningAreas.map((area, index) => {
+                            const gradeInfo = getGradeInfo(area.points);
+                            return (
+                              <tr key={index}>
+                                <td className="px-4 py-2 text-sm text-gray-900">{area.name}</td>
+                                <td className="px-4 py-2 text-center">
+                                  {gradeInfo ? (
+                                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border ${gradeInfo.badge}`}>
+                                      {gradeInfo.code}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-300">—</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2 text-center text-sm font-medium text-gray-900">{area.points}/8</td>
+                                <td className="px-4 py-2 text-sm text-gray-600">{area.teacherComment}</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
                   </div>
 
-                  {/* Core Competencies */}
+                  {/* Core Competencies - FIXED: now handles both numbers and grade codes */}
                   <div className="mb-6">
                     <h4 className="text-sm font-semibold text-gray-900 mb-3">Core Competencies</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {previewData.competencyRatings.map((comp, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                          <span className="text-sm text-gray-700">{comp.name}</span>
-                          <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border ${getScoreBadge(comp.rating)}`}>
-                            {comp.rating}
-                          </span>
-                        </div>
-                      ))}
+                      {previewData.competencyRatings?.map((comp, index) => {
+                        const gradeInfo = getGradeInfo(comp.rating);
+                        return (
+                          <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                            <span className="text-sm text-gray-700">{comp.name}</span>
+                            {gradeInfo ? (
+                              <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border ${gradeInfo.badge}`}>
+                                {gradeInfo.code}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  {/* Values */}
+                  {/* Values - FIXED */}
                   <div className="mb-6">
                     <h4 className="text-sm font-semibold text-gray-900 mb-3">Values</h4>
                     <div className="flex flex-wrap gap-2">
-                      {previewData.valuesRatings.map((value, index) => (
-                        <div key={index} className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg">
-                          <span className="text-sm text-gray-700">{value.name}</span>
-                          <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border ${getScoreBadge(value.rating)}`}>
-                            {value.rating}
-                          </span>
-                        </div>
-                      ))}
+                      {previewData.valuesRatings?.map((value, index) => {
+                        const gradeInfo = getGradeInfo(value.rating);
+                        return (
+                          <div key={index} className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg">
+                            <span className="text-sm text-gray-700">{value.name}</span>
+                            {gradeInfo ? (
+                              <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border ${gradeInfo.badge}`}>
+                                {gradeInfo.code}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -548,7 +594,6 @@ const ReportCardGenerator = () => {
           </div>
         )}
 
-        {/* Toast Notifications */}
         {error && (
           <div className="fixed bottom-4 right-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50">
             <span className="text-sm font-medium">{error}</span>
