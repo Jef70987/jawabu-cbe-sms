@@ -53,6 +53,12 @@ const RegisterSidebarData = [
     icon: <ReceiptIcon />,
     link: "/RegisterPortal/ReportCard"
   },
+    {
+    title: "Analytics",
+    icon: <EventIcon/>,
+    link: "/RegisterPortal/Analytics"
+  },
+
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,

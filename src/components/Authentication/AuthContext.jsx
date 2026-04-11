@@ -83,7 +83,7 @@ export const AuthProvider = ({ children }) => {
         try {
           data = JSON.parse(text);
         } catch (e) {
-          throw new Error(`Invalid response)}`);
+          throw new Error(`Network error: ${response.status} - ${text}`);
         }
         
         

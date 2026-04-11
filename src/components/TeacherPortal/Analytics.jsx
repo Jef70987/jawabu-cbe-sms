@@ -95,6 +95,70 @@ async function apiFetch(path, options = {}) {
 }
 
 // ─────────────────────────────────────────────────────────────────
+//  UTILITY: STRIP EMOJIS
+// ─────────────────────────────────────────────────────────────────
+const stripEmojis = (text) => {
+  if (!text) return '';
+  return text.replace(/[\p{Emoji}\p{Extended_Pictographic}]/gu, '').trim();
+};
+
+// ─────────────────────────────────────────────────────────────────
+//  UTILITY: FORMAT AI CONTENT (MARKDOWN-LIKE)
+// ─────────────────────────────────────────────────────────────────
+const formatAiContent = (text) => {
+  if (!text) return '';
+  let processed = stripEmojis(text);
+
+  // Escape HTML tags to prevent injection (but allow our generated <ul>, <li>, etc.)
+  processed = processed.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Convert **bold** to <strong>
+  processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // Convert *italic* to <em>
+  processed = processed.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+  // Convert bullet lists: lines starting with "- " or "* " (with optional spaces)
+  const lines = processed.split('\n');
+  let inList = false;
+  const resultLines = [];
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    // Check for unordered list item
+    const bulletMatch = line.match(/^\s*[-*]\s+(.*)/);
+    if (bulletMatch) {
+      if (!inList) {
+        resultLines.push('<ul class="list-disc pl-5 my-2 space-y-1">');
+        inList = true;
+      }
+      resultLines.push(`<li>${bulletMatch[1]}</li>`);
+    } else {
+      // Check for numbered list
+      const numMatch = line.match(/^\s*\d+\.\s+(.*)/);
+      if (numMatch) {
+        if (!inList) {
+          resultLines.push('<ol class="list-decimal pl-5 my-2 space-y-1">');
+          inList = true;
+        }
+        resultLines.push(`<li>${numMatch[1]}</li>`);
+      } else {
+        if (inList) {
+          resultLines.push('</ul>');
+          inList = false;
+        }
+        // Convert double newlines to paragraph breaks
+        if (line.trim() === '') {
+          resultLines.push('<br />');
+        } else {
+          resultLines.push(`<p class="mb-2">${line}</p>`);
+        }
+      }
+    }
+  }
+  if (inList) resultLines.push('</ul>');
+  return resultLines.join('');
+};
+
+// ─────────────────────────────────────────────────────────────────
 //  SMALL COMPONENTS
 // ─────────────────────────────────────────────────────────────────
 const RatingBadge = ({ rating, large = false }) => {
@@ -128,12 +192,20 @@ const Empty = ({ title, sub }) => (
   </div>
 );
 
-const AiSection = ({ title, content }) => (
-  <div className="border border-gray-200 rounded-xl p-6 bg-white">
-    <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-gray-100 pb-3">{title}</h4>
-    <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{content}</div>
-  </div>
-);
+// Enhanced AI Section with rich text formatting
+const AiSection = ({ title, content }) => {
+  const cleanTitle = stripEmojis(title);
+  const formattedContent = formatAiContent(content);
+  return (
+    <div className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-gray-100 pb-3">{cleanTitle}</h4>
+      <div
+        className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none"
+        dangerouslySetInnerHTML={{ __html: formattedContent }}
+      />
+    </div>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────
 //  MAIN COMPONENT
@@ -325,7 +397,7 @@ export default function Analytics() {
                   </option>
                   {students.map(s => (
                     <option key={s.id} value={s.id}>
-                      {s.name} ({s.admissionNo}){s.overallGrade ? ` — ${s.overallGrade}` : ''}
+                      {s.name} ({s.admissionNo})
                     </option>
                   ))}
                 </select>
@@ -364,7 +436,6 @@ export default function Analytics() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {/* Use new CBC badge style */}
                       {profile.overallGrade && <RatingBadge rating={profile.overallGrade} large />}
                       <div className="px-4 py-1 bg-blue-50 text-blue-700 text-sm font-medium rounded-2xl border border-blue-200">
                         {profile.overallPercentage}% average
@@ -582,7 +653,7 @@ export default function Analytics() {
                 </div>
               )}
 
-              {/* AI Analysis Tab */}
+              {/* AI Analysis Tab – Enhanced Formatting */}
               {activeTab === 'ai' && (
                 <div className="space-y-8">
                   <div className="flex items-center justify-between">

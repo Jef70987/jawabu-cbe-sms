@@ -76,11 +76,11 @@ const StudentSidebarData = [
     icon: <PersonIcon sx={{fontSize:30}}/>,
     link: "/StudentPortal/Profile"
   },
-  // {
-  //   title: "Settings",
-  //   icon: <SettingsIcon sx={{fontSize:30}} />,
-  //   link: "/StudentPortal/Settings"
-  // },
+  {
+     title: "Analytics",
+     icon: <BarChartIcon sx={{fontSize:30}} />,
+     link: "/StudentPortal/Analytics"
+  },
   // {
   //   title: "Help & Support",
   //   icon: <HelpIcon sx={{fontSize:30}}/>,

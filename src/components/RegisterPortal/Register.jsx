@@ -10,6 +10,7 @@ import StudentManagement from "./StudentMngmnt";
 import AcademicManagement from "./Academic";
 import ExamAndReportManagement from "./ExamMngmnt";
 import ReportCardGenerator from "./ReportCard";
+import Analytics from "./Analytics";
 
 const Register  = () => {
     return(
@@ -37,6 +38,7 @@ const Register  = () => {
                     <Route path="/Academic" element={<AcademicManagement/>}/>
                     <Route path="/ExamAndReportManagement" element={<ExamAndReportManagement/>}/>
                     <Route path="/ReportCard" element={<ReportCardGenerator/>}/>
+                    <Route path="/Analytics" element={<Analytics/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     
                     <Route path="*" element={<Logout/>}/>
