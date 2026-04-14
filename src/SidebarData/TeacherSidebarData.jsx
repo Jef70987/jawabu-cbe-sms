@@ -7,6 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { Package,MarsStroke,MailCheck,Info,TicketPlus } from 'lucide-react';
 
 const TeacherSidebarData = [
   
@@ -17,49 +18,56 @@ const TeacherSidebarData = [
   },
   {
     title: "Competency Matrix",
-    icon: <ReceiptIcon />,
+    icon: <TicketPlus />,
     link: "/TeacherPortal/CompetencyMatrix"
   },
   {
     title: "Mark Entry",
-    icon: <MonetizationOnIcon />,
+    icon: <MarsStroke />,
     link: "/TeacherPortal/MarkEntry"
   },
+  
+//  {
+//    title: "Portfolio",
+//    icon: <DescriptionIcon />,
+//    link: "/TeacherPortal/Portfolio"
+//  },
+  
+  
+//  {
+//    title: "Assessment",
+//    icon: <DescriptionIcon />,
+//    link: "/TeacherPortal/AssessmentManager"
+//  },
+  
+  
+  //{
+  //  title: "Termly Summary",
+  //  icon: <ReceiptIcon />,
+  //  link: "/TeacherPortal/TermlySummary"
+  //},
   {
-    title: "Portfolio",
+    title: "Report Card",
     icon: <DescriptionIcon />,
-    link: "/TeacherPortal/Portfolio"
-  },
-  {
-    title: "Assessment",
-    icon: <DescriptionIcon />,
-    link: "/TeacherPortal/AssessmentManager"
-  },
-  {
-    title: "Termly Summary",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/TermlySummary"
+    link: "/TeacherPortal/ReportCardAnalyzer"
   },
   {
     title: "Analytics",
-    icon: <ReceiptIcon />,
+    icon: <Package />,
     link: "/TeacherPortal/Analytics"
   },
-  {
-    title: "Report Card",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/ReportCard"
-  },
-  {
-    title: "KNEC Export",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/KnecExport"
-  },
+  //{
+  // title: "KNEC Export",
+  //  icon: <Package />,
+  //  link: "/TeacherPortal/KnecExport"
+  //},
+
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
     link: "/Logout"
   },
+ 
 ];
 
 export default TeacherSidebarData;

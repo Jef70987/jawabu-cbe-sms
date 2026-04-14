@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
 import { 
@@ -10,142 +11,11 @@ import {
   Filter, XCircle, Loader2, Settings, Layout
 } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-// Notification Component
-const Notification = ({ type, message, onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 5000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  const icons = {
-    success: <CheckCircle className="h-5 w-5 text-green-500" />,
-    error: <AlertCircle className="h-5 w-5 text-red-500" />,
-    warning: <AlertCircle className="h-5 w-5 text-yellow-500" />,
-    info: <FileText className="h-5 w-5 text-blue-500" />
-  };
-
-  const styles = {
-    success: 'bg-green-50 border-green-200',
-    error: 'bg-red-50 border-red-200',
-    warning: 'bg-yellow-50 border-yellow-200',
-    info: 'bg-blue-50 border-blue-200'
-  };
-
-  return (
-    <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${styles[type]} animate-slide-in`}>
-      {icons[type]}
-      <p className="text-sm font-medium text-gray-800">{message}</p>
-      <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600">
-        <XCircle className="h-4 w-4" />
-      </button>
-    </div>
-  );
-};
-
-// Form Modal
-const FormModal = ({ isOpen, onClose, onSubmit, title, children, submitText = "Save" }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XCircle className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="p-6">
-          {children}
-        </div>
-        <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-            Cancel
-          </button>
-          <button onClick={onSubmit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            {submitText}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Stat Card
-const StatCard = ({ title, value, icon, color, trend }) => {
-  const colors = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    purple: 'bg-purple-50 text-purple-600',
-    orange: 'bg-orange-50 text-orange-600',
-    pink: 'bg-pink-50 text-pink-600',
-    indigo: 'bg-indigo-50 text-indigo-600'
-  };
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{value}</p>
-          {trend && <p className="text-xs text-green-600 mt-2">{trend}</p>}
-        </div>
-        <div className={`p-3 rounded-lg ${colors[color]}`}>
-          {icon}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Performance Bar
-const PerformanceBar = ({ label, percentage, color }) => {
-  const colors = {
-    green: 'bg-green-500',
-    blue: 'bg-blue-500',
-    yellow: 'bg-yellow-500',
-    red: 'bg-red-500',
-    purple: 'bg-purple-500'
-  };
-
-  return (
-    <div className="mb-4">
-      <div className="flex justify-between mb-1">
-        <span className="text-sm font-medium text-gray-700">{label}</span>
-        <span className="text-sm text-gray-600">{percentage}%</span>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div className={`${colors[color]} h-2 rounded-full transition-all duration-500`} style={{ width: `${percentage}%` }}></div>
-      </div>
-    </div>
-  );
-};
-
-// Rating Badge
-const RatingBadge = ({ rating, count }) => {
-  const config = {
-    EE: { label: 'Exceeding', color: 'bg-green-100 text-green-800', icon: '🏆' },
-    ME: { label: 'Meeting', color: 'bg-blue-100 text-blue-800', icon: '✓' },
-    AE: { label: 'Approaching', color: 'bg-yellow-100 text-yellow-800', icon: '⚠️' },
-    BE: { label: 'Below', color: 'bg-red-100 text-red-800', icon: '❌' }
-  };
-
-  const { label, color, icon } = config[rating] || config.ME;
-
-  return (
-    <div className="text-center">
-      <div className={`px-3 py-2 rounded-lg ${color}`}>
-        <div className="text-lg font-bold">{count}</div>
-        <div className="text-xs font-medium">{label}</div>
-      </div>
-    </div>
-  );
-};
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 function ExamAndReportManagement() {
   const { user, getAuthHeaders, isAuthenticated } = useAuth();
+
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [activeTab, setActiveTab] = useState('assessment-windows');
@@ -165,6 +35,7 @@ function ExamAndReportManagement() {
   // Performance Analysis
   const [analysisLevel, setAnalysisLevel] = useState('school');
   const [analysisData, setAnalysisData] = useState(null);
+  const [analysisEmpty, setAnalysisEmpty] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [students, setStudents] = useState([]);
   
@@ -172,6 +43,7 @@ function ExamAndReportManagement() {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [formData, setFormData] = useState({});
+  const [editingId, setEditingId] = useState(null);
 
   const addNotification = (type, message) => {
     const id = Date.now();
@@ -191,131 +63,212 @@ function ExamAndReportManagement() {
         fetchAcademicYears(),
         fetchClasses(),
         fetchLearningAreas(),
-        fetchAssessmentWindows()
       ]);
-    } catch (error) {
-      addNotification('error', 'Failed to load data');
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchWithErrorHandling = async (url, options = {}) => {
+    try {
+      const res = await fetch(url, { 
+        ...options, 
+        headers: getAuthHeaders() 
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      return data.success ? data : null;
+    } catch (error) {
+      console.warn(`Fetch failed for ${url}:`, error);
+      return null;
+    }
+  };
+
   const fetchAcademicYears = async () => {
-    const res = await fetch(`${API_BASE_URL}/api/registrar/academic/academic-years/`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) {
+    const data = await fetchWithErrorHandling(`${API_BASE_URL}/api/registrar/academic/academic-years/`);
+    if (data) {
       setAcademicYears(data.data);
-      const current = data.data.find(y => y.is_current);
+      const current = data.data.find(y => y.is_current) || data.data[0];
       if (current) {
         setSelectedAcademicYear(current);
-        fetchTerms(current.id);
       }
     }
   };
 
   const fetchTerms = async (yearId) => {
-    const res = await fetch(`${API_BASE_URL}/api/registrar/academic/terms/?academic_year=${yearId}`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) {
+    if (!yearId) return;
+    const data = await fetchWithErrorHandling(
+      `${API_BASE_URL}/api/registrar/academic/terms/?academic_year=${yearId}`
+    );
+    if (data && data.data) {
       setTerms(data.data);
-      const current = data.data.find(t => t.is_current);
-      if (current) setSelectedTerm(current);
     }
   };
 
+  // AUTO-FETCH TERMS whenever selectedAcademicYear changes
+  // Also clear selectedTerm so the auto-select effect below picks the right one
+  useEffect(() => {
+    if (selectedAcademicYear?.id) {
+      setSelectedTerm(null);
+      fetchTerms(selectedAcademicYear.id);
+    }
+  }, [selectedAcademicYear]);
+
+  // AUTO-SELECT CURRENT TERM when terms are loaded
+  useEffect(() => {
+    if (terms.length > 0) {
+      const currentTerm = terms.find(t => t.is_current) || terms[0];
+      if (currentTerm && (!selectedTerm || selectedTerm.id !== currentTerm.id)) {
+        setSelectedTerm(currentTerm);
+      }
+    }
+  }, [terms]);
+
+  // AUTO-FETCH assessment windows when tab is active OR term changes
+  useEffect(() => {
+    if (isAuthenticated && activeTab === 'assessment-windows') {
+      fetchAssessmentWindows();
+    }
+  }, [activeTab, selectedTerm, isAuthenticated]);
+
+  // AUTO-FETCH timetable when tab is active
+  useEffect(() => {
+    if (isAuthenticated && activeTab === 'timetable' && selectedClass?.id && selectedTerm?.id) {
+      fetchTimetable();
+    }
+  }, [activeTab, selectedClass, selectedTerm, isAuthenticated]);
+
+  // Reset performance analysis when term changes so stale data is never shown
+  useEffect(() => {
+    setAnalysisData(null);
+    setAnalysisEmpty(false);
+  }, [selectedTerm]);
+
   const fetchClasses = async () => {
-    const res = await fetch(`${API_BASE_URL}/api/registrar/classes/`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) setClasses(data.data);
+    const data = await fetchWithErrorHandling(`${API_BASE_URL}/api/registrar/classes/`);
+    if (data) setClasses(data.data);
   };
 
   const fetchStudents = async (classId) => {
-    const res = await fetch(`${API_BASE_URL}/api/registrar/students/?class_id=${classId}`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) setStudents(data.data);
+    const data = await fetchWithErrorHandling(
+      `${API_BASE_URL}/api/registrar/students/?class_id=${classId}`
+    );
+    if (data) setStudents(data.data);
   };
 
   const fetchLearningAreas = async () => {
-    const res = await fetch(`${API_BASE_URL}/api/registrar/academic/learning-areas/`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) setLearningAreas(data.data);
+    const data = await fetchWithErrorHandling(`${API_BASE_URL}/api/registrar/academic/learning-areas/`);
+    if (data) setLearningAreas(data.data);
   };
 
   const fetchAssessmentWindows = async () => {
     let url = `${API_BASE_URL}/api/registrar/academic/assessment-windows/`;
-    if (selectedTerm) url += `?term=${selectedTerm.id}`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
-    const data = await res.json();
-    if (data.success) setAssessmentWindows(data.data);
+    if (selectedTerm?.id) url += `?term=${selectedTerm.id}`;
+    const data = await fetchWithErrorHandling(url);
+    setAssessmentWindows(data ? (data.data || []) : []);
   };
 
   const fetchSummativeAssessments = async () => {
     let url = `${API_BASE_URL}/api/registrar/academic/summative-assessments/`;
-    if (selectedClass) url += `?class_id=${selectedClass.id}`;
-    if (selectedTerm) url += `${selectedClass ? '&' : '?'}term=${selectedTerm.id}`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
-    const data = await res.json();
-    if (data.success) setSummativeAssessments(data.data);
+    if (selectedClass?.id) url += `?class_id=${selectedClass.id}`;
+    if (selectedTerm?.id) url += `${selectedClass?.id ? '&' : '?'}term=${selectedTerm.id}`;
+    const data = await fetchWithErrorHandling(url);
+    if (data) setSummativeAssessments(data.data || []);
   };
 
   const fetchTimetable = async () => {
-    if (!selectedClass || !selectedTerm) return;
-    const res = await fetch(`${API_BASE_URL}/api/registrar/academic/timetable/?class_id=${selectedClass.id}&term=${selectedTerm.id}`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) setTimetable(data.data);
+    if (!selectedClass?.id || !selectedTerm?.id) return;
+    const data = await fetchWithErrorHandling(
+      `${API_BASE_URL}/api/registrar/timetable/?class_id=${selectedClass.id}&term=${selectedTerm.id}`
+    );
+    if (data) setTimetable(data.data || []);
   };
 
   const fetchPerformanceData = async () => {
+    if (!selectedTerm?.id) {
+      addNotification('warning', 'Please select a term before loading analysis');
+      return;
+    }
+
     setLoading(true);
+    setAnalysisData(null);
+    setAnalysisEmpty(false);
+
+    let url = `${API_BASE_URL}/api/registrar/academic/performance-analysis/`;
+    const params = new URLSearchParams();
+    params.append('term', selectedTerm.id);
+    if (analysisLevel === 'class' && selectedClass?.id) params.append('class_id', selectedClass.id);
+    if (analysisLevel === 'student' && selectedStudent?.id) params.append('student_id', selectedStudent.id);
+    url += `?${params.toString()}`;
+    
+    const data = await fetchWithErrorHandling(url);
+    if (data && data.data && !data.data.is_empty) {
+      setAnalysisData(data.data);
+    } else {
+      setAnalysisEmpty(true);
+      addNotification('info', 'No marks have been uploaded for the selected term yet');
+    }
+    setLoading(false);
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // UNIFIED SAVE (Create OR Update) + DELETE for Assessment Windows
+  // ─────────────────────────────────────────────────────────────
+  const handleSaveAssessmentWindow = async () => {
+    const url = editingId 
+      ? `${API_BASE_URL}/api/registrar/academic/assessment-windows/${editingId}/`
+      : `${API_BASE_URL}/api/registrar/academic/assessment-windows/create/`;
+    
+    const method = editingId ? 'PUT' : 'POST';
+
     try {
-      let url = `${API_BASE_URL}/api/registrar/academic/performance-analysis/`;
-      const params = new URLSearchParams();
-      if (selectedTerm) params.append('term', selectedTerm.id);
-      if (analysisLevel === 'class' && selectedClass) params.append('class_id', selectedClass.id);
-      if (analysisLevel === 'student' && selectedStudent) params.append('student_id', selectedStudent);
-      if (params.toString()) url += `?${params.toString()}`;
-      
-      const res = await fetch(url, { headers: getAuthHeaders() });
+      const res = await fetch(url, {
+        method,
+        headers: { 
+          ...getAuthHeaders(), 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ 
+          ...formData, 
+          term: selectedTerm?.id 
+        })
+      });
+
       const data = await res.json();
-      if (data.success) setAnalysisData(data.data);
-      else addNotification('error', data.error || 'Failed to load performance data');
+      if (data.success) {
+        addNotification('success', editingId ? 'Assessment window updated' : 'Assessment window created');
+        setShowModal(false);
+        setEditingId(null);
+        setFormData({});
+        fetchAssessmentWindows();
+      } else {
+        addNotification('error', data.error || 'Save failed');
+      }
     } catch (error) {
-      addNotification('error', 'Failed to load performance data');
-    } finally {
-      setLoading(false);
+      addNotification('error', 'Failed to save assessment window');
     }
   };
 
-  // CRUD Operations
-  const handleCreateAssessmentWindow = async () => {
+  const handleDeleteAssessmentWindow = async (windowId) => {
+    if (!window.confirm('Delete this assessment window permanently? This action cannot be undone.')) {
+      return;
+    }
+
     try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/assessment-windows/create/`, {
-        method: 'POST',
+      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/assessment-windows/${windowId}/`, {
+        method: 'DELETE',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ ...formData, term: selectedTerm.id })
       });
+
       const data = await res.json();
       if (data.success) {
-        addNotification('success', 'Assessment window created');
-        setShowModal(false);
+        addNotification('success', 'Assessment window deleted');
         fetchAssessmentWindows();
       } else {
-        addNotification('error', data.error || 'Creation failed');
+        addNotification('error', data.error || 'Delete failed');
       }
     } catch (error) {
-      addNotification('error', 'Failed to create');
+      addNotification('error', 'Failed to delete assessment window');
     }
   };
 
@@ -323,36 +276,37 @@ function ExamAndReportManagement() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/registrar/academic/summative-assessments/create/`, {
         method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ ...formData, term: selectedTerm.id, class_id: selectedClass?.id })
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, term: selectedTerm?.id, class_id: selectedClass?.id })
       });
       const data = await res.json();
       if (data.success) {
         addNotification('success', 'Summative assessment created');
         setShowModal(false);
+        setFormData({});
         fetchSummativeAssessments();
       } else {
         addNotification('error', data.error || 'Creation failed');
       }
     } catch (error) {
-      addNotification('error', 'Failed to create');
+      addNotification('error', 'Failed to create summative assessment');
     }
   };
 
   const handleGenerateTimetable = async () => {
-    if (!selectedClass || !selectedTerm) {
+    if (!selectedClass?.id || !selectedTerm?.id) {
       addNotification('warning', 'Please select class and term');
       return;
     }
     try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/timetable/generate/`, {
+      const res = await fetch(`${API_BASE_URL}/api/registrar/timetable/generate/`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ class_id: selectedClass.id, term: selectedTerm.id })
       });
       const data = await res.json();
       if (data.success) {
-        setTimetable(data.data);
+        setTimetable(data.data || []);
         addNotification('success', 'Timetable generated');
       } else {
         addNotification('error', data.error || 'Generation failed');
@@ -370,6 +324,138 @@ function ExamAndReportManagement() {
     publishedAssessments: summativeAssessments.filter(a => a.status === 'Published').length
   };
 
+  // Notification Component
+  const Notification = ({ type, message, onClose }) => {
+    useEffect(() => {
+      const timer = setTimeout(onClose, 5000);
+      return () => clearTimeout(timer);
+    }, [onClose]);
+
+    const icons = {
+      success: <CheckCircle className="h-5 w-5 text-green-500" />,
+      error: <AlertCircle className="h-5 w-5 text-red-500" />,
+      warning: <AlertCircle className="h-5 w-5 text-yellow-500" />,
+      info: <FileText className="h-5 w-5 text-blue-500" />
+    };
+
+    const styles = {
+      success: 'bg-green-50 border-green-200',
+      error: 'bg-red-50 border-red-200',
+      warning: 'bg-yellow-50 border-yellow-200',
+      info: 'bg-blue-50 border-blue-200'
+    };
+
+    return (
+      <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${styles[type]} animate-slide-in`}>
+        {icons[type]}
+        <p className="text-sm font-medium text-gray-800">{message}</p>
+        <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600">
+          <XCircle className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  };
+
+  // Form Modal
+  const FormModal = ({ isOpen, onClose, onSubmit, title, children, submitText = "Save" }) => {
+    if (!isOpen) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XCircle className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="p-6">
+            {children}
+          </div>
+          <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+            <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+              Cancel
+            </button>
+            <button onClick={onSubmit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              {submitText}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Stat Card
+  const StatCard = ({ title, value, icon, color, trend }) => {
+    const colors = {
+      blue: 'bg-blue-50 text-blue-600',
+      green: 'bg-green-50 text-green-600',
+      purple: 'bg-purple-50 text-purple-600',
+      orange: 'bg-orange-50 text-orange-600',
+      pink: 'bg-pink-50 text-pink-600',
+      indigo: 'bg-indigo-50 text-indigo-600'
+    };
+
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-500">{title}</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1">{value}</p>
+            {trend && <p className="text-xs text-green-600 mt-2">{trend}</p>}
+          </div>
+          <div className={`p-3 rounded-lg ${colors[color]}`}>
+            {icon}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Performance Bar
+  const PerformanceBar = ({ label, percentage, color }) => {
+    const colors = {
+      green: 'bg-green-500',
+      blue: 'bg-blue-500',
+      yellow: 'bg-yellow-500',
+      red: 'bg-red-500',
+      purple: 'bg-purple-500'
+    };
+
+    return (
+      <div className="mb-4">
+        <div className="flex justify-between mb-1">
+          <span className="text-sm font-medium text-gray-700">{label}</span>
+          <span className="text-sm text-gray-600">{percentage}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className={`${colors[color]} h-2 rounded-full transition-all duration-500`} style={{ width: `${percentage}%` }}></div>
+        </div>
+      </div>
+    );
+  };
+
+  // Rating Badge
+  const RatingBadge = ({ rating, count }) => {
+    const config = {
+      EE: { label: 'Exceeding', color: 'bg-green-100 text-green-800', icon: '🏆' },
+      ME: { label: 'Meeting', color: 'bg-blue-100 text-blue-800', icon: '✓' },
+      AE: { label: 'Approaching', color: 'bg-yellow-100 text-yellow-800', icon: '⚠️' },
+      BE: { label: 'Below', color: 'bg-red-100 text-red-800', icon: '❌' }
+    };
+
+    const { label, color, icon } = config[rating] || config.ME;
+
+    return (
+      <div className="text-center">
+        <div className={`px-3 py-2 rounded-lg ${color}`}>
+          <div className="text-lg font-bold">{count}</div>
+          <div className="text-xs font-medium">{label}</div>
+        </div>
+      </div>
+    );
+  };
+
   const renderAssessmentWindows = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -385,56 +471,98 @@ function ExamAndReportManagement() {
             <h3 className="font-semibold text-gray-800 flex items-center">
               <Calendar className="h-5 w-5 text-blue-600 mr-2" />
               Assessment Windows
+              {selectedTerm && (
+                <span className="ml-2 text-sm font-normal text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                  {selectedTerm.term}
+                </span>
+              )}
             </h3>
             <p className="text-sm text-gray-500 mt-1">Opener, Mid-Term, and End-Term assessment periods</p>
           </div>
-          <button
-            onClick={() => {
-              setModalType('assessmentWindow');
-              setFormData({ assessment_type: '', weight_percentage: '', open_date: '', close_date: '', is_active: true });
-              setShowModal(true);
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Window
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchAssessmentWindows}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+            <button
+              onClick={() => {
+                setEditingId(null);
+                setModalType('assessmentWindow');
+                setFormData({ assessment_type: '', weight_percentage: '', open_date: '', close_date: '', is_active: true });
+                setShowModal(true);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Window
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
-          {assessmentWindows.map(window => (
-            <div key={window.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all hover:border-blue-200">
-              <div className="flex justify-between items-start mb-3">
-                <h4 className="font-semibold text-gray-800 text-lg">{window.assessment_type}</h4>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${window.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                  {window.is_active ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Weight:</span>
-                  <span className="font-medium text-gray-700">{window.weight_percentage}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Period:</span>
-                  <span className="text-gray-700">{window.open_date} - {window.close_date}</span>
-                </div>
-                {window.term_name && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Term:</span>
-                    <span className="text-gray-700">{window.term_name}</span>
-                  </div>
-                )}
-              </div>
-              <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end gap-2">
-                <button className="p-1 text-gray-400 hover:text-blue-600">
-                  <Edit2 className="h-4 w-4" />
-                </button>
-                <button className="p-1 text-gray-400 hover:text-red-600">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+          {assessmentWindows.length === 0 ? (
+            <div className="col-span-3 py-12 text-center">
+              <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No assessment windows for {selectedTerm?.term || 'the selected term'}</p>
+              <p className="text-xs text-gray-400 mt-1">Create your first window above</p>
             </div>
-          ))}
+          ) : (
+            assessmentWindows.map(window => (
+              <div key={window.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all hover:border-blue-200">
+                <div className="flex justify-between items-start mb-3">
+                  <h4 className="font-semibold text-gray-800 text-lg">{window.assessment_type}</h4>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${window.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                    {window.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Weight:</span>
+                    <span className="font-medium text-gray-700">{window.weight_percentage}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Period:</span>
+                    <span className="text-gray-700">{window.open_date} - {window.close_date}</span>
+                  </div>
+                  {window.term_name && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Term:</span>
+                      <span className="text-gray-700">{window.term_name}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end gap-2">
+                  <button 
+                    onClick={() => {
+                      setEditingId(window.id);
+                      setFormData({
+                        assessment_type: window.assessment_type,
+                        weight_percentage: window.weight_percentage,
+                        open_date: window.open_date,
+                        close_date: window.close_date,
+                        is_active: window.is_active,
+                      });
+                      setModalType('assessmentWindow');
+                      setShowModal(true);
+                    }}
+                    className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="Edit window"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteAssessmentWindow(window.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    title="Delete window"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -465,12 +593,17 @@ function ExamAndReportManagement() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Select Term</label>
             <select
               value={selectedTerm?.id || ''}
-              onChange={(e) => setSelectedTerm(terms.find(t => t.id === e.target.value))}
+              onChange={(e) => {
+                const term = terms.find(t => t.id === e.target.value);
+                setSelectedTerm(term);
+              }}
               className="border border-gray-300 rounded-lg px-3 py-2 w-48"
             >
               <option value="">Select Term</option>
               {terms.map(t => (
-                <option key={t.id} value={t.id}>{t.term} {t.is_current ? '(Current)' : ''}</option>
+                <option key={t.id} value={t.id}>
+                  {t.term} {t.is_current ? '(Current)' : ''}
+                </option>
               ))}
             </select>
           </div>
@@ -533,7 +666,11 @@ function ExamAndReportManagement() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Analysis Level</label>
             <select
               value={analysisLevel}
-              onChange={(e) => setAnalysisLevel(e.target.value)}
+              onChange={(e) => {
+                setAnalysisLevel(e.target.value);
+                setAnalysisData(null);
+                setAnalysisEmpty(false);
+              }}
               className="border border-gray-300 rounded-lg px-3 py-2"
             >
               <option value="school">School-wide Analysis</option>
@@ -595,22 +732,17 @@ function ExamAndReportManagement() {
               </div>
             </>
           )}
+          {/* Term is already selected globally in the header — show read-only pill here */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Term</label>
-            <select
-              value={selectedTerm?.id || ''}
-              onChange={(e) => setSelectedTerm(terms.find(t => t.id === e.target.value))}
-              className="border border-gray-300 rounded-lg px-3 py-2 w-40"
-            >
-              <option value="">Select Term</option>
-              {terms.map(t => (
-                <option key={t.id} value={t.id}>{t.term}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Term</label>
+            <div className="border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700 min-w-[120px]">
+              {selectedTerm ? `${selectedTerm.term}${selectedTerm.is_current ? ' (Current)' : ''}` : 'No term selected'}
+            </div>
           </div>
           <button
             onClick={fetchPerformanceData}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            disabled={!selectedTerm?.id}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <TrendingUp className="h-4 w-4" />
             Load Analysis
@@ -618,9 +750,33 @@ function ExamAndReportManagement() {
         </div>
       </div>
 
+      {/* Empty state — no marks uploaded yet */}
+      {analysisEmpty && !analysisData && (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <BarChart3 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">No Data Available</h3>
+          <p className="text-gray-500 text-sm">
+            No marks have been uploaded by teachers for{' '}
+            <span className="font-medium text-gray-700">{selectedTerm?.term}</span> yet.
+          </p>
+          <p className="text-gray-400 text-xs mt-2">
+            Performance analysis will appear here once teachers submit marks for this term.
+          </p>
+        </div>
+      )}
+
+      {/* Prompt before any load attempt */}
+      {!analysisData && !analysisEmpty && (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <TrendingUp className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">
+            Select the filters above and click <span className="font-medium text-blue-600">Load Analysis</span> to view performance data.
+          </p>
+        </div>
+      )}
+
       {analysisData && (
         <>
-          {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
               <p className="text-sm opacity-90">Average Performance</p>
@@ -644,7 +800,6 @@ function ExamAndReportManagement() {
             </div>
           </div>
 
-          {/* Competency Rating Breakdown */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
               <Target className="h-5 w-5 text-blue-600 mr-2" />
@@ -658,7 +813,6 @@ function ExamAndReportManagement() {
             </div>
           </div>
 
-          {/* Learning Area Performance */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
               <BookOpen className="h-5 w-5 text-green-600 mr-2" />
@@ -676,7 +830,6 @@ function ExamAndReportManagement() {
             </div>
           </div>
 
-          {/* Recommendations */}
           {analysisData.recommendations && analysisData.recommendations.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
               <h3 className="font-semibold text-amber-800 mb-3 flex items-center">
@@ -724,7 +877,7 @@ function ExamAndReportManagement() {
       `}</style>
 
       {notifications.map(n => (
-        <Notification key={n.id} type={n.type} message={n.message} onClose={() => setNotifications(prev => prev.filter(n => n.id !== n.id))} />
+        <Notification key={n.id} type={n.type} message={n.message} onClose={() => setNotifications(prev => prev.filter(item => item.id !== n.id))} />
       ))}
 
       {/* Header */}
@@ -741,23 +894,54 @@ function ExamAndReportManagement() {
               </p>
               {user && <p className="text-xs text-gray-400 mt-1">{user.first_name} {user.last_name} • {user.role}</p>}
             </div>
-            <div className="flex items-center gap-3">
-              <select
-                value={selectedAcademicYear?.id || ''}
-                onChange={(e) => {
-                  const year = academicYears.find(y => y.id === e.target.value);
-                  setSelectedAcademicYear(year);
-                  if (year) fetchTerms(year.id);
-                }}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+
+            {/* ── Global Year + Term selectors ── */}
+            <div className="flex items-center gap-3 flex-wrap justify-end">
+              {/* Academic Year */}
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-500 mb-0.5">Academic Year</label>
+                <select
+                  value={selectedAcademicYear?.id || ''}
+                  onChange={(e) => {
+                    const year = academicYears.find(y => y.id === e.target.value);
+                    setSelectedAcademicYear(year);
+                  }}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                >
+                  {academicYears.map(year => (
+                    <option key={year.id} value={year.id}>
+                      {year.year_name} ({year.year_code}) {year.is_current ? '(Current)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Term — THIS is the key addition that was missing */}
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-500 mb-0.5">Term</label>
+                <select
+                  value={selectedTerm?.id || ''}
+                  onChange={(e) => {
+                    const term = terms.find(t => t.id === e.target.value);
+                    setSelectedTerm(term || null);
+                  }}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                  disabled={terms.length === 0}
+                >
+                  <option value="">Select Term</option>
+                  {terms.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.term} {t.is_current ? '(Current)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={fetchAllData}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg mt-4"
+                title="Refresh all data"
               >
-                {academicYears.map(year => (
-                  <option key={year.id} value={year.id}>
-                    {year.year_name} {year.is_current ? '(Current)' : ''}
-                  </option>
-                ))}
-              </select>
-              <button onClick={fetchAllData} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                 <RefreshCw className="h-5 w-5" />
               </button>
             </div>
@@ -808,9 +992,17 @@ function ExamAndReportManagement() {
       {/* Form Modal */}
       <FormModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onSubmit={modalType === 'assessmentWindow' ? handleCreateAssessmentWindow : handleCreateSummativeAssessment}
-        title={modalType === 'assessmentWindow' ? 'Add Assessment Window' : 'Create Summative Assessment'}
+        onClose={() => {
+          setShowModal(false);
+          setEditingId(null);
+          setFormData({});
+        }}
+        onSubmit={modalType === 'assessmentWindow' ? handleSaveAssessmentWindow : handleCreateSummativeAssessment}
+        title={
+          modalType === 'assessmentWindow' 
+            ? (editingId ? 'Edit Assessment Window' : 'Add Assessment Window')
+            : 'Create Summative Assessment'
+        }
       >
         {modalType === 'assessmentWindow' ? (
           <div className="space-y-4">

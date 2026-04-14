@@ -13,6 +13,13 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// ─── Helper: always return a fully-qualified image URL ───────────────────────
+const resolvePhotoUrl = (photoUrl) => {
+  if (!photoUrl) return null;
+  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) return photoUrl;
+  return `${API_BASE_URL}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+};
+
 // Toast Notification Component
 const Toast = ({ message, type, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
@@ -80,19 +87,22 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
   );
 };
 
-// Editable Field Component - Only for allowed editable fields
+// Editable Field Component
 const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'text', required = false, editable = true }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value || '');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (!isEditing) setEditValue(value || '');
+  }, [value, isEditing]);
+
   const handleSave = async () => {
     if (required && !editValue.trim()) {
       setError(`${label} is required`);
       return;
     }
-    
     setIsSaving(true);
     setError('');
     try {
@@ -169,7 +179,9 @@ const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'te
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-900 mt-1 break-words">{value || <span className="text-gray-400">Not provided</span>}</p>
+            <p className="text-sm text-gray-900 mt-1 break-words">
+              {value || <span className="text-gray-400">Not provided</span>}
+            </p>
           )}
         </div>
         {!isEditing && editable && (
@@ -249,7 +261,6 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
       setError('Passwords do not match');
       return;
     }
-    
     if (newPassword.length < 8) {
       setError('Password must be at least 8 characters');
       return;
@@ -338,9 +349,7 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
             </div>
             
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
-                {error}
-              </div>
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>
             )}
             
             <div className="flex gap-3 pt-2">
@@ -367,6 +376,7 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
   );
 };
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function StudentProfile() {
   const { user, getAuthHeaders, isAuthenticated, logout } = useAuth();
   
@@ -377,6 +387,21 @@ export default function StudentProfile() {
   const [showSessionExpired, setShowSessionExpired] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // ── FIX: Track image load error WITHOUT wiping photo_url from state ─────────
+  // Previously, onError cleared student.photo_url permanently, so the avatar
+  // disappeared on every page load and only came back after a profile PATCH
+  // refreshed the state from the server.  Now we use a separate boolean so the
+  // URL stays intact (and img retries if the component re-mounts or the URL
+  // changes), while still falling back to initials when the browser truly
+  // cannot load the image.
+  const [imageLoadError, setImageLoadError] = useState(false);
+
+  // ── FIX: A cache-buster key that changes after each successful upload ───────
+  // Without this, the browser serves the old image from cache even after the
+  // student uploads a new one (same URL, same file path).
+  const [imageCacheBuster, setImageCacheBuster] = useState('');
+
   const fileInputRef = useRef(null);
 
   const showToast = (message, type = 'info') => {
@@ -386,9 +411,7 @@ export default function StudentProfile() {
   };
 
   const handleApiError = (error) => {
-    if (error?.status === 401) {
-      setShowSessionExpired(true);
-    }
+    if (error?.status === 401) setShowSessionExpired(true);
   };
 
   const handleLogout = () => {
@@ -399,21 +422,22 @@ export default function StudentProfile() {
   const formatDate = (dateString) => {
     if (!dateString) return 'Not provided';
     return new Date(dateString).toLocaleDateString('en-KE', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+      year: 'numeric', month: 'long', day: 'numeric' 
     });
   };
 
+  // ── Normalise any profile data object so photo_url is always absolute ──────
+  const normaliseProfile = (data) => ({
+    ...data,
+    photo_url: resolvePhotoUrl(data.photo_url),
+  });
+
+  // ── Fetch profile ──────────────────────────────────────────────────────────
   const fetchProfile = async () => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
+    if (!isAuthenticated) { setLoading(false); return; }
 
     setLoading(true);
     try {
-      // Fetch student profile
       const profileResponse = await fetch(`${API_BASE_URL}/api/student/profile/`, {
         headers: getAuthHeaders()
       });
@@ -427,20 +451,20 @@ export default function StudentProfile() {
       if (profileResponse.ok) {
         const profileData = await profileResponse.json();
         if (profileData.success) {
-          setStudent(profileData.data);
+          const normalised = normaliseProfile(profileData.data);
+          setStudent(normalised);
+          // ── FIX: reset error flag whenever we get a fresh URL from server ──
+          setImageLoadError(false);
         }
       }
 
-      // Fetch user account info
-      const userResponse = await fetch(`${API_BASE_URL}/api/auth/user/`, {
+      const userResponse = await fetch(`${API_BASE_URL}/api/student/profile/user/`, {
         headers: getAuthHeaders()
       });
 
       if (userResponse.ok) {
         const userData = await userResponse.json();
-        if (userData.success) {
-          setUserAccount(userData.data);
-        }
+        if (userData.success) setUserAccount(userData.data);
       }
 
     } catch (err) {
@@ -451,14 +475,12 @@ export default function StudentProfile() {
     }
   };
 
+  // ── Update a single field ──────────────────────────────────────────────────
   const updateField = async (fieldName, value) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/student/profile/update/`, {
         method: 'PATCH',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ [fieldName]: value })
       });
 
@@ -470,29 +492,28 @@ export default function StudentProfile() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setStudent(data.data);
-          showToast(`${fieldName.replace('_', ' ')} updated successfully`, 'success');
+          const normalised = normaliseProfile(data.data);
+          setStudent(normalised);
+          // ── FIX: reset error flag so the avatar re-renders if it had failed ─
+          setImageLoadError(false);
+          showToast(`${fieldName.replace(/_/g, ' ')} updated successfully`, 'success');
           return data;
-        } else {
-          throw new Error(data.error || 'Update failed');
         }
-      } else {
-        throw new Error('Failed to update');
+        throw new Error(data.error || 'Update failed');
       }
+      throw new Error('Failed to update');
     } catch (error) {
       showToast(error.message, 'error');
       throw error;
     }
   };
 
+  // ── Change password ────────────────────────────────────────────────────────
   const handleChangePassword = async (currentPassword, newPassword) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/student/profile/change-password/`, {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           current_password: currentPassword,
           new_password: newPassword,
@@ -501,7 +522,6 @@ export default function StudentProfile() {
       });
 
       const data = await response.json();
-
       if (response.ok && data.success) {
         showToast('Password changed successfully. Please log in again.', 'success');
         setTimeout(() => handleLogout(), 2000);
@@ -514,6 +534,7 @@ export default function StudentProfile() {
     }
   };
 
+  // ── Upload profile image ───────────────────────────────────────────────────
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -523,35 +544,44 @@ export default function StudentProfile() {
       showToast('Please upload a JPEG or PNG image', 'error');
       return;
     }
-
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Image size should be less than 2MB', 'error');
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image size should be less than 5MB', 'error');
       return;
     }
 
     const formData = new FormData();
     formData.append('profile_image', file);
 
+    // Remove Content-Type so browser sets the correct multipart boundary
+    const headers = { ...getAuthHeaders() };
+    delete headers['Content-Type'];
+
     setUploadingImage(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/student/profile/image/`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers,
         body: formData
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setStudent(prev => ({ ...prev, photo_url: data.data.image_url }));
+        const resolvedUrl = resolvePhotoUrl(data.data.image_url);
+        setStudent(prev => ({ ...prev, photo_url: resolvedUrl }));
+        // ── FIX: reset error + bump cache-buster so img re-fetches immediately ─
+        setImageLoadError(false);
+        setImageCacheBuster(`?t=${Date.now()}`);
         showToast('Profile picture updated successfully', 'success');
       } else {
         throw new Error(data.error || 'Upload failed');
       }
     } catch (error) {
-      showToast(error.message, 'error');
+      console.error('Image upload error:', error);
+      showToast(error.message || 'Failed to upload image', 'error');
     } finally {
       setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -563,6 +593,7 @@ export default function StudentProfile() {
     }
   }, [isAuthenticated]);
 
+  // ── Guard screens ──────────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -576,8 +607,7 @@ export default function StudentProfile() {
             href="/login" 
             className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Go to Login
-            <ChevronRight size={18} />
+            Go to Login <ChevronRight size={18} />
           </a>
         </div>
       </div>
@@ -609,27 +639,29 @@ export default function StudentProfile() {
     );
   }
 
+  // ── Derived value: show avatar image only when URL exists and hasn't errored ─
+  const showAvatarImage = !!student?.photo_url && !imageLoadError;
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-100">
       <style>{`
         @keyframes slide-in {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
+          from { transform: translateX(100%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
         }
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out;
-        }
+        .animate-slide-in { animation: slide-in 0.3s ease-out; }
       `}</style>
 
       <SessionExpiredModal isOpen={showSessionExpired} onLogout={handleLogout} />
+
       {toasts.map(t => (
-        <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts(prev => prev.filter(t2 => t2.id !== t.id))} />
+        <Toast
+          key={t.id}
+          message={t.message}
+          type={t.type}
+          onClose={() => setToasts(prev => prev.filter(t2 => t2.id !== t.id))}
+        />
       ))}
 
       <PasswordModal 
@@ -638,7 +670,6 @@ export default function StudentProfile() {
         onChangePassword={handleChangePassword}
       />
 
-      {/* Full Width Layout - No max-width constraint */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
@@ -646,17 +677,25 @@ export default function StudentProfile() {
           <p className="text-gray-600 mt-1">View and manage your personal information</p>
         </div>
 
-        {/* Profile Header - Full Width */}
+        {/* Profile Banner */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-8 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-12">
             <div className="flex flex-col md:flex-row items-center gap-8">
+              {/* Avatar */}
               <div className="relative">
                 <div className="w-32 h-32 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
-                  {student?.photo_url ? (
-                    <img 
-                      src={student.photo_url} 
+                  {showAvatarImage ? (
+                    <img
+                      // ── FIX: append cache-buster so browser re-fetches after
+                      // upload instead of showing the stale cached image.
+                      src={`${student.photo_url}${imageCacheBuster}`}
                       alt={student.full_name}
                       className="w-full h-full object-cover"
+                      // ── FIX: set imageLoadError flag instead of wiping
+                      // photo_url from state. This keeps the URL intact for
+                      // future retries (e.g. after a re-mount) while still
+                      // falling back to initials right now.
+                      onError={() => setImageLoadError(true)}
                     />
                   ) : (
                     <span className="text-4xl font-bold text-white">
@@ -669,11 +708,9 @@ export default function StudentProfile() {
                   disabled={uploadingImage}
                   className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
-                  {uploadingImage ? (
-                    <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                  ) : (
-                    <Camera className="w-4 h-4 text-blue-600" />
-                  )}
+                  {uploadingImage
+                    ? <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                    : <Camera className="w-4 h-4 text-blue-600" />}
                 </button>
                 <input
                   ref={fileInputRef}
@@ -683,6 +720,8 @@ export default function StudentProfile() {
                   className="hidden"
                 />
               </div>
+
+              {/* Name / class info */}
               <div className="text-center md:text-left text-white flex-1">
                 <h2 className="text-2xl md:text-3xl font-bold">{student?.full_name}</h2>
                 <p className="text-blue-100 mt-1">Admission Number: {student?.admission_no}</p>
@@ -703,6 +742,7 @@ export default function StudentProfile() {
                   </div>
                 </div>
               </div>
+
               <div>
                 <button
                   onClick={() => setShowPasswordModal(true)}
@@ -716,38 +756,15 @@ export default function StudentProfile() {
           </div>
         </div>
 
-        {/* Profile Content Grid - Full Width 3 Columns */}
+        {/* 3-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Column 1 - Personal & Contact */}
+
+          {/* ── Column 1: Personal & Contact ── */}
           <div className="space-y-8">
-            {/* Personal Information */}
             <InfoCard title="Personal Information" icon={User} color="blue">
-              <EditableField
-                label="First Name"
-                value={student?.first_name}
-                icon={User}
-                onSave={updateField}
-                fieldName="first_name"
-                required
-                editable={true}
-              />
-              <EditableField
-                label="Middle Name"
-                value={student?.middle_name}
-                icon={User}
-                onSave={updateField}
-                fieldName="middle_name"
-                editable={true}
-              />
-              <EditableField
-                label="Last Name"
-                value={student?.last_name}
-                icon={User}
-                onSave={updateField}
-                fieldName="last_name"
-                required
-                editable={true}
-              />
+              <EditableField label="First Name"   value={student?.first_name}  icon={User}     onSave={updateField} fieldName="first_name"  required editable />
+              <EditableField label="Middle Name"  value={student?.middle_name} icon={User}     onSave={updateField} fieldName="middle_name"         editable />
+              <EditableField label="Last Name"    value={student?.last_name}   icon={User}     onSave={updateField} fieldName="last_name"   required editable />
               <div className="py-3 border-b border-gray-100">
                 <div className="flex items-start gap-3">
                   <Calendar className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -775,61 +792,15 @@ export default function StudentProfile() {
                   </div>
                 </div>
               </div>
-              <EditableField
-                label="Religion"
-                value={student?.religion}
-                icon={Heart}
-                onSave={updateField}
-                fieldName="religion"
-                editable={true}
-              />
-              <EditableField
-                label="Blood Group"
-                value={student?.blood_group}
-                icon={Activity}
-                onSave={updateField}
-                fieldName="blood_group"
-                editable={true}
-              />
+              <EditableField label="Religion"    value={student?.religion}    icon={Heart}    onSave={updateField} fieldName="religion"    editable />
+              <EditableField label="Blood Group" value={student?.blood_group} icon={Activity} onSave={updateField} fieldName="blood_group" editable />
             </InfoCard>
 
-            {/* Contact Information - Editable */}
             <InfoCard title="Contact Information" icon={Mail} color="green">
-              <EditableField
-                label="Phone Number"
-                value={student?.phone}
-                icon={Phone}
-                onSave={updateField}
-                fieldName="phone"
-                type="tel"
-                editable={true}
-              />
-              <EditableField
-                label="Email Address"
-                value={student?.email}
-                icon={Mail}
-                onSave={updateField}
-                fieldName="email"
-                type="email"
-                editable={true}
-              />
-              <EditableField
-                label="Physical Address"
-                value={student?.address}
-                icon={Home}
-                onSave={updateField}
-                fieldName="address"
-                type="textarea"
-                editable={true}
-              />
-              <EditableField
-                label="City"
-                value={student?.city}
-                icon={MapPin}
-                onSave={updateField}
-                fieldName="city"
-                editable={true}
-              />
+              <EditableField label="Phone Number"    value={student?.phone}   icon={Phone} onSave={updateField} fieldName="phone"   type="tel"      editable />
+              <EditableField label="Email Address"   value={student?.email}   icon={Mail}  onSave={updateField} fieldName="email"   type="email"    editable />
+              <EditableField label="Physical Address" value={student?.address} icon={Home}  onSave={updateField} fieldName="address" type="textarea" editable />
+              <EditableField label="City"            value={student?.city}    icon={MapPin} onSave={updateField} fieldName="city"                   editable />
               <div className="py-3 border-b border-gray-100">
                 <div className="flex items-start gap-3">
                   <Globe className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -842,246 +813,103 @@ export default function StudentProfile() {
             </InfoCard>
           </div>
 
-          {/* Column 2 - Guardian & Medical */}
+          {/* ── Column 2: Guardian & Medical ── */}
           <div className="space-y-8">
-            {/* Guardian Information - Not Editable */}
             <InfoCard title="Guardian Information" icon={Users} color="purple">
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Guardian Name</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.guardian_name || 'Not provided'}</p>
+              {[
+                { label: 'Guardian Name',    value: student?.guardian_name,     icon: User  },
+                { label: 'Relation',         value: student?.guardian_relation,  icon: Users },
+                { label: 'Guardian Phone',   value: student?.guardian_phone,    icon: Phone },
+                { label: 'Guardian Email',   value: student?.guardian_email,    icon: Mail  },
+                { label: 'Guardian Address', value: student?.guardian_address,  icon: Home  },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="py-3 border-b border-gray-100 last:border-0">
+                  <div className="flex items-start gap-3">
+                    <Icon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+                      <p className="text-sm text-gray-900 mt-1">{value || 'Not provided'}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <Users className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Relation</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.guardian_relation || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Guardian Phone</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.guardian_phone || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <Mail className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Guardian Email</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.guardian_email || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="py-3">
-                <div className="flex items-start gap-3">
-                  <Home className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Guardian Address</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.guardian_address || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </InfoCard>
 
-            {/* Medical Information - Editable */}
             <InfoCard title="Medical Information" icon={Heart} color="pink">
-              <EditableField
-                label="Medical Conditions"
-                value={student?.medical_conditions}
-                icon={FileText}
-                onSave={updateField}
-                fieldName="medical_conditions"
-                type="textarea"
-                editable={true}
-              />
-              <EditableField
-                label="Allergies"
-                value={student?.allergies}
-                icon={AlertCircle}
-                onSave={updateField}
-                fieldName="allergies"
-                type="textarea"
-                editable={true}
-              />
-              <EditableField
-                label="Medication"
-                value={student?.medication}
-                icon={Activity}
-                onSave={updateField}
-                fieldName="medication"
-                type="textarea"
-                editable={true}
-              />
-              <EditableField
-                label="Emergency Contact"
-                value={student?.emergency_contact}
-                icon={Phone}
-                onSave={updateField}
-                fieldName="emergency_contact"
-                type="tel"
-                editable={true}
-              />
-              <EditableField
-                label="Emergency Contact Name"
-                value={student?.emergency_contact_name}
-                icon={User}
-                onSave={updateField}
-                fieldName="emergency_contact_name"
-                editable={true}
-              />
+              <EditableField label="Medical Conditions"    value={student?.medical_conditions}   icon={FileText}   onSave={updateField} fieldName="medical_conditions"   type="textarea" editable />
+              <EditableField label="Allergies"             value={student?.allergies}            icon={AlertCircle} onSave={updateField} fieldName="allergies"            type="textarea" editable />
+              <EditableField label="Medication"            value={student?.medication}           icon={Activity}   onSave={updateField} fieldName="medication"           type="textarea" editable />
+              <EditableField label="Emergency Contact"     value={student?.emergency_contact}    icon={Phone}      onSave={updateField} fieldName="emergency_contact"    type="tel"      editable />
+              <EditableField label="Emergency Contact Name" value={student?.emergency_contact_name} icon={User}   onSave={updateField} fieldName="emergency_contact_name"               editable />
             </InfoCard>
           </div>
 
-          {/* Column 3 - Parent & Account Information */}
+          {/* ── Column 3: Parents, Account, Academic ── */}
           <div className="space-y-8">
-            {/* Father's Information - Not Editable */}
             <InfoCard title="Father's Information" icon={User} color="teal">
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Full Name</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.father_name || 'Not provided'}</p>
+              {[
+                { label: 'Full Name',    value: student?.father_name,       icon: User     },
+                { label: 'Phone Number', value: student?.father_phone,      icon: Phone    },
+                { label: 'Email Address',value: student?.father_email,      icon: Mail     },
+                { label: 'Occupation',   value: student?.father_occupation, icon: Briefcase},
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="py-3 border-b border-gray-100 last:border-0">
+                  <div className="flex items-start gap-3">
+                    <Icon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+                      <p className="text-sm text-gray-900 mt-1">{value || 'Not provided'}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone Number</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.father_phone || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <Mail className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Address</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.father_email || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="py-3">
-                <div className="flex items-start gap-3">
-                  <Briefcase className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Occupation</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.father_occupation || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </InfoCard>
 
-            {/* Mother's Information - Not Editable */}
             <InfoCard title="Mother's Information" icon={User} color="orange">
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Full Name</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.mother_name || 'Not provided'}</p>
+              {[
+                { label: 'Full Name',    value: student?.mother_name,       icon: User     },
+                { label: 'Phone Number', value: student?.mother_phone,      icon: Phone    },
+                { label: 'Email Address',value: student?.mother_email,      icon: Mail     },
+                { label: 'Occupation',   value: student?.mother_occupation, icon: Briefcase},
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="py-3 border-b border-gray-100 last:border-0">
+                  <div className="flex items-start gap-3">
+                    <Icon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+                      <p className="text-sm text-gray-900 mt-1">{value || 'Not provided'}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone Number</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.mother_phone || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <Mail className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Address</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.mother_email || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="py-3">
-                <div className="flex items-start gap-3">
-                  <Briefcase className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Occupation</p>
-                    <p className="text-sm text-gray-900 mt-1">{student?.mother_occupation || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </InfoCard>
 
-            {/* Account Information - From User Table, Not Editable */}
             <InfoCard title="Account Information" icon={Shield} color="blue">
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Username</p>
-                    <p className="text-sm text-gray-900 mt-1">{userAccount?.username || user?.username || 'Not set'}</p>
+              {[
+                { label: 'Username',      value: userAccount?.username || user?.username },
+                { label: 'Account Email', value: userAccount?.email    || user?.email    },
+                { label: 'Account Phone', value: userAccount?.phone    || user?.phone    },
+              ].map(({ label, value }, i, arr) => (
+                <div key={label} className={`py-3 ${i < arr.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                  <div className="flex items-start gap-3">
+                    {label === 'Username' ? <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                      : label === 'Account Email' ? <Mail className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                      : <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />}
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+                      <p className="text-sm text-gray-900 mt-1">{value || 'Not set'}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <Mail className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Account Email</p>
-                    <p className="text-sm text-gray-900 mt-1">{userAccount?.email || user?.email || 'Not set'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="py-3 border-b border-gray-100">
-                <div className="flex items-start gap-3">
-                  <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Account Phone</p>
-                    <p className="text-sm text-gray-900 mt-1">{userAccount?.phone || user?.phone || 'Not set'}</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </InfoCard>
 
-            {/* Academic Status */}
             <InfoCard title="Academic Status" icon={BookOpen} color="green">
               <div className="grid grid-cols-2 gap-4">
-                <StatBadge 
-                  label="Admission Date" 
-                  value={formatDate(student?.admission_date)}
-                  icon={Calendar}
-                  color="blue"
-                />
-                <StatBadge 
-                  label="Admission Type" 
-                  value={student?.admission_type || 'Regular'}
-                  icon={FileText}
-                  color="green"
-                />
-                <StatBadge 
-                  label="Student Status" 
-                  value={student?.status || 'Active'}
-                  icon={Activity}
-                  color="purple"
-                />
-                <StatBadge 
-                  label="Student ID" 
-                  value={student?.student_uid?.slice(0, 8) || 'N/A'}
-                  icon={Award}
-                  color="orange"
-                />
+                <StatBadge label="Admission Date"  value={formatDate(student?.admission_date)}    icon={Calendar} color="blue"   />
+                <StatBadge label="Admission Type"  value={student?.admission_type || 'Regular'}   icon={FileText} color="green"  />
+                <StatBadge label="Student Status"  value={student?.status || 'Active'}            icon={Activity} color="purple" />
+                <StatBadge label="Student ID"      value={student?.student_uid?.slice(0, 8) || 'N/A'} icon={Award} color="orange" />
               </div>
             </InfoCard>
           </div>
