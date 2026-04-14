@@ -11,11 +11,7 @@ import {
   Loader2,
   LogOut,
   RefreshCw,
-  Settings,
   ChevronRight,
-  Phone,
-  Mail,
-  MapPin,
   BookOpen,
   CreditCard,
   CheckCircle,
@@ -24,32 +20,18 @@ import {
   TrendingDown,
   Award,
   Target,
-  Activity,
   FileText,
   Users,
   PieChart as PieChartIcon,
-  Eye,
-  Download,
-  Building,
-  Heart,
-  Shield,
-  Menu,
-  X
+  Shield
 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
 } from 'recharts';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -67,17 +49,17 @@ const Toast = ({ message, type, onClose }) => {
   }, [onClose]);
 
   const bgColor = {
-    success: 'bg-emerald-500',
-    error: 'bg-rose-500',
+    success: 'bg-blue-600',
+    error: 'bg-blue-700',
     info: 'bg-blue-500',
-    warning: 'bg-amber-500'
+    warning: 'bg-blue-400'
   };
 
   if (!isVisible) return null;
 
   return (
     <div className="fixed top-4 right-4 left-4 md:left-auto z-50 animate-slideIn">
-      <div className={`${bgColor[type]} text-white rounded-lg shadow-xl p-4 max-w-md mx-auto md:mx-0`}>
+      <div className={`${bgColor[type]} text-white border-l-4 border-white shadow-lg p-4 max-w-md mx-auto md:mx-0`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
             <p className="font-semibold capitalize text-sm md:text-base">{type}</p>
@@ -97,16 +79,16 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[100]">
+      <div className="bg-white shadow-lg max-w-md w-full mx-4">
         <div className="p-4 md:p-6">
           <div className="flex items-center mb-4">
-            <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-red-500 mr-3" />
+            <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-blue-600 mr-3" />
             <h3 className="text-lg md:text-xl font-semibold text-gray-900">Session Expired</h3>
           </div>
           <p className="text-sm md:text-base text-gray-600 mb-6">Your session has expired. Please login again to continue.</p>
           <div className="flex justify-end">
-            <button onClick={onLogout} className="px-4 py-2 md:px-6 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm md:text-base">
+            <button onClick={onLogout} className="px-4 py-2 md:px-6 md:py-2 bg-blue-600 text-white rounded-l hover:bg-blue-700 flex items-center gap-2 text-sm md:text-base">
               <LogOut className="h-4 w-4" />
               Logout
             </button>
@@ -118,22 +100,12 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
 };
 
 // Stat Card Component
-const StatCard = ({ title, value, icon: Icon, color, onClick, subtitle }) => {
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    purple: 'bg-purple-50 text-purple-600',
-    orange: 'bg-orange-50 text-orange-600',
-    red: 'bg-red-50 text-red-600',
-    cyan: 'bg-cyan-50 text-cyan-600',
-    amber: 'bg-amber-50 text-amber-600',
-    pink: 'bg-pink-50 text-pink-600'
-  };
-
+const StatCard = ({ title, value, icon: Icon, bgColor, onClick, subtitle }) => {
   return (
     <div 
       onClick={onClick}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 hover:shadow-md transition-all cursor-pointer group"
+      className="bg-white border-l-4 shadow-sm p-4 md:p-6 hover:shadow-md transition-all cursor-pointer"
+      style={{ borderLeftColor: bgColor === 'blue' ? '#2563EB' : bgColor === 'green' ? '#16A34A' : bgColor === 'red' ? '#DC2626' : bgColor === 'orange' ? '#EA580C' : '#2563EB' }}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -141,8 +113,8 @@ const StatCard = ({ title, value, icon: Icon, color, onClick, subtitle }) => {
           <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1 break-words">{value}</p>
           {subtitle && <p className="text-xs text-gray-500 mt-1 truncate">{subtitle}</p>}
         </div>
-        <div className={`p-2 md:p-3 rounded-lg ${colorClasses[color]} group-hover:scale-110 transition-transform shrink-0`}>
-          <Icon className="w-5 h-5 md:w-6 md:h-6" />
+        <div className="p-2 md:p-3 shrink-0" style={{ backgroundColor: bgColor === 'blue' ? '#DBEAFE' : bgColor === 'green' ? '#DCFCE7' : bgColor === 'red' ? '#FEE2E2' : bgColor === 'orange' ? '#FFEDD5' : '#DBEAFE' }}>
+          <Icon className="w-5 h-5 md:w-6 md:h-6" style={{ color: bgColor === 'blue' ? '#2563EB' : bgColor === 'green' ? '#16A34A' : bgColor === 'red' ? '#DC2626' : bgColor === 'orange' ? '#EA580C' : '#2563EB' }} />
         </div>
       </div>
     </div>
@@ -150,28 +122,12 @@ const StatCard = ({ title, value, icon: Icon, color, onClick, subtitle }) => {
 };
 
 // Info Card Component
-const InfoCard = ({ title, icon: Icon, color, children }) => {
-  const colorClasses = {
-    blue: 'border-blue-200',
-    green: 'border-green-200',
-    purple: 'border-purple-200',
-    orange: 'border-orange-200',
-    pink: 'border-pink-200'
-  };
-
-  const bgColorClasses = {
-    blue: 'bg-blue-50',
-    green: 'bg-green-50',
-    purple: 'bg-purple-50',
-    orange: 'bg-orange-50',
-    pink: 'bg-pink-50'
-  };
-
+const InfoCard = ({ title, icon: Icon, children }) => {
   return (
-    <div className={`bg-white rounded-xl shadow-sm border ${colorClasses[color]} p-4 md:p-6`}>
+    <div className="bg-white border-l-4 border-blue-600 shadow-sm p-4 md:p-6">
       <div className="flex items-center gap-2 mb-4">
-        <div className={`p-1.5 md:p-2 rounded-lg ${bgColorClasses[color]}`}>
-          <Icon className={`w-4 h-4 md:w-5 md:h-5 text-${color}-600`} />
+        <div className="p-1.5 md:p-2 bg-blue-50">
+          <Icon className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
         </div>
         <h3 className="text-base md:text-lg font-semibold text-gray-900">{title}</h3>
       </div>
@@ -207,7 +163,7 @@ const AttendanceItem = ({ date, status, subject }) => {
         <p className="text-sm font-medium text-gray-900 truncate">{subject}</p>
         <p className="text-xs text-gray-500 mt-0.5">{formatDate(date)}</p>
       </div>
-      <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusColors[status]} self-start sm:self-center`}>
+      <span className={`flex items-center gap-1 px-2 py-1 rounded-l text-xs font-medium ${statusColors[status]} self-start sm:self-center`}>
         {statusIcons[status]}
         {status}
       </span>
@@ -230,7 +186,7 @@ const DisciplineItem = ({ date, incident, points, status }) => {
       </div>
       <div className="text-left sm:text-right">
         <span className={`text-sm font-semibold ${points > 0 ? 'text-red-600' : 'text-green-600'}`}>
-          {points > 0 ? `+${points}` : points}
+          {points > 0 ? `-${points}` : `+${Math.abs(points)}`}
         </span>
         <p className="text-xs text-gray-400 mt-0.5">{status}</p>
       </div>
@@ -264,7 +220,7 @@ const FeeItem = ({ description, amount, dueDate, status }) => {
       </div>
       <div className="text-left sm:text-right">
         <p className="text-sm font-semibold text-gray-900">{formatCurrency(amount)}</p>
-        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusColors[status]}`}>
+        <span className={`inline-block px-2 py-0.5 rounded-l text-xs font-medium mt-1 ${statusColors[status]}`}>
           {status}
         </span>
       </div>
@@ -288,11 +244,11 @@ const PerformanceItem = ({ subject, score, grade, trend }) => {
       </div>
       <div className="flex items-center justify-between sm:justify-end gap-3">
         <span className="text-sm font-semibold text-gray-900">{score}%</span>
-        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${gradeColors[grade]}`}>
+        <span className={`px-2 py-0.5 rounded-l text-xs font-medium ${gradeColors[grade]}`}>
           {grade}
         </span>
-        {trend === 'up' && <TrendingUp className="w-4 h-4 text-green-500 shrink-0" />}
-        {trend === 'down' && <TrendingDown className="w-4 h-4 text-red-500 shrink-0" />}
+        {trend === 'up' && <TrendingUp className="w-4 h-4 text-green-600 shrink-0" />}
+        {trend === 'down' && <TrendingDown className="w-4 h-4 text-red-600 shrink-0" />}
       </div>
     </div>
   );
@@ -314,15 +270,9 @@ const StudentDashboard = () => {
   const [showSessionExpired, setShowSessionExpired] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [greeting, setGreeting] = useState('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Fee category colors - EXACTLY as requested
-  const FEE_COLORS = {
-    Paid: '#10B981',     // green
-    Pending: '#EF4444',  // red
-    Overdue: '#EF4444',  // red
-    Partial: '#8B5CF6'   // purple
-  };
+  // Colors for pie chart - meaningful colors
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 
   // Update greeting and time
   useEffect(() => {
@@ -374,106 +324,126 @@ const StudentDashboard = () => {
   };
 
   // Fetch Student Dashboard Data from Student Portal Endpoints
-  const fetchDashboardData = async () => {
-    if (!isAuthenticated) {
+const fetchDashboardData = async () => {
+  if (!isAuthenticated) {
+    setLoading(false);
+    return;
+  }
+  
+  setLoading(true);
+  try {
+    // 1. Fetch student profile
+    const profileRes = await fetch(`${API_BASE_URL}/api/student/profile/`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (profileRes.status === 401) { 
+      handleApiError({ status: 401 }); 
       setLoading(false);
-      return;
+      return; 
     }
     
-    setLoading(true);
-    try {
-      // 1. Fetch student profile
-      const profileRes = await fetch(`${API_BASE_URL}/api/student/profile/`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (profileRes.status === 401) { 
-        handleApiError({ status: 401 }); 
-        setLoading(false);
-        return; 
+    if (profileRes.ok) {
+      const profileData = await profileRes.json();
+      if (profileData.success) {
+        setStudentProfile(profileData.data);
       }
-      
-      if (profileRes.ok) {
-        const profileData = await profileRes.json();
-        if (profileData.success) {
-          setStudentProfile(profileData.data);
-        }
-      }
-      
-      // 2. Fetch fee summary
-      const feeRes = await fetch(`${API_BASE_URL}/api/student/dashboard/fees/summary/`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (feeRes.ok) {
-        const feeData = await feeRes.json();
-        if (feeData.success) {
-          setFeeSummary(feeData.data);
-          
-          // Calculate fee breakdown for chart (keeps same logic as before)
-          if (feeData.data) {
-            const breakdown = [
-              { name: 'Paid', value: parseFloat(feeData.data.total_paid) || 0 },
-              { name: 'Pending', value: parseFloat(feeData.data.total_fees) - (parseFloat(feeData.data.total_paid) || 0) },
-              { name: 'Overdue', value: parseFloat(feeData.data.overdue_amount) || 0 }
-            ];
-            setFeeBreakdown(breakdown.filter(item => item.value > 0));
-          }
-        }
-      }
-      
-      // 3. Fetch recent attendance
-      const attendanceRes = await fetch(`${API_BASE_URL}/api/student/attendance/recent/?limit=5`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (attendanceRes.ok) {
-        const attendanceData = await attendanceRes.json();
-        if (attendanceData.success) {
-          setRecentAttendance(attendanceData.data || []);
-          
-          // Calculate attendance summary
-          const summary = { present: 0, absent: 0, late: 0, total: attendanceData.data?.length || 0 };
-          (attendanceData.data || []).forEach(record => {
-            if (record.attendance_status === 'Present') summary.present++;
-            else if (record.attendance_status === 'Absent') summary.absent++;
-            else if (record.attendance_status === 'Late') summary.late++;
-          });
-          setAttendanceSummary(summary);
-        }
-      }
-      
-      // 4. Fetch discipline records
-      const disciplineRes = await fetch(`${API_BASE_URL}/api/student/discipline/`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (disciplineRes.ok) {
-        const disciplineData = await disciplineRes.json();
-        if (disciplineData.success) {
-          setDisciplineRecords(disciplineData.data || []);
-        }
-      }
-      
-      // 5. Fetch academic performance
-      const performanceRes = await fetch(`${API_BASE_URL}/api/student/performance/current/`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (performanceRes.ok) {
-        const performanceData = await performanceRes.json();
-        if (performanceData.success) {
-          setAcademicPerformance(performanceData.data || []);
-        }
-      }
-      
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      showToast('Failed to load dashboard data', 'error');
-    } finally {
-      setLoading(false);
     }
-  };
+    
+    // 2. Fetch fee summary
+    const feeRes = await fetch(`${API_BASE_URL}/api/student/dashboard/fees/summary/`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (feeRes.ok) {
+      const feeData = await feeRes.json();
+      if (feeData.success) {
+        setFeeSummary(feeData.data);
+        
+        // Calculate fee breakdown for chart - FIXED VERSION
+        if (feeData.data) {
+          const totalFees = parseFloat(feeData.data.total_fees) || 0;
+          const totalPaid = parseFloat(feeData.data.total_paid) || 0;
+          const overdueAmount = parseFloat(feeData.data.overdue_amount) || 0;
+          const pendingAmount = totalFees - totalPaid;
+          
+          const breakdown = [];
+          
+          // Only show fee data if there are actual fees
+          if (totalFees > 0) {
+            breakdown.push({ name: 'Paid', value: totalPaid });
+            
+            if (pendingAmount > 0) {
+              breakdown.push({ name: 'Pending', value: pendingAmount });
+            }
+            
+            if (overdueAmount > 0) {
+              breakdown.push({ name: 'Overdue', value: overdueAmount });
+            }
+          }
+          
+          // If no fee data available, show placeholder
+          if (breakdown.length === 0) {
+            breakdown.push({ name: 'No Fee Data', value: 1 });
+          }
+          
+          setFeeBreakdown(breakdown);
+        }
+      }
+    }
+    
+    // 3. Fetch recent attendance
+    const attendanceRes = await fetch(`${API_BASE_URL}/api/student/attendance/recent/?limit=5`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (attendanceRes.ok) {
+      const attendanceData = await attendanceRes.json();
+      if (attendanceData.success) {
+        setRecentAttendance(attendanceData.data || []);
+        
+        // Calculate attendance summary
+        const summary = { present: 0, absent: 0, late: 0, total: attendanceData.data?.length || 0 };
+        (attendanceData.data || []).forEach(record => {
+          if (record.attendance_status === 'Present') summary.present++;
+          else if (record.attendance_status === 'Absent') summary.absent++;
+          else if (record.attendance_status === 'Late') summary.late++;
+        });
+        setAttendanceSummary(summary);
+      }
+    }
+    
+    // 4. Fetch discipline records
+    const disciplineRes = await fetch(`${API_BASE_URL}/api/student/discipline/`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (disciplineRes.ok) {
+      const disciplineData = await disciplineRes.json();
+      if (disciplineData.success) {
+        setDisciplineRecords(disciplineData.data || []);
+      }
+    }
+    
+    // 5. Fetch academic performance
+    const performanceRes = await fetch(`${API_BASE_URL}/api/student/performance/current/`, {
+      headers: getAuthHeaders()
+    });
+    
+    if (performanceRes.ok) {
+      const performanceData = await performanceRes.json();
+      if (performanceData.success) {
+        setAcademicPerformance(performanceData.data || []);
+      }
+    }
+    
+  } catch (err) {
+    console.error('Error fetching dashboard data:', err);
+    showToast('Failed to load dashboard data', 'error');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Refresh data
   const refreshData = () => {
@@ -499,10 +469,10 @@ const StudentDashboard = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 md:h-16 md:w-16 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="h-12 w-12 md:h-16 md:w-16 text-blue-600 mx-auto mb-4" />
           <h2 className="text-xl md:text-2xl font-bold">Authentication Required</h2>
           <p className="text-gray-600 mt-2 text-sm md:text-base">Please login to access your dashboard</p>
-          <a href="/login" className="mt-4 inline-block px-4 py-2 md:px-6 md:py-3 bg-blue-600 text-white rounded-lg text-sm md:text-base">Go to Login</a>
+          <a href="/login" className="mt-4 inline-block px-4 py-2 md:px-6 md:py-3 bg-blue-600 text-white rounded-l text-sm md:text-base">Go to Login</a>
         </div>
       </div>
     );
@@ -512,7 +482,7 @@ const StudentDashboard = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 md:h-16 md:w-16 text-yellow-500 mx-auto mb-4" />
+          <AlertCircle className="h-12 w-12 md:h-16 md:w-16 text-blue-600 mx-auto mb-4" />
           <h2 className="text-xl md:text-2xl font-bold">Access Denied</h2>
           <p className="text-gray-600 mt-2 text-sm md:text-base">This portal is only for students.</p>
           <p className="text-gray-500 text-xs md:text-sm mt-1">Please use your student account to access this page.</p>
@@ -536,15 +506,33 @@ const StudentDashboard = () => {
         }
         .animate-fadeIn { animation: fadeIn 0.5s ease-out; }
         
+        * {
+          overflow-x: hidden;
+          max-width: 100%;
+        }
+        
+        body {
+          overflow-x: hidden;
+          width: 100%;
+        }
+        
         @media (max-width: 640px) {
           .recharts-wrapper {
             margin: 0 auto;
+            width: 100% !important;
+          }
+          .recharts-legend-wrapper {
+            position: relative !important;
+            width: 100% !important;
+            bottom: 0 !important;
+            margin-top: 16px;
           }
           .recharts-default-legend {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
             gap: 8px;
+            padding: 0;
           }
         }
       `}</style>
@@ -554,33 +542,51 @@ const StudentDashboard = () => {
         <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts(prev => prev.filter(t2 => t2.id !== t.id))} />
       ))}
 
-      <div className="p-3 md:p-6 animate-fadeIn">
-        {/* Header Section */}
-        <div className="mb-4 md:mb-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 md:mb-4">
-            <div>
-              <h1 className="text-xl md:text-3xl font-bold text-gray-900">
-                {greeting}, {studentProfile?.first_name || user?.first_name || 'Student'}!
-              </h1>
-              <p className="text-sm md:text-base text-blue-600 mt-1">
-                Welcome to your Student Dashboard
-              </p>
+      <div className="p-3 py-9 md:p-6 animate-fadeIn w-full max-w-full overflow-x-hidden">
+        {/* Unified Header Card */}
+        <div className="bg-white border-l-4 border-blue-600 shadow-sm p-4 md:p-6 mb-4 md:mb-8 w-full">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h1 className="text-xl md:text-3xl font-bold text-gray-900">
+                    {greeting}, {studentProfile?.first_name || user?.first_name || 'Student'}!
+                  </h1>
+                  <p className="text-sm md:text-base text-blue-600 mt-1">
+                    Welcome to your Student Dashboard
+                  </p>
+                </div>
+                <button 
+                  onClick={refreshData}
+                  className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-200 rounded-l hover:bg-gray-50 flex items-center gap-1 md:gap-2 transition-colors text-sm md:text-base shrink-0"
+                >
+                  <RefreshCw className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+              </div>
               <div className="flex flex-wrap items-center gap-2 mt-2 text-xs md:text-sm text-gray-500">
                 <Calendar className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="text-xs md:text-sm">{currentTime.toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span>{currentTime.toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                 <Clock className="w-3 h-3 md:w-4 md:h-4 ml-1" />
-                <span className="text-xs md:text-sm">{formatTime(currentTime)}</span>
+                <span>{formatTime(currentTime)}</span>
               </div>
             </div>
-            <div className="flex gap-2 md:gap-3 mt-3 md:mt-0">
-              <button 
-                onClick={refreshData}
-                className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1 md:gap-2 transition-colors text-sm md:text-base"
-              >
-                <RefreshCw className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
-            </div>
+            
+            {/* Student Profile Mini Card */}
+            {studentProfile && (
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-l">
+                <div className="h-10 w-10 md:h-12 md:w-12 bg-blue-600 flex items-center justify-center">
+                  <span className="text-base md:text-lg font-bold text-white">
+                    {studentProfile.first_name?.[0]}{studentProfile.last_name?.[0]}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{studentProfile.first_name} {studentProfile.last_name}</p>
+                  <p className="text-xs text-gray-500 truncate">Adm: {studentProfile.admission_no}</p>
+                  <p className="text-xs text-blue-600 truncate">Class {studentProfile.current_class_name || 'N/A'}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -590,74 +596,39 @@ const StudentDashboard = () => {
           </div>
         ) : (
           <>
-            {/* Student Profile Card - Mobile Optimized */}
-            {studentProfile && (
-              <div className="bg-blue-600 border border-red-500 rounded-xl shadow-lg p-4 md:p-6 mb-4 md:mb-8 text-white">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <div className="h-14 w-14 md:h-20 md:w-20 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                      <span className="text-xl md:text-3xl font-bold text-white">
-                        {studentProfile.first_name?.[0]}{studentProfile.last_name?.[0]}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h2 className="text-lg md:text-2xl font-bold truncate">{studentProfile.first_name} {studentProfile.last_name}</h2>
-                      <p className="text-blue-100 text-xs md:text-sm mt-0.5 truncate">Admission: {studentProfile.admission_no}</p>
-                      <div className="flex flex-wrap gap-2 md:gap-4 mt-1 md:mt-2 text-xs md:text-sm">
-                        <span className="flex items-center gap-1">
-                          <GraduationCap className="w-3 h-3 md:w-4 md:h-4" />
-                          <span className="truncate">Class {studentProfile.current_class_name || 'N/A'}</span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="w-3 h-3 md:w-4 md:h-4" />
-                          <span className="truncate">Stream: {studentProfile.stream || 'N/A'}</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="shrink-0">
-                    <div className="rounded-lg p-2 md:p-3 text-center">
-                      <p className="text-xs md:text-sm">Academic Status</p>
-                      <p className="text-base md:text-xl font-bold">{studentProfile.status || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Stats Cards Row - Responsive Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-8">
+            {/* Stats Cards Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-8">
               <StatCard
                 title="Total Fees"
                 value={formatCurrency(feeSummary?.total_fees || 0)}
                 icon={DollarSign}
-                color="blue"
+                bgColor="blue"
                 subtitle={`Paid: ${formatCurrency(feeSummary?.total_paid || 0)}`}
               />
               <StatCard
                 title="Balance"
                 value={formatCurrency(feeSummary?.balance || 0)}
                 icon={CreditCard}
-                color={feeSummary?.balance > 0 ? 'orange' : 'green'}
-                subtitle={feeSummary?.balance > 0 ? 'Pending' : 'Fully Paid'}
+                bgColor={feeSummary?.balance > 0 ? 'orange' : 'green'}
+                subtitle={feeSummary?.balance > 0 ? 'Pending Payment' : 'Fully Paid'}
               />
               <StatCard
                 title="Attendance"
                 value={`${attendanceSummary.total > 0 ? Math.round((attendanceSummary.present / attendanceSummary.total) * 100) : 0}%`}
                 icon={Calendar}
-                color="purple"
-                subtitle={`${attendanceSummary.present}/${attendanceSummary.total} days`}
+                bgColor="blue"
+                subtitle={`${attendanceSummary.present}/${attendanceSummary.total} days present`}
               />
               <StatCard
-                title="Discipline"
+                title="Discipline Points"
                 value={disciplineRecords.reduce((sum, d) => sum + (d.points_awarded || 0), 0)}
                 icon={Award}
-                color="amber"
-                subtitle="Total points"
+                bgColor={disciplineRecords.reduce((sum, d) => sum + (d.points_awarded || 0), 0) > 0 ? 'red' : 'green'}
+                subtitle={disciplineRecords.reduce((sum, d) => sum + (d.points_awarded || 0), 0) > 0 ? 'Demerit points' : 'Clean record'}
               />
             </div>
 
-            {/* Main Content Grid - Responsive */}
+            {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8">
               {/* Fee Breakdown Chart - UPDATED COLORS */}
               <InfoCard title="Fee Breakdown" icon={PieChartIcon} color="blue">
@@ -686,17 +657,37 @@ const StudentDashboard = () => {
                         <Legend wrapperStyle={{ fontSize: window.innerWidth < 640 ? '10px' : '12px' }} />
                       </PieChart>
                     </ResponsiveContainer>
+                  <div style={{ width: '100%', height: 300, display: 'flex', justifyContent: 'center' }}>
+                    <PieChart width={400} height={300}>
+                      <Pie
+                        data={feeBreakdown}
+                        cx={200}
+                        cy={150}
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {feeBreakdown.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => formatCurrency(value)} />
+                      <Legend />
+                    </PieChart>
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <PieChartIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <PieChartIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                     <p className="text-gray-500 text-sm">No fee data available</p>
                   </div>
                 )}
               </InfoCard>
+              
 
               {/* Academic Performance */}
-              <InfoCard title="Academic Performance" icon={Target} color="green">
+              <InfoCard title="Academic Performance" icon={Target}>
                 {academicPerformance.length > 0 ? (
                   <div className="max-h-64 overflow-y-auto">
                     {academicPerformance.map((subject, idx) => (
@@ -718,10 +709,9 @@ const StudentDashboard = () => {
               </InfoCard>
             </div>
 
-            {/* Recent Attendance and Discipline - Responsive */}
+            {/* Recent Attendance and Discipline */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8">
-              {/* Recent Attendance */}
-              <InfoCard title="Recent Attendance" icon={Calendar} color="purple">
+              <InfoCard title="Recent Attendance" icon={Calendar}>
                 {recentAttendance.length > 0 ? (
                   <div className="max-h-64 overflow-y-auto">
                     {recentAttendance.map((record, idx) => (
@@ -741,17 +731,16 @@ const StudentDashboard = () => {
                 )}
               </InfoCard>
 
-              {/* Discipline Records */}
-              <InfoCard title="Discipline Records" icon={Shield} color="orange">
+              <InfoCard title="Discipline Records" icon={Shield}>
                 {disciplineRecords.length > 0 ? (
                   <div className="max-h-64 overflow-y-auto">
                     {disciplineRecords.map((record, idx) => (
                       <DisciplineItem
                         key={idx}
                         date={record.incident_date}
-                        incident={record.description}
-                        points={record.points_awarded}
-                        status={record.status}
+                        incident={record.description || record.incident_type || 'Disciplinary action'}
+                        points={record.points_awarded || 0}
+                        status={record.status || 'Recorded'}
                       />
                     ))}
                   </div>
@@ -764,23 +753,26 @@ const StudentDashboard = () => {
               </InfoCard>
             </div>
 
-            {/* Recent Fee Transactions - Responsive */}
+            {/* Recent Fee Transactions */}
             {feeSummary?.recent_transactions?.length > 0 && (
               <div className="mb-4 md:mb-8">
-                <InfoCard title="Recent Fee Transactions" icon={DollarSign} color="cyan">
+                <InfoCard title="Recent Fee Transactions" icon={DollarSign}>
                   <div className="max-h-64 overflow-y-auto">
                     {feeSummary.recent_transactions.slice(0, 5).map((transaction, idx) => (
                       <FeeItem
                         key={idx}
-                        description={transaction.description || 'Fee Payment'}
+                        description={transaction.description || transaction.payment_for || 'Fee Payment'}
                         amount={transaction.amount}
-                        dueDate={transaction.payment_date}
-                        status={transaction.status}
+                        dueDate={transaction.payment_date || transaction.date}
+                        status={transaction.status || (transaction.amount > 0 ? 'Paid' : 'Pending')}
                       />
                     ))}
                   </div>
                   {feeSummary.recent_transactions.length > 5 && (
-                    <button className="mt-4 text-xs md:text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                    <button 
+                      onClick={() => navigateTo('/student/fees')}
+                      className="mt-4 text-xs md:text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
                       View All Transactions <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
                     </button>
                   )}
@@ -788,34 +780,34 @@ const StudentDashboard = () => {
               </div>
             )}
 
-            {/* Quick Links - Mobile Optimized Grid */}
+            {/* Quick Links */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
               <button 
-                onClick={() => navigateTo('/#/StudentPortal/Finance')}
-                className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
+                onClick={() => navigateTo('/student/fees')}
+                className="p-3 md:p-4 bg-white shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
               >
                 <DollarSign className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs md:text-sm font-medium text-gray-700">Fee Details</p>
               </button>
               <button 
                 onClick={() => navigateTo('/student/attendance')}
-                className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
+                className="p-3 md:p-4 bg-white shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
               >
-                <Calendar className="w-5 h-5 md:w-8 md:h-8 text-green-600 mx-auto mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
+                <Calendar className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs md:text-sm font-medium text-gray-700">Attendance</p>
               </button>
               <button 
-                onClick={() => navigateTo('/#/StudentPortal/Grades')}
-                className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
+                onClick={() => navigateTo('/student/results')}
+                className="p-3 md:p-4 bg-white shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
               >
-                <BookOpen className="w-5 h-5 md:w-8 md:h-8 text-purple-600 mx-auto mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
+                <BookOpen className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs md:text-sm font-medium text-gray-700">Results</p>
               </button>
               <button 
-                onClick={() => navigateTo('/#/StudentPortal/Profile')}
-                className="p-3 md:p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
+                onClick={() => navigateTo('/student/profile')}
+                className="p-3 md:p-4 bg-white shadow-sm border border-gray-200 hover:shadow-md transition-all text-center group"
               >
-                <User className="w-5 h-5 md:w-8 md:h-8 text-orange-600 mx-auto mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
+                <User className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2 group-hover:scale-110 transition-transform" />
                 <p className="text-xs md:text-sm font-medium text-gray-700">Profile</p>
               </button>
             </div>
