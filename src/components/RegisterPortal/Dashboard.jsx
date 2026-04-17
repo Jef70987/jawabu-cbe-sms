@@ -335,7 +335,7 @@ function Dashboard() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
           <p className="text-gray-600 mb-4">Please login to access the registrar dashboard</p>
           <a 
-            href="/login" 
+            href="/logout" 
             className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 inline-block"
           >
             Go to Login
@@ -367,16 +367,16 @@ function Dashboard() {
     <div className="min-h-screen bg-gray-50 font-sans overflow-x-hidden">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-6 border-b border-gray-200">
+        <header className="flex flex-col md:flex-row md:items-center bg-green-700 p-4 justify-between mb-8 pb-6 border-b border-gray-200">
           <div className="flex items-center space-x-4 mb-4 md:mb-0">
             <div className="w-14 h-14 rounded-full border-2 border-blue-500 bg-blue-100 flex items-center justify-center">
               <i className="fas fa-user-tie text-blue-600 text-2xl"></i>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Registrar Dashboard</h1>
-              <p className="text-gray-600">Academics & Admissions Management</p>
+              <h1 className="text-2xl font-bold text-white">Registrar Dashboard</h1>
+              <p className="text-wgite">Academics & Admissions Management</p>
               {user && (
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-white mt-1">
                   Logged in as: <span className="font-medium">{user.first_name} {user.last_name}</span> ({user.role})
                 </p>
               )}
@@ -390,8 +390,8 @@ function Dashboard() {
           </div>
           
           <div className="flex flex-col md:items-end space-y-2">
-            <p className="text-gray-700 font-medium">{currentDate}</p>
-            <p className="text-gray-600">{currentTime}</p>
+            <p className="text-white font-medium">{currentDate}</p>
+            <p className="text-white">{currentTime}</p>
             <button 
               onClick={fetchAllData}
               className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center"

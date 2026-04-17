@@ -67,7 +67,7 @@ function App() {
                        </ProtectedRoute>
                        }/>
 
-                    <Route path="*" element={<Login/>}/>
+                    <Route path="*" element={<Logout/>}/>
                 </Routes>
             </Router>
         </AuthProvider>

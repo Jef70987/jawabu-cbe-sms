@@ -1,505 +1,356 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import {
-  Save,
-  X,
-  Filter,
-  Users,
-  BookOpen,
-  Clipboard,
-  Star,
-  MessageCircle,
-  CheckCircle,
-  AlertCircle,
-  Loader,
-  ChevronDown,
-  Download,
-  Printer,
-  Plus,
-  Edit3,
-  Trash2,
-  Award,
-  Heart,
-  Target,
-  Layers
-} from 'react-feather';
+import { 
+  Save, X, Search, Filter, ChevronLeft, ChevronRight,
+  AlertCircle, CheckCircle, Loader2, RefreshCw, Download,
+  FileText, TrendingUp, Users, BookOpen
+} from 'lucide-react';
+import { useAuth } from '../Authentication/AuthContext';
+import * as XLSX from 'xlsx';
 
-const MarksEntrySheet = () => {
-  const [loading, setLoading] = useState(true);
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
-  const [selectedAssessment, setSelectedAssessment] = useState('');
-  const [selectedStrand, setSelectedStrand] = useState('');
-  const [selectedSubStrand, setSelectedSubStrand] = useState('');
-  const [students, setStudents] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [assessments, setAssessments] = useState([]);
-  const [strands, setStrands] = useState([]);
-  const [subStrands, setSubStrands] = useState([]);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-  // CBC Rating Scale
-  const ratingScale = [
-    { level: 'EE', subLevel: 'EE1', points: 8, label: 'Exceptional', range: '90-100%', color: 'bg-green-100 text-green-800 border-green-200' },
-    { level: 'EE', subLevel: 'EE2', points: 7, label: 'Very Good', range: '75-89%', color: 'bg-green-50 text-green-700 border-green-200' },
-    { level: 'ME', subLevel: 'ME1', points: 6, label: 'Good', range: '58-74%', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-    { level: 'ME', subLevel: 'ME2', points: 5, label: 'Fair', range: '41-57%', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-    { level: 'AE', subLevel: 'AE1', points: 4, label: 'Needs Improvement', range: '31-40%', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-    { level: 'AE', subLevel: 'AE2', points: 3, label: 'Below Average', range: '21-30%', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-    { level: 'BE', subLevel: 'BE1', points: 2, label: 'Well Below Average', range: '11-20%', color: 'bg-red-100 text-red-800 border-red-200' },
-    { level: 'BE', subLevel: 'BE2', points: 1, label: 'Minimal', range: '1-10%', color: 'bg-red-50 text-red-700 border-red-200' },
-  ];
+const Notification = ({ type, message, onClose }) => {
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    fetchInitialData();
-  }, []);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      setTimeout(() => onClose?.(), 300);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
 
-  const fetchInitialData = async () => {
+  if (!visible) return null;
+
+  const styles = {
+    success: 'bg-green-50 border-green-300 text-green-800',
+    error: 'bg-red-50 border-red-300 text-red-800',
+    warning: 'bg-yellow-50 border-yellow-300 text-yellow-800',
+    info: 'bg-blue-50 border-blue-300 text-blue-800'
+  };
+
+  return (
+    <div className={`fixed top-4 right-4 z-50 max-w-md w-full ${styles[type]} border p-4 shadow-lg`}>
+      <div className="flex items-start justify-between">
+        <p className="text-sm">{message}</p>
+        <button onClick={() => { setVisible(false); setTimeout(onClose, 300); }} className="ml-4">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+function MarkEntryGrid() {
+  const { getAuthHeaders, isAuthenticated } = useAuth();
+  const [students, setStudents] = useState([]);
+  const [marks, setMarks] = useState({});
+  const [assessment, setAssessment] = useState(null);
+  const [assessments, setAssessments] = useState([]);
+  const [selectedAssessment, setSelectedAssessment] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [scaleType, setScaleType] = useState('percentage'); // percentage or 4-point
+
+  const addNotification = (type, message) => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, type, message }]);
+  };
+
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      addNotification('error', 'Please login to access mark entry');
+      return;
+    }
+    fetchData();
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (selectedAssessment) {
+      fetchStudentsAndMarks();
+    }
+  }, [selectedAssessment]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
     try {
-      setLoading(true);
-      // Mock data - replace with API calls
-      setTimeout(() => {
-        setClasses([
-          { id: 1, name: 'Grade 7 East', stream: 'East' },
-          { id: 2, name: 'Grade 7 West', stream: 'West' },
-          { id: 3, name: 'Grade 8 East', stream: 'East' }
-        ]);
-
-        setSubjects([
-          { id: 1, name: 'Integrated Science', code: 'SCI' },
-          { id: 2, name: 'Agriculture', code: 'AGR' },
-          { id: 3, name: 'Mathematics', code: 'MATH' }
-        ]);
-
+      // Fetch assessments
+      const assessmentsRes = await fetch(`${API_BASE_URL}/api/teacher/assessments/`, {
+        headers: getAuthHeaders()
+      });
+      const assessmentsData = await assessmentsRes.json();
+      if (assessmentsData.success) {
+        setAssessments(assessmentsData.data);
+      } else {
         setAssessments([
-          { id: 1, name: 'Opener Examination', type: 'opener', weight: 20 },
-          { id: 2, name: 'Midterm Assessment', type: 'midterm', weight: 30 },
-          { id: 3, name: 'Endterm Examination', type: 'endterm', weight: 50 }
+          { id: 1, title: 'Mathematics CAT 1', subject: 'Mathematics', class: 'Grade 7A', type: 'sba', total_marks: 50, date: '2024-03-15' },
+          { id: 2, title: 'Science Project', subject: 'Integrated Science', class: 'Grade 7A', type: 'project', total_marks: 100, date: '2024-03-10' },
+          { id: 3, title: 'End of Term Exam', subject: 'Mathematics', class: 'Grade 7A', type: 'summative', total_marks: 100, date: '2024-04-01' }
         ]);
-
-        setStrands([
-          { id: 1, name: 'Human Body Systems', code: 'SCI-HBS' },
-          { id: 2, name: 'Plants and Animals', code: 'SCI-PA' },
-          { id: 3, name: 'Environment', code: 'SCI-ENV' }
-        ]);
-
-        setSubStrands([
-          { id: 1, name: 'The Digestive System', code: 'SCI-HBS-DIG' },
-          { id: 2, name: 'The Respiratory System', code: 'SCI-HBS-RES' },
-          { id: 3, name: 'The Circulatory System', code: 'SCI-HBS-CIR' }
-        ]);
-
-        setLoading(false);
-      }, 1000);
-    } catch (err) {
-      setError('Failed to load data');
-      setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      addNotification('error', 'Failed to load data');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const fetchStudents = async (classId) => {
-    // Mock API call
-    setTimeout(() => {
-      setStudents([
-        { id: 1, admissionNo: '2024/001', name: 'John Kamau', marks: { rating: 'ME1', comment: 'Good progress' } },
-        { id: 2, admissionNo: '2024/002', name: 'Mary Wanjiku', marks: { rating: 'EE2', comment: 'Excellent work' } },
-        { id: 3, admissionNo: '2024/003', name: 'Peter Omondi', marks: { rating: 'AE1', comment: 'Needs more practice' } },
-        { id: 4, admissionNo: '2024/004', name: 'Sarah Akinyi', marks: { rating: 'ME2', comment: 'Satisfactory' } },
-        { id: 5, admissionNo: '2024/005', name: 'David Mwangi', marks: { rating: 'BE1', comment: 'Requires remediation' } },
-        { id: 6, admissionNo: '2024/006', name: 'Grace Mutheu', marks: { rating: 'EE1', comment: 'Outstanding' } },
-        { id: 7, admissionNo: '2024/007', name: 'James Kariuki', marks: { rating: 'ME1', comment: 'Making progress' } },
-        { id: 8, admissionNo: '2024/008', name: 'Lucy Akinyi', marks: { rating: 'AE2', comment: 'Below average' } },
-      ]);
-    }, 500);
+  const fetchStudentsAndMarks = async () => {
+    const assessmentData = assessments.find(a => a.id == selectedAssessment);
+    setAssessment(assessmentData);
+    
+    // Mock students data
+    setStudents([
+      { id: 1, admission_no: 'ADM001', first_name: 'John', last_name: 'Mwangi' },
+      { id: 2, admission_no: 'ADM002', first_name: 'Mary', last_name: 'Wanjiku' },
+      { id: 3, admission_no: 'ADM003', first_name: 'James', last_name: 'Otieno' },
+      { id: 4, admission_no: 'ADM004', first_name: 'Sarah', last_name: 'Achieng' },
+      { id: 5, admission_no: 'ADM005', first_name: 'David', last_name: 'Kiprop' }
+    ]);
+    
+    // Mock existing marks
+    setMarks({
+      1: { score: 78, remarks: 'Good work' },
+      2: { score: 85, remarks: 'Excellent' },
+      3: { score: 62, remarks: 'Satisfactory' },
+      4: { score: 45, remarks: 'Needs improvement' },
+      5: { score: 91, remarks: 'Outstanding' }
+    });
   };
 
-  const handleClassChange = (e) => {
-    setSelectedClass(e.target.value);
-    if (e.target.value) {
-      fetchStudents(e.target.value);
-    }
+  const updateMark = (studentId, field, value) => {
+    setMarks(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        [field]: field === 'score' ? parseInt(value) || 0 : value
+      }
+    }));
   };
 
-  const handleRatingChange = (studentId, rating) => {
-    setStudents(prev => prev.map(student => 
-      student.id === studentId 
-        ? { ...student, marks: { ...student.marks, rating } }
-        : student
-    ));
-  };
-
-  const handleCommentChange = (studentId, comment) => {
-    setStudents(prev => prev.map(student => 
-      student.id === studentId 
-        ? { ...student, marks: { ...student.marks, comment } }
-        : student
-    ));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const saveAllMarks = async () => {
     setSaving(true);
-    setError(null);
-    setSuccess(null);
-
     try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setSuccess('Marks saved successfully');
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError('Failed to save marks');
-      setTimeout(() => setError(null), 3000);
+      const response = await fetch(`${API_BASE_URL}/api/teacher/marks/bulk/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          assessment_id: selectedAssessment,
+          marks: marks
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'All marks saved successfully');
+      } else {
+        addNotification('error', data.error || 'Failed to save marks');
+      }
+    } catch (error) {
+      console.error('Error saving marks:', error);
+      addNotification('error', 'Failed to save marks');
     } finally {
       setSaving(false);
     }
   };
 
-  const getRatingColor = (rating) => {
-    const found = ratingScale.find(r => r.subLevel === rating);
-    return found ? found.color : 'bg-gray-100 text-gray-800 border-gray-200';
+  const exportToExcel = () => {
+    const exportData = students.map(student => ({
+      'Admission No': student.admission_no,
+      'Student Name': `${student.first_name} ${student.last_name}`,
+      'Score': marks[student.id]?.score || '',
+      'Remarks': marks[student.id]?.remarks || '',
+      'Assessment': assessment?.title,
+      'Total Marks': assessment?.total_marks,
+      'Percentage': marks[student.id]?.score ? ((marks[student.id].score / assessment?.total_marks) * 100).toFixed(1) : ''
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Marks');
+    XLSX.writeFile(workbook, `marks_${assessment?.title}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    addNotification('success', 'Export completed');
   };
 
-  const getRatingStats = () => {
-    const stats = {};
-    ratingScale.forEach(r => {
-      stats[r.subLevel] = students.filter(s => s.marks.rating === r.subLevel).length;
-    });
-    return stats;
+  const getScoreColor = (score, total) => {
+    const percentage = (score / total) * 100;
+    if (percentage >= 80) return 'bg-green-100 text-green-800';
+    if (percentage >= 60) return 'bg-blue-100 text-blue-800';
+    if (percentage >= 40) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
   };
 
-  if (loading) {
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <Loader className="w-12 h-12 text-blue-600 animate-spin" />
-          <p className="mt-4 text-gray-600">Loading marks entry sheet...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+          <p className="text-gray-600 mb-4">Please login to access mark entry</p>
+          <a href="/login" className="px-6 py-3 bg-blue-600 text-white font-medium border border-blue-700 inline-block hover:bg-blue-700">
+            Go to Login
+          </a>
         </div>
       </div>
     );
   }
 
-  const ratingStats = getRatingStats();
-
   return (
-    <div className="min-h-screen bg-white w-full">
-      {/* Full-width container */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header */}
-        <div className="w-full mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Clipboard className="w-8 h-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Marks Entry Sheet</h1>
-                <p className="text-gray-600 mt-1">Enter student marks using CBC 8-point scale</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                <Download className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                <Printer className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      {notifications.map(notification => (
+        <Notification key={notification.id} type={notification.type} message={notification.message} onClose={() => removeNotification(notification.id)} />
+      ))}
+
+      {/* Header */}
+      <div className="bg-green-700 p-6">
+        <div className=" mx-auto">
+          <h1 className="text-2xl font-bold text-white">Mark Entry Grid</h1>
+          <p className="text-blue-100 mt-1">Enter and manage student assessment scores</p>
         </div>
+      </div>
 
-        {/* Rating Scale Legend */}
-        <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm mb-6">
-          <div className="p-4 sm:p-6 border-b border-gray-100">
-            <div className="flex items-center space-x-2">
-              <Award className="w-5 h-5 text-blue-600" />
-              <h2 className="font-semibold text-gray-900">CBC Rating Scale (8-Point)</h2>
-            </div>
-          </div>
-          <div className="p-4 sm:p-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {ratingScale.map((rating) => (
-                <div key={rating.subLevel} className={`px-3 py-2 rounded-lg border ${rating.color}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm">{rating.subLevel}</span>
-                    <span className="text-xs opacity-75">{rating.points} pts</span>
-                  </div>
-                  <p className="text-xs font-medium mt-1">{rating.label}</p>
-                  <p className="text-xs opacity-75 mt-0.5">{rating.range}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Selection Filters */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm">
-            <div className="p-4 sm:p-6 border-b border-gray-100">
-              <div className="flex items-center space-x-2">
-                <Filter className="w-5 h-5 text-gray-600" />
-                <h2 className="font-semibold text-gray-900">Filter Assessment Criteria</h2>
-              </div>
-            </div>
-            <div className="p-4 sm:p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Class *
-                  </label>
-                  <select
-                    value={selectedClass}
-                    onChange={handleClassChange}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                    required
-                  >
-                    <option value="">Select Class</option>
-                    {classes.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Subject *
-                  </label>
-                  <select
-                    value={selectedSubject}
-                    onChange={(e) => setSelectedSubject(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                    required
-                  >
-                    <option value="">Select Subject</option>
-                    {subjects.map(s => (
-                      <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Assessment *
-                  </label>
-                  <select
-                    value={selectedAssessment}
-                    onChange={(e) => setSelectedAssessment(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                    required
-                  >
-                    <option value="">Select Assessment</option>
-                    {assessments.map(a => (
-                      <option key={a.id} value={a.id}>{a.name} ({a.weight}%)</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Strand *
-                  </label>
-                  <select
-                    value={selectedStrand}
-                    onChange={(e) => setSelectedStrand(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                    required
-                  >
-                    <option value="">Select Strand</option>
-                    {strands.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub-strand *
-                  </label>
-                  <select
-                    value={selectedSubStrand}
-                    onChange={(e) => setSelectedSubStrand(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                    required
-                  >
-                    <option value="">Select Sub-strand</option>
-                    {subStrands.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Marks Entry Table */}
-          {selectedClass && students.length > 0 && (
-            <>
-              {/* Quick Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-                {ratingScale.map(rating => (
-                  <div key={rating.subLevel} className={`px-3 py-2 rounded-lg border ${rating.color} text-center`}>
-                    <div className="font-bold text-sm">{rating.subLevel}</div>
-                    <div className="text-xl font-semibold">{ratingStats[rating.subLevel] || 0}</div>
-                    <div className="text-xs opacity-75">students</div>
-                  </div>
+      <div className="mx-auto p-6">
+        {/* Assessment Selector */}
+        <div className="bg-white border border-gray-300 p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Select Assessment</label>
+              <select 
+                value={selectedAssessment}
+                onChange={(e) => setSelectedAssessment(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+              >
+                <option value="">Choose Assessment</option>
+                {assessments.map(a => (
+                  <option key={a.id} value={a.id}>{a.title} - {a.class} ({a.date})</option>
                 ))}
-              </div>
-
-              <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Admission No.
-                        </th>
-                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Student Name
-                        </th>
-                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Rating (8-Point Scale)
-                        </th>
-                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Teacher Comment
-                        </th>
-                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Points
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {students.map((student) => {
-                        const ratingInfo = ratingScale.find(r => r.subLevel === student.marks.rating);
-                        return (
-                          <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {student.admissionNo}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              <div className="flex items-center">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                  <Users className="w-4 h-4 text-blue-600" />
-                                </div>
-                                {student.name}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <select
-                                value={student.marks.rating}
-                                onChange={(e) => handleRatingChange(student.id, e.target.value)}
-                                className={`px-3 py-1.5 rounded-lg border text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${getRatingColor(student.marks.rating)}`}
-                              >
-                                {ratingScale.map((rating) => (
-                                  <option key={rating.subLevel} value={rating.subLevel}>
-                                    {rating.subLevel} - {rating.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center space-x-2">
-                                <MessageCircle className="w-4 h-4 text-gray-400" />
-                                <input
-                                  type="text"
-                                  value={student.marks.comment}
-                                  onChange={(e) => handleCommentChange(student.id, e.target.value)}
-                                  placeholder="Add comment..."
-                                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                                />
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {ratingInfo?.points || '-'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Table Footer */}
-                <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <div className="flex items-center space-x-4">
-                      <span>Total Students: <strong>{students.length}</strong></span>
-                      <span>|</span>
-                      <span>Average Points: <strong>
-                        {(students.reduce((acc, s) => {
-                          const rating = ratingScale.find(r => r.subLevel === s.marks.rating);
-                          return acc + (rating?.points || 0);
-                        }, 0) / students.length).toFixed(1)}
-                      </strong></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors flex items-center gap-2"
-            >
-              <X className="w-4 h-4" />
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving || !selectedClass || !selectedSubject || !selectedAssessment}
-              className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-            >
-              {saving ? (
-                <>
-                  <Loader className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Save Marks
-                </>
-              )}
-            </button>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Scale Type</label>
+              <select 
+                value={scaleType}
+                onChange={(e) => setScaleType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+              >
+                <option value="percentage">Percentage (0-100%)</option>
+                <option value="4-point">4-Point Scale (1-4)</option>
+                <option value="8-point">8-Point Scale (1-8)</option>
+              </select>
+            </div>
+            <div className="flex items-end gap-2">
+              <button onClick={exportToExcel} className="px-4 py-2 bg-green-600 text-white text-sm font-medium border border-green-700 hover:bg-green-700">
+                <Download className="h-4 w-4 inline mr-2" />
+                Export
+              </button>
+              <button onClick={saveAllMarks} disabled={saving || !selectedAssessment} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700 disabled:opacity-50">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> : <Save className="h-4 w-4 inline mr-2" />}
+                Save All
+              </button>
+            </div>
           </div>
-        </form>
+        </div>
 
-        {/* Status Messages */}
-        {error && (
-          <div className="fixed bottom-6 right-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up z-50 max-w-md">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <span className="text-sm font-medium break-words">{error}</span>
+        {/* Assessment Info */}
+        {assessment && (
+          <div className="bg-blue-50 border border-blue-300 p-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-blue-600">Assessment Title</p>
+                <p className="font-bold text-blue-900">{assessment.title}</p>
+              </div>
+              <div>
+                <p className="text-xs text-blue-600">Subject</p>
+                <p className="font-bold text-blue-900">{assessment.subject}</p>
+              </div>
+              <div>
+                <p className="text-xs text-blue-600">Total Marks</p>
+                <p className="font-bold text-blue-900">{assessment.total_marks}</p>
+              </div>
+              <div>
+                <p className="text-xs text-blue-600">Date</p>
+                <p className="font-bold text-blue-900">{assessment.date}</p>
+              </div>
+            </div>
           </div>
         )}
-        
-        {success && (
-          <div className="fixed bottom-6 right-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up z-50 max-w-md">
-            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-            <span className="text-sm font-medium break-words">{success}</span>
+
+        {/* Marks Grid */}
+        {selectedAssessment && students.length > 0 && (
+          <div className="bg-white border border-gray-300 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">#</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Admission No</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Student Name</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Score / {assessment?.total_marks}</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Percentage</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student, idx) => {
+                    const studentMark = marks[student.id] || { score: '', remarks: '' };
+                    const percentage = studentMark.score ? ((studentMark.score / assessment?.total_marks) * 100).toFixed(1) : '';
+                    return (
+                      <tr key={student.id} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-3 text-center">{idx + 1}</td>
+                        <td className="border border-gray-300 px-4 py-3 font-mono text-xs">{student.admission_no}</td>
+                        <td className="border border-gray-300 px-4 py-3 font-medium">{student.first_name} {student.last_name}</td>
+                        <td className="border border-gray-300 px-4 py-3">
+                          <input 
+                            type="number" 
+                            value={studentMark.score || ''}
+                            onChange={(e) => updateMark(student.id, 'score', e.target.value)}
+                            className={`w-24 px-2 py-1 text-center border ${studentMark.score ? getScoreColor(studentMark.score, assessment?.total_marks) : 'border-gray-300'} text-sm bg-white`}
+                            min="0"
+                            max={assessment?.total_marks}
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 text-center font-bold">
+                          {percentage}%
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3">
+                          <input 
+                            type="text" 
+                            value={studentMark.remarks || ''}
+                            onChange={(e) => updateMark(student.id, 'remarks', e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-300 text-sm bg-white"
+                            placeholder="Add remark..."
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {selectedAssessment && students.length === 0 && (
+          <div className="bg-white border border-gray-300 p-12 text-center text-gray-400">
+            No students found for this assessment
+          </div>
+        )}
+
+        {!selectedAssessment && (
+          <div className="bg-white border border-gray-300 p-12 text-center text-gray-400">
+            Select an assessment to begin marking
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes slide-up {
-          from {
-            opacity: 0;
-            transform: translateY(1rem);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
-};
+}
 
-export default MarksEntrySheet;
+export default MarkEntryGrid;

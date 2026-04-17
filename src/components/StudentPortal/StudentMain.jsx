@@ -6,6 +6,8 @@ import Logout from "../Authentication/Logout";
 import StudentFeeManagement from "./Fees";
 import StudentProfile from "./Profile";
 import Academic from "./Academic";
+import Grades from "./Grades";
+import Chatbot from "./Chatbot";
 
 const Student = () => {
     return(
@@ -29,8 +31,9 @@ const Student = () => {
                     <Route path="/Finance" element={<StudentFeeManagement/>}/>
                     <Route path="/Profile" element={<StudentProfile/>}/>
                     <Route path="/Academic" element={<Academic/>}/>
+                    <Route path="/Results" element={<Grades/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
-                   
+                    <Route path="/chat" element={<Chatbot/>}/>
                 </Routes>
                
             </div>

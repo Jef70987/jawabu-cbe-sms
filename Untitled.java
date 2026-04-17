@@ -280,8 +280,7 @@ const StudentDashboard = () => {
   const [greeting, setGreeting] = useState('');
 
   // Colors for pie chart
-  const COLORS = ['#108529','#d42424', '#F59E0B', '#1636d6'];
-
+  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 
   // Update greeting and time
   useEffect(() => {
@@ -579,7 +578,7 @@ const StudentDashboard = () => {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8 border-t border-green-600 pt-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8">
               {/* Fee Breakdown Chart */}
               <InfoCard title="Fee Breakdown" icon={PieChartIcon}>
                 {feeBreakdown.length > 0 && feeBreakdown[0]?.name !== 'No Fee Data' ? (

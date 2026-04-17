@@ -15,6 +15,7 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import LogoutIcon from '@mui/icons-material/Logout';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import { BotIcon } from 'lucide-react';
 
 const StudentSidebarData = [
   
@@ -23,11 +24,11 @@ const StudentSidebarData = [
     icon: <DashboardIcon />,
     link: "/StudentPortal/Dashboard"
   },
-  {
-    title: "Academic",
-    icon: <SchoolIcon sx={{fontSize:30}}/>,
-    link: "/StudentPortal/Academic"
-  },
+  // {
+  //   title: "Academic",
+  //   icon: <SchoolIcon sx={{fontSize:30}}/>,
+  //   link: "/StudentPortal/Academic"
+  // },
 
   // {
   //   title: "Learning",
@@ -55,6 +56,11 @@ const StudentSidebarData = [
     icon: <MonetizationOnIcon />,
     link: "/StudentPortal/Finance"
   },
+  {
+    title: "Report Card",
+    icon: <AssignmentIcon />,
+    link: "/StudentPortal/Results"
+  },
 
   // {
   //   title: "Notices",
@@ -76,6 +82,11 @@ const StudentSidebarData = [
   //   icon: <HelpIcon sx={{fontSize:30}}/>,
   //   link: "/StudentPortal/Help&Support"
   // },
+  {
+    title: "Analytics & Chat Nasi",
+    icon: <BotIcon sx={{fontSize:30}}/>,
+    link: "/StudentPortal/chat"
+  },
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:"red", fontSize:30}}/>,

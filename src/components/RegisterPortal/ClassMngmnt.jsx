@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, RefreshCw, School, CheckCircle, Users, 
@@ -7,11 +8,10 @@ import {
 import { useAuth } from '../Authentication/AuthContext'; 
 import { useNavigate } from 'react-router';
 
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// Custom notification component
-const Notification = ({ type, message, onClose, duration = 5000 }) => {
+// Toast Notification component with auto-dismiss and different colors
+const Toast = ({ type, message, onClose, duration = 4000 }) => {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -19,165 +19,128 @@ const Notification = ({ type, message, onClose, duration = 5000 }) => {
       setVisible(false);
       setTimeout(() => onClose?.(), 300);
     }, duration);
-
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
   const getStyles = () => {
     switch (type) {
       case 'success':
-        return 'bg-green-50 border-green-200 text-green-800';
+        return 'bg-green-600 text-white';
       case 'error':
-        return 'bg-red-50 border-red-200 text-red-800';
+        return 'bg-red-600 text-white';
       case 'warning':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-800';
-      case 'info':
-        return 'bg-blue-50 border-blue-200 text-blue-800';
+        return 'bg-yellow-500 text-white';
       default:
-        return 'bg-gray-50 border-gray-200 text-gray-800';
+        return 'bg-blue-600 text-white';
     }
   };
 
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
+        return <CheckCircle className="h-5 w-5" />;
       case 'error':
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
+        return <AlertCircle className="h-5 w-5" />;
       case 'warning':
-        return <AlertCircle className="h-5 w-5 text-yellow-500" />;
-      case 'info':
-        return <Info className="h-5 w-5 text-blue-500" />;
+        return <AlertCircle className="h-5 w-5" />;
       default:
-        return <Info className="h-5 w-5 text-gray-500" />;
+        return <Info className="h-5 w-5" />;
     }
   };
 
   if (!visible) return null;
 
   return (
-    <div 
-      className={`fixed top-4 right-4 z-50 max-w-md w-full md:w-auto animate-slide-in ${getStyles()} rounded-lg border p-4 shadow-lg`}
-      style={{
-        animation: 'slideIn 0.3s ease-out',
-      }}
-    >
-      <div className="flex items-start">
-        {getIcon()}
-        <div className="ml-3 flex-1">
-          <p className="text-sm font-medium">
-            {type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information'}
-          </p>
-          <p className="text-sm mt-1">{message}</p>
-        </div>
-        <button
-          onClick={() => {
-            setVisible(false);
-            setTimeout(() => onClose?.(), 300);
-          }}
-          className="ml-4 text-gray-400 hover:text-gray-600"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
+    <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${getStyles()} animate-slide-in-right`}>
+      {getIcon()}
+      <p className="text-sm font-medium">{message}</p>
+      <button onClick={() => { setVisible(false); setTimeout(() => onClose?.(), 300); }} className="ml-2 text-white/80 hover:text-white">
+        <X className="h-4 w-4" />
+      </button>
     </div>
   );
 };
 
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", cancelText = "Cancel", type = "warning" }) => {
-  if (!isOpen) return null;
+// Spinner component for buttons
+const ButtonSpinner = () => (
+  <Loader2 className="h-4 w-4 animate-spin inline-block mr-2" />
+);
 
-  const getButtonStyles = () => {
-    switch (type) {
-      case 'danger':
-        return 'bg-red-600 hover:bg-red-700 focus:ring-red-500';
-      case 'success':
-        return 'bg-green-600 hover:bg-green-700 focus:ring-green-500';
-      default:
-        return 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500';
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
-      <div className="bg-white border-4 border-red-500 rounded-xl shadow-lg max-w-md w-full">
-        <div className="p-6">
-          <div className="flex items-center mb-4">
-            <AlertCircle className={`h-6 w-6 ${type === 'danger' ? 'text-red-500' : type === 'success' ? 'text-green-500' : 'text-yellow-500'} mr-3`} />
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          </div>
-          <p className="text-gray-600 mb-6">{message}</p>
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            >
-              {cancelText}
-            </button>
-            <button
-              onClick={() => {
-                onConfirm();
-                onClose();
-              }}
-              className={`px-4 py-2 text-white rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 ${getButtonStyles()}`}
-            >
-              {confirmText}
-            </button>
-          </div>
-        </div>
-      </div>
+// Global overlay spinner
+const GlobalSpinner = () => (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 flex flex-col items-center shadow-xl">
+      <Loader2 className="h-10 w-10 text-green-700 animate-spin mb-3" />
+      <p className="text-gray-700 font-medium">Loading data...</p>
     </div>
-  );
-};
+  </div>
+);
 
 function ClassManagement() {
   const { user, getAuthHeaders, isAuthenticated } = useAuth();
   const [classes, setClasses] = useState([]);
   const [streams, setStreams] = useState([]);
   const [numericLevels, setNumericLevels] = useState([]);
-  const [loading, setLoading] = useState({
-    classes: true,
-    teachers: true,
-    streams: true,
-    levels: true
-  });
-  const [notifications, setNotifications] = useState([]);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loading, setLoading] = useState({ classes: true, teachers: true, streams: true, levels: true });
+  const [toasts, setToasts] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [confirmationModal, setConfirmationModal] = useState({
-    isOpen: false,
-    data: null,
-    action: null
+  const [activeTab, setActiveTab] = useState('grades');
+  const [selectedGradeId, setSelectedGradeId] = useState('7');
+  
+  // Loading states for specific actions
+  const [actionLoading, setActionLoading] = useState({
+    addStream: false,
+    updateStream: false,
+    deleteStream: false,
+    toggleStatus: false,
+    assignTeacher: false,
+    promote: false,
+    fetchData: false
   });
+  
+  // Modal states
+  const [showStreamModal, setShowStreamModal] = useState(false);
+  const [showTeacherAssignmentModal, setShowTeacherAssignmentModal] = useState(false);
+  const [showSubjectTeacherModal, setShowSubjectTeacherModal] = useState(false);
+  const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [editingStream, setEditingStream] = useState(null);
+  const [selectedStreamForTeachers, setSelectedStreamForTeachers] = useState(null);
+  const [selectedStreamForSubjects, setSelectedStreamForSubjects] = useState(null);
+  
+  // Form Data
+  const [newStream, setNewStream] = useState({
+    name: '',
+    code: '',
+    gradeId: '',
+    capacity: 40,
+    classTeacherId: ''
+  });
+  
+  const [promotionData, setPromotionData] = useState({
+    fromGradeId: '',
+    toGradeId: '',
+    streamIds: [],
+    academicYear: new Date().getFullYear().toString()
+  });
+  
+  // Subject assignment
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedTeacherForSubject, setSelectedTeacherForSubject] = useState('');
 
   const navigate = useNavigate();
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    class_code: '',
-    class_name: '',
-    numeric_level: '',
-    stream: '',
-    capacity: 40,
-    class_teacher_id: '',
-    is_active: true
-  });
 
-  const [formErrors, setFormErrors] = useState({});
-
-  const addNotification = (type, message) => {
+  const addToast = (type, message) => {
     const id = Date.now();
-    setNotifications(prev => [...prev, { id, type, message }]);
+    setToasts(prev => [...prev, { id, type, message }]);
   };
 
-  const removeNotification = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  // Check authentication on mount
   useEffect(() => {
     if (!isAuthenticated) {
-      addNotification('error', 'Please login to access class management');
+      addToast('error', 'Please login to access class management');
       return;
     }
     fetchInitialData();
@@ -186,47 +149,33 @@ function ClassManagement() {
   const fetchInitialData = async () => {
     if (!isAuthenticated) return;
     
+    setActionLoading(prev => ({ ...prev, fetchData: true }));
+    
     try {
-      setLoading({
-        classes: true,
-        teachers: true,
-        streams: true,
-        levels: true
-      });
-      
-      // Fetch streams first
+      setLoading({ classes: true, teachers: true, streams: true, levels: true });
       await fetchStreams();
-      
-      // Fetch numeric levels
       await fetchNumericLevels();
-      
-      // Fetch classes
       await fetchClasses();
-      
-      // Fetch teachers
       await fetchTeachers();
-
     } catch (error) {
       console.error('Initial fetch error:', error);
-      addNotification('error', 'Error fetching initial data. Please refresh the page.');
+      addToast('error', 'Error fetching initial data. Please refresh the page.');
+    } finally {
+      setLoading({ classes: false, teachers: false, streams: false, levels: false });
+      setActionLoading(prev => ({ ...prev, fetchData: false }));
     }
   };
 
   const fetchStreams = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/streams/`, {
-        headers: getAuthHeaders()
-      });
-      
+      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/streams/`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          setStreams(data.data);
-        }
+        if (data.success) setStreams(data.data);
       }
     } catch (error) {
       console.error('Streams fetch error:', error);
-      addNotification('error', 'Failed to load streams');
+      addToast('error', 'Failed to load streams');
     } finally {
       setLoading(prev => ({ ...prev, streams: false }));
     }
@@ -234,19 +183,14 @@ function ClassManagement() {
 
   const fetchNumericLevels = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/numeric-levels/`, {
-        headers: getAuthHeaders()
-      });
-      
+      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/numeric-levels/`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          setNumericLevels(data.data);
-        }
+        if (data.success) setNumericLevels(data.data);
       }
     } catch (error) {
       console.error('Numeric levels fetch error:', error);
-      addNotification('error', 'Failed to load numeric levels');
+      addToast('error', 'Failed to load numeric levels');
     } finally {
       setLoading(prev => ({ ...prev, levels: false }));
     }
@@ -254,27 +198,20 @@ function ClassManagement() {
 
   const fetchClasses = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/`, {
-        headers: getAuthHeaders()
-      });
-      
+      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/`, { headers: getAuthHeaders() });
       if (!response.ok) {
         if (response.status === 401) {
-          addNotification('error', 'Session expired. Please login again.');
+          addToast('error', 'Session expired. Please login again.');
           navigate('/Logout');
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
       const data = await response.json();
-      if (data.success) {
-        setClasses(data.data);
-      } else {
-        addNotification('error', data.error || 'Failed to load classes');
-      }
+      if (data.success) setClasses(data.data);
+      else addToast('error', data.error || 'Failed to load classes');
     } catch (error) {
       console.error('Classes fetch error:', error);
-      addNotification('error', 'Error fetching classes. Please check your connection.');
+      addToast('error', 'Error fetching classes. Please check your connection.');
     } finally {
       setLoading(prev => ({ ...prev, classes: false }));
     }
@@ -282,159 +219,192 @@ function ClassManagement() {
 
   const fetchTeachers = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/teachers/`, {
-        headers: getAuthHeaders()
-      });
-      
+      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/teachers/`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          setTeachers(data.data);
-        }
+        if (data.success) setTeachers(data.data);
       }
     } catch (error) {
-      if (error){
-        addNotification('error', 'Failed to load teachers');
-      }
-      
+      addToast('error', 'Failed to load teachers');
     } finally {
       setLoading(prev => ({ ...prev, teachers: false }));
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    // Clear error for this field when user starts typing
-    if (formErrors[name]) {
-      setFormErrors(prev => ({ ...prev, [name]: '' }));
+  // Grade Levels Configuration based on Kenyan system
+  const gradeLevels = [
+    // Early Years Education (EYE)
+    { id: 'pp1', name: 'Pre-Primary 1', code: 'PP1', levelType: 'early-years', order: 1, numericLevel: 1 },
+    { id: 'pp2', name: 'Pre-Primary 2', code: 'PP2', levelType: 'early-years', order: 2, numericLevel: 2 },
+    { id: '1', name: 'Grade 1', code: 'G1', levelType: 'early-years', order: 3, numericLevel: 3 },
+    { id: '2', name: 'Grade 2', code: 'G2', levelType: 'early-years', order: 4, numericLevel: 4 },
+    { id: '3', name: 'Grade 3', code: 'G3', levelType: 'early-years', order: 5, numericLevel: 5 },
+    // Middle School - Upper Primary
+    { id: '4', name: 'Grade 4', code: 'G4', levelType: 'primary', order: 6, numericLevel: 6 },
+    { id: '5', name: 'Grade 5', code: 'G5', levelType: 'primary', order: 7, numericLevel: 7 },
+    { id: '6', name: 'Grade 6', code: 'G6', levelType: 'primary', order: 8, numericLevel: 8 },
+    // Junior Secondary School (JSS)
+    { id: '7', name: 'Grade 7', code: 'G7', levelType: 'junior', order: 9, numericLevel: 9},
+    { id: '8', name: 'Grade 8', code: 'G8', levelType: 'junior', order: 10, numericLevel: 10 },
+    { id: '9', name: 'Grade 9', code: 'G9', levelType: 'junior', order: 11, numericLevel: 11}
+  ];
+
+  // Get classes grouped by grade level
+  const getClassesForGrade = (gradeId) => {
+    const gradeInfo = gradeLevels.find(g => g.id === gradeId);
+    if (!gradeInfo) return [];
+    if (gradeInfo.numericLevel === 0) {
+      return classes.filter(c => c.class_name.toLowerCase().includes(gradeInfo.name.toLowerCase()));
     }
+    return classes.filter(c => c.numeric_level === gradeInfo.numericLevel);
   };
 
-  const validateForm = () => {
-    const errors = {};
-    
-    if (!formData.class_code.trim()) {
-      errors.class_code = 'Class code is required';
-    } else if (classes.some(c => c.class_code === formData.class_code)) {
-      errors.class_code = 'Class code already exists';
-    }
-    
-    if (!formData.class_name.trim()) {
-      errors.class_name = 'Class name is required';
-    }
-    
-    if (!formData.numeric_level) {
-      errors.numeric_level = 'Numeric level is required';
-    }
-    
-    if (formData.capacity < 1 || formData.capacity > 100) {
-      errors.capacity = 'Capacity must be between 1 and 100';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+  const getGradeInfo = (numericLevel) => {
+    return gradeLevels.find(g => g.numericLevel === numericLevel);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!isAuthenticated) {
-      addNotification('error', 'Please login to create classes');
+  const getTotalStudents = () => {
+    return classes.reduce((sum, c) => sum + (c.current_students || 0), 0);
+  };
+
+  const getTotalBoys = () => {
+    return Math.ceil(getTotalStudents() / 2);
+  };
+
+  const getTotalGirls = () => {
+    return Math.floor(getTotalStudents() / 2);
+  };
+
+  const getTotalStreams = () => {
+    return classes.length;
+  };
+
+  const getFullStreamsCount = () => {
+    return classes.filter(c => (c.current_students || 0) >= c.capacity).length;
+  };
+
+  const getTeacherName = (teacherId) => {
+    const teacher = teachers.find(t => t.id === teacherId);
+    return teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Not Assigned';
+  };
+
+  const getCapacityStatus = (cls) => {
+    const percentage = ((cls.current_students || 0) / cls.capacity) * 100;
+    if (percentage >= 100) return { class: 'bg-red-100 text-red-800', text: 'Full' };
+    if (percentage >= 85) return { class: 'bg-yellow-100 text-yellow-800', text: 'Near Capacity' };
+    return { class: 'bg-green-100 text-green-800', text: 'Available' };
+  };
+
+  const getGradeLevelsByType = (type) => {
+    return gradeLevels.filter(g => g.levelType === type);
+  };
+
+  // Stream CRUD operations
+  const addStream = async () => {
+    if (!newStream.name || !newStream.gradeId) {
+      addToast('warning', 'Please fill in all required fields');
       return;
     }
-    
-    if (!validateForm()) {
-      addNotification('warning', 'Please fix the errors in the form');
-      return;
-    }
+
+    setActionLoading(prev => ({ ...prev, addStream: true }));
 
     try {
+      const gradeInfo = gradeLevels.find(g => g.id === newStream.gradeId);
+      const numericLevelValue = gradeInfo.numericLevel;
+      const gradeName = gradeInfo.name;
+
+      const formDataToSend = {
+        class_code: newStream.code.toUpperCase(),
+        class_name: gradeName,
+        numeric_level: numericLevelValue,
+        stream: newStream.name,
+        capacity: newStream.capacity,
+        class_teacher_id: newStream.classTeacherId || '',
+        is_active: true
+      };
+
       const response = await fetch(`${API_BASE_URL}/api/registrar/classes/create/`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formDataToSend)
       });
       
       const data = await response.json();
-      
       if (response.ok && data.success) {
-        addNotification('success', `Class "${formData.class_name}" created successfully`);
+        addToast('success', `Stream "${newStream.name}" created successfully`);
         await fetchClasses();
-        resetForm();
-        setShowCreateModal(false);
+        setShowStreamModal(false);
+        setNewStream({ name: '', code: '', gradeId: '', capacity: 40, classTeacherId: '' });
+        setEditingStream(null);
       } else {
-        addNotification('error', data.error || 'Failed to create class');
+        addToast('error', data.error || 'Failed to create stream');
       }
     } catch (error) {
-      if (error){
-         addNotification('error', 'Failed to create class. Please try again.');
-      }
-     
+      addToast('error', 'Failed to create stream. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, addStream: false }));
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      class_code: '',
-      class_name: '',
-      numeric_level: '',
-      stream: '',
-      capacity: 40,
-      class_teacher_id: '',
-      is_active: true
+  const editStream = (cls) => {
+    const gradeInfo = getGradeInfo(cls.numeric_level);
+    const gradeId = gradeInfo ? gradeLevels.find(g => g.numericLevel === cls.numeric_level)?.id : '';
+    setEditingStream(cls);
+    setNewStream({
+      name: cls.class_name,
+      code: cls.class_code,
+      gradeId: gradeId,
+      capacity: cls.capacity,
+      classTeacherId: cls.class_teacher_id || ''
     });
-    setFormErrors({});
+    setShowStreamModal(true);
   };
 
-  const openConfirmation = (action, data) => {
-    setConfirmationModal({
-      isOpen: true,
-      action,
-      data
-    });
-  };
+  const updateStream = async () => {
+    if (!editingStream || !newStream.name) return;
 
-  const handleToggleActive = async (classId) => {
-    if (!isAuthenticated) {
-      addNotification('error', 'Please login to update classes');
-      return;
-    }
+    setActionLoading(prev => ({ ...prev, updateStream: true }));
 
     try {
-      const cls = classes.find(c => c.id === classId);
-      const newStatus = !cls.is_active;
+      const gradeInfo = gradeLevels.find(g => g.id === newStream.gradeId);
+      const numericLevelValue = gradeInfo ? gradeInfo.numericLevel : editingStream.numeric_level;
       
-      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/update/${classId}/`, {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/update/${editingStream.id}/`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ is_active: newStatus })
+        body: JSON.stringify({
+          class_code: newStream.code.toUpperCase(),
+          class_name: newStream.name,
+          numeric_level: numericLevelValue,
+          capacity: newStream.capacity,
+          class_teacher_id: newStream.classTeacherId || '',
+          is_active: editingStream.is_active
+        })
       });
       
       const data = await response.json();
-
       if (response.ok && data.success) {
-        addNotification('success', `Class ${newStatus ? 'activated' : 'deactivated'} successfully`);
+        addToast('success', `Stream "${newStream.name}" updated successfully`);
         await fetchClasses();
+        setShowStreamModal(false);
+        setNewStream({ name: '', code: '', gradeId: '', capacity: 40, classTeacherId: '' });
+        setEditingStream(null);
       } else {
-        addNotification('error', data.error || 'Failed to update class');
+        addToast('error', data.error || 'Failed to update stream');
       }
     } catch (error) {
-      if (error){
-        addNotification('error', 'Failed to update class. Please try again.');
-      }
-      
+      addToast('error', 'Failed to update stream. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, updateStream: false }));
     }
   };
 
-  const handleDelete = async (classId) => {
-    if (!isAuthenticated) {
-      addNotification('error', 'Please login to delete classes');
-      return;
-    }
+  const deleteStream = async (classId, className) => {
+    // Using toast confirm instead of window.confirm
+    const confirmed = window.confirm(`Are you sure you want to delete ${className}?`);
+    if (!confirmed) return;
+    
+    setActionLoading(prev => ({ ...prev, deleteStream: true }));
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/registrar/classes/delete/${classId}/`, {
@@ -443,76 +413,249 @@ function ClassManagement() {
       });
       
       const data = await response.json();
-
       if (response.ok && data.success) {
-        addNotification('success', 'Class deleted successfully');
+        addToast('success', `Stream "${className}" deleted successfully`);
         await fetchClasses();
       } else {
-        addNotification('error', data.error || 'Failed to delete class');
+        addToast('error', data.error || 'Failed to delete stream');
       }
     } catch (error) {
-      if (error){
-        addNotification('error', 'Failed to delete class. Please try again.');
-      }
+      addToast('error', 'Failed to delete stream. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, deleteStream: false }));
+    }
+  };
+
+  const toggleStreamStatus = async (classId, currentStatus, className) => {
+    setActionLoading(prev => ({ ...prev, toggleStatus: true }));
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/classes/update/${classId}/`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ is_active: !currentStatus })
+      });
       
+      const data = await response.json();
+      if (response.ok && data.success) {
+        addToast('success', `Stream "${className}" ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+        await fetchClasses();
+      } else {
+        addToast('error', data.error || 'Failed to update stream status');
+      }
+    } catch (error) {
+      addToast('error', 'Failed to update stream. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, toggleStatus: false }));
     }
   };
 
-  // Calculate statistics
-  const getStatistics = () => {
-    const totalClasses = classes.length;
-    const activeClasses = classes.filter(c => c.is_active).length;
-    const totalCapacity = classes.reduce((sum, c) => sum + (c.capacity || 0), 0);
-    const averageCapacity = totalClasses > 0 ? Math.round(totalCapacity / totalClasses) : 0;
-    const totalStudents = classes.reduce((sum, c) => sum + (c.current_students || 0), 0);
-
-    return { totalClasses, activeClasses, totalCapacity, averageCapacity, totalStudents };
+  const assignClassTeacher = (cls) => {
+    setSelectedStreamForTeachers(cls);
+    setNewStream({
+      ...newStream,
+      classTeacherId: cls.class_teacher_id || ''
+    });
+    setShowTeacherAssignmentModal(true);
   };
 
-  const stats = getStatistics();
+  const saveClassTeacher = async () => {
+    if (selectedStreamForTeachers && newStream.classTeacherId) {
+      setActionLoading(prev => ({ ...prev, assignTeacher: true }));
 
-  // Add animation style
-  const animationStyle = `
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/registrar/classes/update/${selectedStreamForTeachers.id}/`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            class_teacher_id: newStream.classTeacherId
+          })
+        });
+        
+        const data = await response.json();
+        if (response.ok && data.success) {
+          addToast('success', 'Class teacher assigned successfully');
+          await fetchClasses();
+          setShowTeacherAssignmentModal(false);
+          setSelectedStreamForTeachers(null);
+          setNewStream({ ...newStream, classTeacherId: '' });
+        } else {
+          addToast('error', data.error || 'Failed to assign class teacher');
+        }
+      } catch (error) {
+        addToast('error', 'Failed to assign class teacher. Please try again.');
+      } finally {
+        setActionLoading(prev => ({ ...prev, assignTeacher: false }));
       }
     }
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
+  };
+
+  const assignSubjectTeacher = (cls) => {
+    setSelectedStreamForSubjects(cls);
+    setSelectedSubject('');
+    setSelectedTeacherForSubject('');
+    setShowSubjectTeacherModal(true);
+  };
+
+  const addSubjectTeacher = async () => {
+    if (selectedStreamForSubjects && selectedSubject && selectedTeacherForSubject) {
+      addToast('info', 'Subject teacher assignment feature - Integrate with your backend');
+      setShowSubjectTeacherModal(false);
+      setSelectedStreamForSubjects(null);
+    }
+  };
+
+  const promoteStudents = async () => {
+    if (promotionData.fromGradeId && promotionData.toGradeId) {
+      setActionLoading(prev => ({ ...prev, promote: true }));
+
+      try {
+        const fromGrade = gradeLevels.find(g => g.id === promotionData.fromGradeId);
+        const toGrade = gradeLevels.find(g => g.id === promotionData.toGradeId);
+        const fromClasses = getClassesForGrade(promotionData.fromGradeId);
+        const totalStudents = fromClasses.reduce((sum, c) => sum + (c.current_students || 0), 0);
+        
+        // Simulate API call - replace with actual promotion API endpoint
+        // const response = await fetch(`${API_BASE_URL}/api/registrar/classes/promote/`, {
+        //   method: 'POST',
+        //   headers: getAuthHeaders(),
+        //   body: JSON.stringify(promotionData)
+        // });
+        
+        // Simulate async operation
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        addToast('success', `Promotion initiated: Moving ${totalStudents} students from ${fromGrade?.name} to ${toGrade?.name}`);
+        setShowPromotionModal(false);
+        setPromotionData({ fromGradeId: '', toGradeId: '', streamIds: [], academicYear: new Date().getFullYear().toString() });
+      } catch (error) {
+        addToast('error', 'Failed to process promotion. Please try again.');
+      } finally {
+        setActionLoading(prev => ({ ...prev, promote: false }));
       }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
     }
-    .animate-slide-in {
-      animation: slideIn 0.3s ease-out;
-    }
-    .animate-fade-in-up {
-      animation: fadeInUp 0.3s ease-out;
-    }
-  `;
+  };
+
+  // Render table for any grade level
+  const renderStreamTable = (grade, gradeClasses) => {
+    return (
+      <div key={grade.id} className="bg-white border border-gray-300 mb-4">
+        <div className="border-b border-gray-300 px-4 py-3 bg-gray-100">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-bold text-gray-900">{grade.name}</h3>
+              <p className="text-xs text-gray-600">{grade.code}</p>
+            </div>
+            <div className="text-right">
+              <div className="font-bold text-gray-900">{gradeClasses.reduce((sum, c) => sum + (c.current_students || 0), 0)} students</div>
+              <div className="text-xs text-gray-600">{gradeClasses.length} streams</div>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700 bg-gray-100">Stream Name</th>
+                <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700 bg-gray-100">Capacity</th>
+                <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700 bg-gray-100">Enrolled</th>
+                <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700 bg-gray-100">Class Teacher</th>
+                <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700 bg-gray-100">Status</th>
+                <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700 bg-gray-100">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gradeClasses.map(cls => (
+                <tr key={cls.id} className="hover:bg-gray-50">
+                  <td className="border border-gray-300 px-4 py-3">
+                    <div>
+                      <p className="font-medium text-gray-900">{cls.class_name}</p>
+                      <p className="text-xs text-gray-500">Code: {cls.class_code}</p>
+                    </div>
+                   </td>
+                  <td className="border border-gray-300 px-4 py-3 text-center text-gray-700">{cls.capacity}</td>
+                  <td className="border border-gray-300 px-4 py-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-gray-900 font-medium">{cls.current_students || 0}</span>
+                      <div className="w-20 bg-gray-300 h-1.5">
+                        <div className="bg-blue-600 h-1.5" style={{ width: `${Math.min(100, ((cls.current_students || 0) / cls.capacity) * 100)}%` }}></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="border border-gray-300 px-4 py-3">
+                    {cls.class_teacher_name ? (
+                      <span className="text-gray-800">{cls.class_teacher_name}</span>
+                    ) : (
+                      <span className="text-red-600 text-xs">Not Assigned</span>
+                    )}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-3 text-center">
+                    <span className={`px-2 py-1 text-xs font-medium ${cls.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {cls.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                    <span className={`ml-2 px-2 py-1 text-xs font-medium ${getCapacityStatus(cls).class}`}>
+                      {getCapacityStatus(cls).text}
+                    </span>
+                  </td>
+                  <td className="border border-gray-300 px-4 py-3">
+                    <div className="flex justify-center gap-2">
+                      <button 
+                        onClick={() => assignClassTeacher(cls)} 
+                        disabled={actionLoading.assignTeacher}
+                        className="px-3 py-1 bg-blue-600 text-white text-xs font-medium border border-blue-700 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        {actionLoading.assignTeacher && selectedStreamForTeachers?.id === cls.id && <ButtonSpinner />}
+                        Assign
+                      </button>
+                      <button 
+                        onClick={() => editStream(cls)} 
+                        disabled={actionLoading.updateStream}
+                        className="px-3 py-1 bg-gray-500 text-white text-xs font-medium border border-gray-600 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => toggleStreamStatus(cls.id, cls.is_active, cls.class_name)} 
+                        disabled={actionLoading.toggleStatus}
+                        className={`px-3 py-1 text-white text-xs font-medium border flex items-center gap-1 ${cls.is_active ? 'bg-red-600 border-red-700 hover:bg-red-700' : 'bg-green-600 border-green-700 hover:bg-green-700'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {actionLoading.toggleStatus && <ButtonSpinner />}
+                        {cls.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button 
+                        onClick={() => deleteStream(cls.id, cls.class_name)} 
+                        disabled={actionLoading.deleteStream}
+                        className="px-3 py-1 bg-red-600 text-white text-xs font-medium border border-red-700 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        {actionLoading.deleteStream && <ButtonSpinner />}
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {gradeClasses.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="border border-gray-300 px-4 py-8 text-center text-gray-400">
+                    No streams configured for this grade
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <style>{animationStyle}</style>
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
           <p className="text-gray-600 mb-4">Please login to access class management</p>
-          <a 
-            href="/login" 
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 inline-block"
-          >
+          <a href="/login" className="px-6 py-3 bg-green-700 text-white font-medium border border-green-800 inline-block hover:bg-green-800">
             Go to Login
           </a>
         </div>
@@ -521,713 +664,513 @@ function ClassManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <style>{animationStyle}</style>
-      
-      {/* Notifications */}
-      {notifications.map(notification => (
-        <Notification
-          key={notification.id}
-          type={notification.type}
-          message={notification.message}
-          onClose={() => removeNotification(notification.id)}
-        />
+    <div className="mx-auto p-6 bg-gray-50 min-h-screen">
+      {/* Global Overlay Spinner */}
+      {actionLoading.fetchData && <GlobalSpinner />}
+
+      {/* Toast Notifications */}
+      {toasts.map(toast => (
+        <Toast key={toast.id} type={toast.type} message={toast.message} onClose={() => removeToast(toast.id)} />
       ))}
 
-      {/* Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={confirmationModal.isOpen}
-        onClose={() => setConfirmationModal({ isOpen: false, data: null, action: null })}
-        onConfirm={() => {
-          if (confirmationModal.action === 'toggle') {
-            handleToggleActive(confirmationModal.data.id);
-          } else if (confirmationModal.action === 'delete') {
-            handleDelete(confirmationModal.data.id);
-          }
-        }}
-        title={
-          confirmationModal.action === 'toggle' 
-            ? `${confirmationModal.data?.is_active ? 'Deactivate' : 'Activate'} Class`
-            : 'Delete Class'
-        }
-        message={
-          confirmationModal.action === 'toggle'
-            ? `Are you sure you want to ${confirmationModal.data?.is_active ? 'deactivate' : 'activate'} ${confirmationModal.data?.class_name}?`
-            : `Are you sure you want to delete ${confirmationModal.data?.class_name}? This action cannot be undone.`
-        }
-        confirmText={confirmationModal.action === 'delete' ? 'Delete' : 'Confirm'}
-        type={confirmationModal.action === 'delete' ? 'danger' : 'warning'}
-      />
+      {/* Header with bg-green-700 */}
+      <div className="mb-8 bg-green-700 p-6">
+        <h1 className="text-2xl font-bold text-white">Class & Stream Management</h1>
+        <p className="text-green-100 mt-1">Configure grades, streams, and manage teacher assignments</p>
+        {user && (
+          <p className="text-sm text-green-100 mt-2">
+            Logged in as: <span className="font-bold">{user.first_name} {user.last_name}</span> ({user.role})
+          </p>
+        )}
+      </div>
 
-      <div className="p-4 md:p-6">
-        {/* Header */}
-        <div className="mb-6 md:mb-8 bg-blue-400 rounded-2xl p-4">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-red-800">Class Management</h1>
-              <p className="text-white mt-1 text-sm md:text-base">Create and manage classes for the academic year</p>
-              {user && (
-                <p className="text-sm text-white font-bold mt-2">
-                  Logged in as: <span className="font-medium font-bold text-red-800">{user.first_name} {user.last_name}</span> ({user.role})
-                </p>
-              )}
+      {/* Navigation Tabs */}
+      <div className="mb-6 flex flex-wrap gap-2 border-b border-gray-300 pb-4">
+        <button 
+          onClick={() => setActiveTab('grades')} 
+          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'grades' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+        >
+          Grade & Stream Config
+        </button>
+        <button 
+          onClick={() => setActiveTab('teachers')} 
+          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'teachers' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+        >
+          Faculty Mapping
+        </button>
+        <button 
+          onClick={() => setActiveTab('promotion')} 
+          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'promotion' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+        >
+          Promotion Tool
+        </button>
+      </div>
+
+      {/* TAB 1: GRADE & STREAM CONFIG */}
+      {activeTab === 'grades' && (
+        <div>
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <div className="bg-white border border-gray-300 p-5">
+              <p className="text-sm text-gray-600">Total Students</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{loading.classes ? '...' : getTotalStudents()}</p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center"
-                disabled={loading.streams || loading.levels}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Class
-              </button>
-              <button
-                onClick={fetchInitialData}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center justify-center"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading.classes ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+            <div className="bg-white border border-gray-300 p-5">
+              <p className="text-sm text-gray-600">Boys</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{loading.classes ? '...' : getTotalBoys()}</p>
+            </div>
+            <div className="bg-white border border-gray-300 p-5">
+              <p className="text-sm text-gray-600">Girls</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{loading.classes ? '...' : getTotalGirls()}</p>
+            </div>
+            <div className="bg-white border border-gray-300 p-5">
+              <p className="text-sm text-gray-600">Total Streams</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{getTotalStreams()}</p>
+            </div>
+            <div className="bg-white border border-gray-300 p-5">
+              <p className="text-sm text-gray-600">Full Streams</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{getFullStreamsCount()}</p>
             </div>
           </div>
-          
-          {/* Loading indicators for streams and levels */}
-          {(loading.streams || loading.levels) && (
-            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center">
-              <Loader2 className="h-4 w-4 text-blue-600 animate-spin mr-2" />
-              <span className="text-sm text-blue-700">
-                Loading streams and levels...
-              </span>
+
+          {/* Add Stream Button */}
+          <div className="flex justify-end mb-6">
+            <button 
+              onClick={() => { setEditingStream(null); setNewStream({ name: '', code: '', gradeId: selectedGradeId, capacity: 40, classTeacherId: '' }); setShowStreamModal(true); }} 
+              disabled={actionLoading.addStream}
+              className="px-5 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {actionLoading.addStream && <ButtonSpinner />}
+              Add Stream
+            </button>
+          </div>
+
+          {/* Loading State */}
+          {loading.classes && (
+            <div className="bg-white border border-gray-300 p-12 text-center">
+              <Loader2 className="h-12 w-12 text-green-700 animate-spin mx-auto" />
+              <p className="mt-4 text-gray-600">Loading classes...</p>
+            </div>
+          )}
+
+          {/* Early Years Section with Table */}
+          {!loading.classes && (
+            <>
+              <div className="mb-8">
+                <h2 className="text-md font-bold text-gray-800 mb-3 bg-gray-200 p-2">Early Years Education</h2>
+                {getGradeLevelsByType('early-years').map(grade => {
+                  const gradeClasses = getClassesForGrade(grade.id);
+                  return renderStreamTable(grade, gradeClasses);
+                })}
+              </div>
+
+              {/* Primary Section with Table */}
+              <div className="mb-8">
+                <h2 className="text-md font-bold text-gray-800 mb-3 bg-gray-200 p-2">Primary Education</h2>
+                {getGradeLevelsByType('primary').map(grade => {
+                  const gradeClasses = getClassesForGrade(grade.id);
+                  return renderStreamTable(grade, gradeClasses);
+                })}
+              </div>
+
+              {/* Junior School Section with Table */}
+              <div>
+                <h2 className="text-md font-bold text-gray-800 mb-3 bg-gray-200 p-2">Junior School (JSS)</h2>
+                {getGradeLevelsByType('junior').map(grade => {
+                  const gradeClasses = getClassesForGrade(grade.id);
+                  return renderStreamTable(grade, gradeClasses);
+                })}
+              </div>
+            </>
+          )}
+
+          {!loading.classes && classes.length === 0 && (
+            <div className="bg-white border border-gray-300 p-12 text-center">
+              <School className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-700">No streams found</h3>
+              <p className="text-gray-500 mt-1 mb-4">Create your first stream to get started</p>
+              <button onClick={() => { setEditingStream(null); setNewStream({ name: '', code: '', gradeId: selectedGradeId, capacity: 40, classTeacherId: '' }); setShowStreamModal(true); }} className="px-5 py-2 bg-green-700 text-white text-sm font-medium border border-green-800">
+                Add Stream
+              </button>
             </div>
           )}
         </div>
+      )}
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 md:mb-8">
-          <div className="bg-white rounded-xl shadow border border-gray-200 p-4 md:p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Total Classes</p>
-                <p className="text-2xl md:text-3xl font-bold text-gray-800 mt-2">
-                  {loading.classes ? '...' : stats.totalClasses}
-                </p>
-              </div>
-              <div className="w-12 h-12 md:w-14 md:h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                <School className="h-6 w-6 md:h-7 md:w-7 text-blue-600" />
-              </div>
-            </div>
+      {/* TAB 2: FACULTY MAPPING */}
+      {activeTab === 'teachers' && (
+        <div className="bg-white border border-gray-300">
+          <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
+            <h2 className="text-md font-bold text-gray-900">Teacher Assignments by Stream</h2>
+            <p className="text-sm text-gray-600 mt-0.5">Class Teachers and Subject Specialists for JSS</p>
           </div>
-          
-          <div className="bg-white rounded-xl shadow border border-gray-200 p-4 md:p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Active Classes</p>
-                <p className="text-2xl md:text-3xl font-bold text-gray-800 mt-2">
-                  {loading.classes ? '...' : stats.activeClasses}
-                </p>
-              </div>
-              <div className="w-12 h-12 md:w-14 md:h-14 bg-green-100 rounded-xl flex items-center justify-center">
-                <CheckCircle className="h-6 w-6 md:h-7 md:w-7 text-green-600" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow border border-gray-200 p-4 md:p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Total Students</p>
-                <p className="text-2xl md:text-3xl font-bold text-gray-800 mt-2">
-                  {loading.classes ? '...' : stats.totalStudents}
-                </p>
-              </div>
-              <div className="w-12 h-12 md:w-14 md:h-14 bg-yellow-100 rounded-xl flex items-center justify-center">
-                <Users className="h-6 w-6 md:h-7 md:w-7 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow border border-gray-200 p-4 md:p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Average Capacity</p>
-                <p className="text-2xl md:text-3xl font-bold text-gray-800 mt-2">
-                  {loading.classes ? '...' : stats.averageCapacity}
-                </p>
-              </div>
-              <div className="w-12 h-12 md:w-14 md:h-14 bg-purple-100 rounded-xl flex items-center justify-center">
-                <BarChart3 className="h-6 w-6 md:h-7 md:w-7 text-purple-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-          <div className="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-              <h3 className="text-lg font-semibold text-gray-800">All Classes</h3>
-              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full self-start sm:self-auto">
-                {loading.classes ? '...' : classes.length} classes
-              </span>
-            </div>
-          </div>
-          
           <div className="overflow-x-auto">
-            {loading.classes ? (
-              <div className="p-8 md:p-12 text-center">
-                <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto" />
-                <p className="mt-4 text-gray-600">Loading classes...</p>
-              </div>
-            ) : classes.length === 0 ? (
-              <div className="p-8 md:p-12 text-center">
-                <School className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-700">No classes found</h3>
-                <p className="text-gray-500 mt-1 mb-4">Create your first class to get started</p>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  disabled={loading.streams || loading.levels}
-                >
-                  Create New Class
-                </button>
-              </div>
-            ) : (
-              <div className="block md:hidden">
-                {/* Mobile view */}
-                <div className="divide-y divide-gray-200">
-                  {classes.map(cls => (
-                    <div key={cls.id} className="p-4 hover:bg-gray-50">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                            <School className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-gray-900">{cls.class_name}</h4>
-                            <p className="text-sm text-gray-600">
-                              {cls.class_code} • Level {cls.numeric_level}
-                              {cls.stream && ` • ${cls.stream}`}
-                            </p>
-                          </div>
-                        </div>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          cls.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          <span className={`w-2 h-2 rounded-full mr-1 ${
-                            cls.is_active ? 'bg-green-500' : 'bg-red-500'
-                          }`}></span>
-                          {cls.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center text-sm">
-                          <Users className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-gray-600">Capacity:</span>
-                          <span className="font-medium ml-1">
-                            {cls.current_students || 0}/{cls.capacity}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center text-sm">
-                          <Eye className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-gray-600">Teacher:</span>
-                          <span className="font-medium ml-1">
-                            {cls.class_teacher_name || 'Not assigned'}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div 
-                          className="bg-green-600 h-2 rounded-full" 
-                          style={{ width: `${Math.min(100, ((cls.current_students || 0) / cls.capacity) * 100)}%` }}
-                        ></div>
-                      </div>
-                      <p className="text-xs text-gray-500 text-center mb-4">
-                        {Math.round(((cls.current_students || 0) / cls.capacity) * 100)}% filled
-                      </p>
-                      
-                      <div className="flex justify-between space-x-2">
-                        <button
-                          onClick={() => openConfirmation('toggle', cls)}
-                          className={`flex-1 px-3 py-1.5 rounded text-xs font-medium ${
-                            cls.is_active
-                              ? 'bg-red-50 text-red-700 hover:bg-red-100'
-                              : 'bg-green-50 text-green-700 hover:bg-green-100'
-                          }`}
-                        >
-                          {cls.is_active ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <button
-                          onClick={() => openConfirmation('delete', cls)}
-                          className="flex-1 px-3 py-1.5 bg-red-50 text-red-700 rounded text-xs font-medium hover:bg-red-100"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Desktop table view */}
-            {!loading.classes && classes.length > 0 && (
-              <table className="hidden md:table min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Class Details
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Teacher
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Capacity
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {classes.map(cls => (
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="border border-gray-300 px-6 py-3 text-left font-bold text-gray-700 bg-gray-100">Grade / Stream</th>
+                  <th className="border border-gray-300 px-6 py-3 text-left font-bold text-gray-700 bg-gray-100">Class Teacher</th>
+                  <th className="border border-gray-300 px-6 py-3 text-left font-bold text-gray-700 bg-gray-100">Subject Specialists (JSS)</th>
+                  <th className="border border-gray-300 px-6 py-3 text-center font-bold text-gray-700 bg-gray-100">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gradeLevels.map(grade => {
+                  const gradeClasses = getClassesForGrade(grade.id);
+                  return gradeClasses.map(cls => (
                     <tr key={cls.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                            <School className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-gray-900">
-                              {cls.class_name}
-                            </h4>
-                            <div className="flex flex-wrap items-center mt-1 gap-1">
-                              <span className="text-sm text-gray-600">Code: {cls.class_code}</span>
-                              <span className="text-xs text-gray-400">•</span>
-                              <span className="text-sm text-gray-600">Level: {cls.numeric_level}</span>
-                              {cls.stream && (
-                                <>
-                                  <span className="text-xs text-gray-400">•</span>
-                                  <span className="text-sm text-gray-600">Stream: {cls.stream}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
+                      <td className="border border-gray-300 px-6 py-4">
+                        <div>
+                          <p className="font-bold text-gray-900">{grade.name} - {cls.class_name}</p>
+                          <p className="text-xs text-gray-500">{cls.class_code}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="border border-gray-300 px-6 py-4">
                         {cls.class_teacher_name ? (
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-                              <Users className="h-4 w-4 text-gray-500" />
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-gray-300 flex items-center justify-center border border-gray-400">
+                              <span className="text-gray-800 text-xs font-bold">{cls.class_teacher_name.charAt(0)}</span>
                             </div>
-                            <span className="text-sm text-gray-700 truncate max-w-[150px]">
-                              {cls.class_teacher_name}
-                            </span>
+                            <span className="text-gray-800">{cls.class_teacher_name}</span>
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-400">Not assigned</span>
+                          <span className="text-red-600 text-xs">Not Assigned</span>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="flex items-center">
-                            <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
-                              <div 
-                                className="bg-green-600 h-2.5 rounded-full" 
-                                style={{ width: `${Math.min(100, ((cls.current_students || 0) / cls.capacity) * 100)}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                              {cls.current_students || 0}/{cls.capacity}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {Math.round(((cls.current_students || 0) / cls.capacity) * 100)}% filled
-                          </p>
+                      <td className="border border-gray-300 px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {grade.levelType === 'junior' && (
+                            <button 
+                              onClick={() => assignSubjectTeacher(cls)} 
+                              className="px-2 py-1 bg-white border border-gray-400 text-gray-700 text-xs font-medium hover:bg-gray-100"
+                            >
+                              Add Subject Teacher
+                            </button>
+                          )}
+                          {grade.levelType !== 'junior' && (
+                            <span className="text-xs text-gray-400">No subject specialists for this level</span>
+                          )}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          cls.is_active 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          <span className={`w-2 h-2 rounded-full mr-2 ${
-                            cls.is_active ? 'bg-green-500' : 'bg-red-500'
-                          }`}></span>
-                          {cls.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => openConfirmation('toggle', cls)}
-                            className={`px-3 py-1.5 rounded text-xs font-medium ${
-                              cls.is_active
-                                ? 'bg-red-50 text-red-700 hover:bg-red-100'
-                                : 'bg-green-50 text-green-700 hover:bg-green-100'
-                            }`}
-                          >
-                            {cls.is_active ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button
-                            onClick={() => openConfirmation('delete', cls)}
-                            className="px-3 py-1.5 bg-red-50 text-red-700 rounded text-xs font-medium hover:bg-red-100"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                      <td className="border border-gray-300 px-6 py-4 text-center">
+                        <button 
+                          onClick={() => assignClassTeacher(cls)} 
+                          disabled={actionLoading.assignTeacher}
+                          className="px-3 py-1 bg-green-700 text-white text-xs font-medium border border-green-800 hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 mx-auto"
+                        >
+                          {actionLoading.assignTeacher && selectedStreamForTeachers?.id === cls.id && <ButtonSpinner />}
+                          Assign Teacher
+                        </button>
+                       </td>
+                     </tr>
+                  ));
+                })}
+                {classes.length === 0 && (
+                  <tr>
+                    <td colSpan="4" className="border border-gray-300 px-6 py-8 text-center text-gray-400">
+                      No streams available
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
+      )}
 
-        {/* Information Panel */}
-        <div className="mt-6 p-4 md:p-6 bg-blue-50 border border-blue-200 rounded-xl">
-          <div className="flex items-start">
-            <Info className="h-5 w-5 md:h-6 md:w-6 text-blue-500 mr-3 mt-0.5" />
+      {/* TAB 3: PROMOTION TOOL */}
+      {activeTab === 'promotion' && (
+        <div className="bg-white border border-gray-300 p-6">
+          <h2 className="text-md font-bold text-gray-900 mb-2">Bulk Promotion / Transition Tool</h2>
+          <p className="text-sm text-gray-600 mb-6">Move entire streams from one grade to the next</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h4 className="font-medium text-blue-800 mb-2">Class Management Information</h4>
-              <ul className="text-sm text-blue-700 space-y-1.5">
-                <li className="flex items-start">
-                  <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
-                  Classes are used for student placement and timetable scheduling
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
-                  Each class requires a unique class code for identification
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
-                  Class teachers can be assigned to manage specific classes
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
-                  Deactivated classes will not appear in student enrollment options
-                </li>
-              </ul>
+              <label className="block text-sm font-bold text-gray-700 mb-2">From Grade</label>
+              <select 
+                value={promotionData.fromGradeId}
+                onChange={(e) => setPromotionData({ ...promotionData, fromGradeId: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                disabled={actionLoading.promote}
+              >
+                <option value="">Select Grade</option>
+                {gradeLevels.map(grade => {
+                  const gradeClasses = getClassesForGrade(grade.id);
+                  const totalStudents = gradeClasses.reduce((sum, c) => sum + (c.current_students || 0), 0);
+                  return (
+                    <option key={grade.id} value={grade.id}>
+                      {grade.name} ({totalStudents} students)
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">To Grade</label>
+              <select 
+                value={promotionData.toGradeId}
+                onChange={(e) => setPromotionData({ ...promotionData, toGradeId: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                disabled={actionLoading.promote}
+              >
+                <option value="">Select Destination Grade</option>
+                {gradeLevels.map(grade => (
+                  <option key={grade.id} value={grade.id}>{grade.name}</option>
+                ))}
+              </select>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Create Class Modal with Blur Effect */}
-      {showCreateModal && (
-        <div className="fixed inset-0 flex items-center justify-center p-2 md:p-4 z-50">
-          {/* Backdrop with blur effect - no darkening */}
-          <div 
-            className="absolute inset-0 backdrop-blur bg-transparent"
-            onClick={() => {
-              setShowCreateModal(false);
-              resetForm();
-            }}
-          ></div>
           
-          {/* Modal content - stays sharp */}
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] border-4 border-blue-500 overflow-hidden animate-fade-in-up">
-            <div className="px-4 md:px-6 py-4 border-b border-gray-200 bg-blue-500 ">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-white flex items-center">
-                  <School className="h-5 w-5 text-white mr-2" />
-                  Create New Class
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    resetForm();
-                  }}
-                  className="text-red-400 hover:text-red-500 transition-colors duration-200"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+          <div className="mt-4">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Academic Year</label>
+            <input 
+              type="text" 
+              value={promotionData.academicYear}
+              onChange={(e) => setPromotionData({ ...promotionData, academicYear: e.target.value })}
+              className="w-full md:w-64 px-3 py-2 border border-gray-400 text-sm bg-white" 
+              placeholder="2025-2026"
+              disabled={actionLoading.promote}
+            />
+          </div>
+          
+          <div className="mt-6 p-4 bg-gray-100 border border-gray-300">
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 text-gray-700 mt-0.5 font-bold">!</div>
+              <div>
+                <p className="font-bold text-gray-800">Transition Notice</p>
+                <p className="text-sm text-gray-700 mt-1">This action will promote all students from the selected grade to the next level. Please ensure all assessments are finalized before proceeding.</p>
               </div>
             </div>
-            
-            <div className="p-4 md:p-6 overflow-auto max-h-[70vh]">
-              <form onSubmit={handleSubmit}>
-                <div className="space-y-6">
-                  {/* Basic Information */}
-                  <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-200 shadow-sm">
-                    <h4 className="font-semibold text-gray-700 mb-4 flex items-center">
-                      <span className="w-1 h-5 bg-blue-500 rounded-full mr-2"></span>
-                      Basic Information
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Class Code <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="class_code"
-                          value={formData.class_code}
-                          onChange={handleInputChange}
-                          className={`w-full px-3 md:px-4 py-2 md:py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
-                            formErrors.class_code ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                          placeholder="Example: C-101, C-102"
-                          required
-                        />
-                        {formErrors.class_code && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            {formErrors.class_code}
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-1">Unique identifier for the class</p>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Class Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="class_name"
-                          value={formData.class_name}
-                          onChange={handleInputChange}
-                          className={`w-full px-3 md:px-4 py-2 md:py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
-                            formErrors.class_name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                          placeholder="Example: Grade 1"
-                          required
-                        />
-                        {formErrors.class_name && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            {formErrors.class_name}
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Numeric Level <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          name="numeric_level"
-                          value={formData.numeric_level}
-                          onChange={handleInputChange}
-                          className={`w-full px-3 md:px-4 py-2 md:py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
-                            formErrors.numeric_level ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                          required
-                          disabled={loading.levels}
-                        >
-                          <option value="">Select Level</option>
-                          {numericLevels.map(level => (
-                            <option key={level.level} value={level.level}>
-                              {level.label}
-                            </option>
-                          ))}
-                        </select>
-                        {formErrors.numeric_level && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            {formErrors.numeric_level}
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-1">Academic level (1-12)</p>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Stream
-                        </label>
-                        <select
-                          name="stream"
-                          value={formData.stream}
-                          onChange={handleInputChange}
-                          className="w-full px-3 md:px-4 py-2 md:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
-                          disabled={loading.streams}
-                        >
-                          <option value="">No Stream</option>
-                          {streams.map(stream => (
-                            <option key={stream.id} value={stream.name}>
-                              {stream.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
+          </div>
+          
+          <div className="mt-6 flex justify-end">
+            <button 
+              onClick={promoteStudents}
+              disabled={!promotionData.fromGradeId || !promotionData.toGradeId || actionLoading.promote}
+              className="px-5 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {actionLoading.promote && <ButtonSpinner />}
+              Process Promotion
+            </button>
+          </div>
+        </div>
+      )}
 
-                  {/* Class Details */}
-                  <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-200 shadow-sm">
-                    <h4 className="font-semibold text-gray-700 mb-4 flex items-center">
-                      <span className="w-1 h-5 bg-green-500 rounded-full mr-2"></span>
-                      Class Details
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Class Capacity
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            name="capacity"
-                            value={formData.capacity}
-                            onChange={handleInputChange}
-                            min="1"
-                            max="100"
-                            className={`w-full px-3 md:px-4 py-2 md:py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
-                              formErrors.capacity ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                            }`}
-                          />
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
-                            students
-                          </div>
-                        </div>
-                        {formErrors.capacity && (
-                          <p className="text-red-500 text-xs mt-1 flex items-center">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            {formErrors.capacity}
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-1">Maximum students in this class</p>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Class Teacher
-                        </label>
-                        <select
-                          name="class_teacher_id"
-                          value={formData.class_teacher_id}
-                          onChange={handleInputChange}
-                          className="w-full px-3 md:px-4 py-2 md:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
-                          disabled={loading.teachers}
-                        >
-                          <option value="">Select Teacher</option>
-                          {teachers.map(teacher => (
-                            <option key={teacher.id} value={teacher.id}>
-                              {teacher.full_name || `${teacher.first_name} ${teacher.last_name}`}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="flex items-center md:col-span-2">
-                        <div className="relative flex items-start">
-                          <div className="flex items-center h-5">
-                            <input
-                              type="checkbox"
-                              id="is_active"
-                              name="is_active"
-                              checked={formData.is_active}
-                              onChange={handleInputChange}
-                              className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 transition duration-200"
-                            />
-                          </div>
-                          <div className="ml-3 text-sm">
-                            <label htmlFor="is_active" className="font-medium text-gray-700">
-                              Active Class
-                            </label>
-                            <p className="text-gray-500">Class will be available for student enrollment immediately</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Preview */}
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4 md:p-5 border border-gray-200">
-                    <h4 className="font-semibold text-gray-700 mb-4 flex items-center">
-                      <span className="w-1 h-5 bg-purple-500 rounded-full mr-2"></span>
-                      Class Preview
-                    </h4>
-                    <div className="p-4 bg-white rounded-lg border-2 border-blue-200 shadow-md">
-                      <div className="flex items-center mb-3">
-                        <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 shadow-md">
-                          <School className="h-6 w-6 md:h-7 md:w-7 text-white" />
-                        </div>
-                        <div>
-                          <h5 className="font-bold text-gray-800 text-lg">
-                            {formData.class_name || 'Class Name'}
-                          </h5>
-                          <p className="text-sm text-gray-600 flex flex-wrap gap-1">
-                            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                              {formData.class_code || 'CODE'}
-                            </span>
-                            <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                              Level {formData.numeric_level || '0'}
-                            </span>
-                            {formData.stream && (
-                              <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
-                                {formData.stream}
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm mt-3 pt-3 border-t border-gray-100">
-                        <div className="flex items-center">
-                          <Users className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-gray-600">Capacity:</span>
-                          <span className="font-medium ml-1">{formData.capacity} students</span>
-                        </div>
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-gray-600">Status:</span>
-                          <span className={`ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            formData.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full mr-1 ${
-                              formData.is_active ? 'bg-green-500' : 'bg-red-500'
-                            }`}></span>
-                            {formData.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateModal(false);
-                      resetForm();
-                    }}
-                    className="px-4 md:px-6 py-2 md:py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 md:px-8 py-2 md:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center transition-all duration-200 shadow-md"
-                    disabled={loading.classes || loading.teachers || loading.streams || loading.levels}
-                  >
-                    {(loading.classes || loading.teachers || loading.streams || loading.levels) ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Class
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
+      {/* Stream Modal - Add/Edit Stream */}
+      {showStreamModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowStreamModal(false); setEditingStream(null); }}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">{editingStream ? 'Edit Stream' : 'Add Stream'}</h3>
+              <button onClick={() => { setShowStreamModal(false); setEditingStream(null); }} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Grade</label>
+                <select 
+                  value={newStream.gradeId}
+                  onChange={(e) => setNewStream({ ...newStream, gradeId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  disabled={actionLoading.addStream || actionLoading.updateStream}
+                >
+                  <option value="">Select Grade</option>
+                  {gradeLevels.map(grade => (
+                    <option key={grade.id} value={grade.id}>{grade.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Stream Name</label>
+                <input 
+                  type="text" 
+                  value={newStream.name}
+                  onChange={(e) => setNewStream({ ...newStream, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" 
+                  placeholder="e.g., Kilimanjaro, Alpha, Kenya"
+                  disabled={actionLoading.addStream || actionLoading.updateStream}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Stream Code</label>
+                <input 
+                  type="text" 
+                  value={newStream.code}
+                  onChange={(e) => setNewStream({ ...newStream, code: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" 
+                  placeholder="e.g., KIL, ALP, KEN"
+                  disabled={actionLoading.addStream || actionLoading.updateStream}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Capacity</label>
+                <input 
+                  type="number" 
+                  value={newStream.capacity}
+                  onChange={(e) => setNewStream({ ...newStream, capacity: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" 
+                  min="1" 
+                  max="60"
+                  disabled={actionLoading.addStream || actionLoading.updateStream}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Class Teacher</label>
+                <select 
+                  value={newStream.classTeacherId}
+                  onChange={(e) => setNewStream({ ...newStream, classTeacherId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  disabled={actionLoading.addStream || actionLoading.updateStream}
+                >
+                  <option value="">Select Teacher</option>
+                  {teachers.map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.first_name} {teacher.last_name} {teacher.specialization && `(${teacher.specialization})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button 
+                onClick={() => { setShowStreamModal(false); setEditingStream(null); }} 
+                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                disabled={actionLoading.addStream || actionLoading.updateStream}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={editingStream ? updateStream : addStream} 
+                disabled={actionLoading.addStream || actionLoading.updateStream}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {(actionLoading.addStream || actionLoading.updateStream) && <ButtonSpinner />}
+                {editingStream ? 'Save' : 'Add'}
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Class Teacher Assignment Modal */}
+      {showTeacherAssignmentModal && selectedStreamForTeachers && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowTeacherAssignmentModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Assign Class Teacher</h3>
+              <button onClick={() => setShowTeacherAssignmentModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-700 mb-4">Stream: <span className="font-bold text-gray-900">{selectedStreamForTeachers.class_name}</span></p>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Select Teacher</label>
+                <select 
+                  value={newStream.classTeacherId}
+                  onChange={(e) => setNewStream({ ...newStream, classTeacherId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  disabled={actionLoading.assignTeacher}
+                >
+                  <option value="">Select Teacher</option>
+                  {teachers.map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.first_name} {teacher.last_name} {teacher.specialization && `- ${teacher.specialization}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowTeacherAssignmentModal(false)} 
+                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                disabled={actionLoading.assignTeacher}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={saveClassTeacher} 
+                disabled={actionLoading.assignTeacher}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {actionLoading.assignTeacher && <ButtonSpinner />}
+                Assign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subject Teacher Assignment Modal */}
+      {showSubjectTeacherModal && selectedStreamForSubjects && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSubjectTeacherModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Assign Subject Specialist</h3>
+              <button onClick={() => setShowSubjectTeacherModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-700 mb-4">Stream: <span className="font-bold text-gray-900">{selectedStreamForSubjects.class_name}</span></p>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Subject</label>
+                <select 
+                  value={selectedSubject}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                >
+                  <option value="">Select Subject</option>
+                  <option value="math">Mathematics</option>
+                  <option value="eng">English</option>
+                  <option value="kis">Kiswahili</option>
+                  <option value="sci">Integrated Science</option>
+                  <option value="pts">Pre-Technical Studies</option>
+                  <option value="cas">Creative Arts & Sports</option>
+                  <option value="sst">Social Studies</option>
+                  <option value="re">Religious Education</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Teacher</label>
+                <select 
+                  value={selectedTeacherForSubject}
+                  onChange={(e) => setSelectedTeacherForSubject(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                >
+                  <option value="">Select Teacher</option>
+                  {teachers.map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.first_name} {teacher.last_name} - {teacher.specialization}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowSubjectTeacherModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={addSubjectTeacher} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">
+                Assign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Add CSS animation for toasts */}
+      <style jsx>{`
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

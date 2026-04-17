@@ -1,846 +1,690 @@
-/* eslint-disable react-hooks/immutability */
-/* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
-import {
-  Upload,
-  File,
-  Image,
-  Video,
-  Music,
-  FileText,
-  Folder,
-  Download,
-  Trash2,
-  Eye,
-  CheckCircle,
-  AlertCircle,
-  Loader,
-  X,
-  Plus,
-  Users,
-  BookOpen,
-  Filter,
-  Award,
-  Clock,
-  Check,
-  ChevronDown,
-  Grid,
-  List
-} from 'react-feather';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Upload, X, Image, File, Video, FileText, Download, Eye,
+  Search, Filter, Grid, List, Trash2, AlertCircle, CheckCircle,
+  Loader2, RefreshCw, Plus, FolderOpen, Calendar, User, BookOpen
+} from 'lucide-react';
+import { useAuth } from '../Authentication/AuthContext';
 
-const PortfolioUploader = () => {
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
-  const [selectedStrand, setSelectedStrand] = useState('');
-  const [selectedSubStrand, setSelectedSubStrand] = useState('');
-  const [selectedCompetency, setSelectedCompetency] = useState('');
-  const [portfolios, setPortfolios] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [strands, setStrands] = useState([]);
-  const [subStrands, setSubStrands] = useState([]);
-  const [competencies, setCompetencies] = useState([]);
-  const [dragActive, setDragActive] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [uploadProgress, setUploadProgress] = useState({});
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [viewMode, setViewMode] = useState('grid');
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-  // Evidence types
-  const evidenceTypes = [
-    { value: 'photo', label: 'Photo', icon: Image, color: 'bg-purple-100 text-purple-600' },
-    { value: 'video', label: 'Video', icon: Video, color: 'bg-red-100 text-red-600' },
-    { value: 'document', label: 'Document', icon: FileText, color: 'bg-blue-100 text-blue-600' },
-    { value: 'audio', label: 'Audio Recording', icon: Music, color: 'bg-green-100 text-green-600' },
-    { value: 'project', label: 'Project Work', icon: Folder, color: 'bg-orange-100 text-orange-600' }
-  ];
+const Notification = ({ type, message, onClose }) => {
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    fetchInitialData();
-  }, []);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      setTimeout(() => onClose?.(), 300);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
 
-  const fetchInitialData = async () => {
-    try {
-      setLoading(true);
-      // Mock data - replace with API calls
-      setTimeout(() => {
-        setClasses([
-          { id: 1, name: 'Grade 7 East', level: 7, stream: 'East', studentCount: 42 },
-          { id: 2, name: 'Grade 7 West', level: 7, stream: 'West', studentCount: 38 },
-          { id: 3, name: 'Grade 8 East', level: 8, stream: 'East', studentCount: 45 }
-        ]);
+  if (!visible) return null;
 
-        setSubjects([
-          { id: 1, name: 'Integrated Science', code: 'SCI', icon: '🔬' },
-          { id: 2, name: 'Agriculture', code: 'AGR', icon: '🌱' },
-          { id: 3, name: 'Creative Arts', code: 'ART', icon: '🎨' }
-        ]);
-
-        setStrands([
-          { id: 1, name: 'Human Body Systems', code: 'SCI-HBS', subjectId: 1 },
-          { id: 2, name: 'Plants and Animals', code: 'SCI-PA', subjectId: 1 },
-          { id: 3, name: 'Crop Production', code: 'AGR-CRP', subjectId: 2 }
-        ]);
-
-        setPortfolios([
-          {
-            id: 1,
-            studentName: 'John Kamau',
-            admissionNo: '2024/001',
-            className: 'Grade 7 East',
-            subject: 'Integrated Science',
-            strand: 'Human Body Systems',
-            subStrand: 'The Digestive System',
-            competency: 'Demonstrate understanding of digestion',
-            evidenceType: 'photo',
-            fileName: 'digestive_system_model.jpg',
-            fileSize: '2.4 MB',
-            uploadedDate: '2024-01-15',
-            status: 'approved',
-            rating: 'ME1',
-            thumbnail: '/thumbnails/digestive.jpg',
-            comments: 'Excellent model showing all parts'
-          },
-          {
-            id: 2,
-            studentName: 'Mary Wanjiku',
-            admissionNo: '2024/002',
-            className: 'Grade 7 East',
-            subject: 'Agriculture',
-            strand: 'Crop Production',
-            subStrand: 'Kitchen Garden',
-            competency: 'Demonstrate kitchen garden setup',
-            evidenceType: 'video',
-            fileName: 'kitchen_garden_demo.mp4',
-            fileSize: '15.8 MB',
-            uploadedDate: '2024-01-14',
-            status: 'pending',
-            thumbnail: '/thumbnails/garden.jpg'
-          },
-          {
-            id: 3,
-            studentName: 'Sarah Akinyi',
-            admissionNo: '2024/004',
-            className: 'Grade 7 West',
-            subject: 'Creative Arts',
-            strand: 'Visual Arts',
-            subStrand: 'Painting',
-            competency: 'Create a landscape painting',
-            evidenceType: 'photo',
-            fileName: 'landscape_painting.jpg',
-            fileSize: '3.1 MB',
-            uploadedDate: '2024-01-13',
-            status: 'approved',
-            rating: 'EE2',
-            thumbnail: '/thumbnails/painting.jpg'
-          }
-        ]);
-
-        setLoading(false);
-      }, 1000);
-    } catch (err) {
-      setError('Failed to load data');
-      setLoading(false);
-    }
+  const styles = {
+    success: 'bg-green-50 border-green-300 text-green-800',
+    error: 'bg-red-50 border-red-300 text-red-800',
+    warning: 'bg-yellow-50 border-yellow-300 text-yellow-800',
+    info: 'bg-blue-50 border-blue-300 text-blue-800'
   };
 
-  const fetchStudents = async (classId) => {
-    // Mock API call
-    setTimeout(() => {
-      setStudents([
-        { id: 1, admissionNo: '2024/001', name: 'John Kamau' },
-        { id: 2, admissionNo: '2024/002', name: 'Mary Wanjiku' },
-        { id: 3, admissionNo: '2024/003', name: 'Peter Omondi' },
-        { id: 4, admissionNo: '2024/004', name: 'Sarah Akinyi' },
-        { id: 5, admissionNo: '2024/005', name: 'David Mwangi' }
-      ]);
-    }, 500);
+  return (
+    <div className={`fixed top-4 right-4 z-50 max-w-md w-full ${styles[type]} border p-4 shadow-lg`}>
+      <div className="flex items-start justify-between">
+        <p className="text-sm">{message}</p>
+        <button onClick={() => { setVisible(false); setTimeout(onClose, 300); }} className="ml-4">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Confirmation Modal
+const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onCancel}>
+      <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-300 bg-gray-100">
+          <h3 className="text-md font-bold text-gray-900">{title}</h3>
+        </div>
+        <div className="p-6">
+          <p className="text-sm text-gray-800">{message}</p>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+          <button onClick={onCancel} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            Cancel
+          </button>
+          <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white text-sm font-bold border border-red-700 hover:bg-red-700">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// View Evidence Modal
+const ViewEvidenceModal = ({ evidence, onClose }) => {
+  if (!evidence) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white border border-gray-400 max-w-2xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+          <h3 className="text-md font-bold text-gray-900">{evidence.title}</h3>
+          <button onClick={onClose} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+        </div>
+        <div className="p-6">
+          <div className="mb-4 bg-gray-100 border border-gray-300 flex items-center justify-center min-h-[300px]">
+            {evidence.evidence_type === 'image' && (
+              <img src={evidence.file_url || '/placeholder-image.jpg'} alt={evidence.title} className="max-w-full max-h-[400px] object-contain" />
+            )}
+            {evidence.evidence_type === 'video' && (
+              <video controls className="max-w-full max-h-[400px]">
+                <source src={evidence.file_url} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            )}
+            {evidence.evidence_type === 'document' && (
+              <div className="text-center p-8">
+                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-600">Document Preview Not Available</p>
+                <button className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700">
+                  <Download className="h-4 w-4 inline mr-2" />
+                  Download Document
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <p><span className="font-bold text-gray-700">Description:</span> {evidence.description}</p>
+            <p><span className="font-bold text-gray-700">Student:</span> {evidence.student_name}</p>
+            <p><span className="font-bold text-gray-700">Subject:</span> {evidence.subject}</p>
+            <p><span className="font-bold text-gray-700">Uploaded:</span> {evidence.created_at}</p>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            Close
+          </button>
+          <button className="px-4 py-2 bg-green-600 text-white text-sm font-bold border border-green-800 hover:bg-green-800">
+            <Download className="h-4 w-4 inline mr-2" />
+            Download
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function EvidenceVault() {
+  const { getAuthHeaders, isAuthenticated } = useAuth();
+  const [evidences, setEvidences] = useState([]);
+  const [filteredEvidences, setFilteredEvidences] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [students, setStudents] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
+  const [notifications, setNotifications] = useState([]);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedEvidence, setSelectedEvidence] = useState(null);
+  const [evidenceToDelete, setEvidenceToDelete] = useState(null);
+  const [uploadForm, setUploadForm] = useState({
+    title: '',
+    description: '',
+    student_id: '',
+    subject: '',
+    evidence_type: 'image'
+  });
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef(null);
+
+  const addNotification = (type, message) => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, type, message }]);
   };
 
-  const fetchSubStrands = async (strandId) => {
-    // Mock API call
-    setTimeout(() => {
-      setSubStrands([
-        { id: 1, name: 'The Digestive System', code: 'SCI-HBS-DIG', strandId: 1 },
-        { id: 2, name: 'The Respiratory System', code: 'SCI-HBS-RES', strandId: 1 },
-        { id: 3, name: 'Kitchen Garden Setup', code: 'AGR-CRP-KIT', strandId: 3 }
-      ]);
-    }, 500);
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  const fetchCompetencies = async (subStrandId) => {
-    // Mock API call
-    setTimeout(() => {
-      setCompetencies([
-        { id: 1, code: 'SCI-HBS-DIG-01', description: 'Identify parts of the digestive system' },
-        { id: 2, code: 'SCI-HBS-DIG-02', description: 'Explain functions of each organ' },
-        { id: 3, code: 'SCI-HBS-DIG-03', description: 'Demonstrate understanding of digestion process' }
-      ]);
-    }, 500);
-  };
-
-  const handleClassChange = (e) => {
-    setSelectedClass(e.target.value);
-    if (e.target.value) {
-      fetchStudents(e.target.value);
-    }
-    setSelectedStudent('');
-  };
-
-  const handleStrandChange = (e) => {
-    setSelectedStrand(e.target.value);
-    if (e.target.value) {
-      fetchSubStrands(e.target.value);
-    }
-    setSelectedSubStrand('');
-    setSelectedCompetency('');
-  };
-
-  const handleSubStrandChange = (e) => {
-    setSelectedSubStrand(e.target.value);
-    if (e.target.value) {
-      fetchCompetencies(e.target.value);
-    }
-    setSelectedCompetency('');
-  };
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    handleFiles(files);
-  };
-
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
-    handleFiles(files);
-  };
-
-  const handleFiles = (files) => {
-    const validFiles = files.filter(file => {
-      const isValid = file.size <= 100 * 1024 * 1024; // 100MB max
-      if (!isValid) {
-        setError(`File ${file.name} exceeds 100MB limit`);
-        setTimeout(() => setError(null), 3000);
-      }
-      return isValid;
-    });
-
-    setSelectedFiles(prev => [...prev, ...validFiles.map(file => ({
-      file,
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      progress: 0,
-      status: 'pending'
-    }))]);
-  };
-
-  const removeFile = (fileId) => {
-    setSelectedFiles(prev => prev.filter(f => f.id !== fileId));
-  };
-
-  const handleUpload = async () => {
-    if (!selectedStudent || !selectedSubject || !selectedCompetency) {
-      setError('Please select student, subject, and competency');
-      setTimeout(() => setError(null), 3000);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      addNotification('error', 'Please login to access evidence vault');
       return;
     }
+    fetchData();
+  }, [isAuthenticated]);
 
-    if (selectedFiles.length === 0) {
-      setError('Please select files to upload');
-      setTimeout(() => setError(null), 3000);
+  useEffect(() => {
+    filterEvidences();
+  }, [evidences, selectedStudent, selectedSubject]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/teacher/evidence/`, {
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      if (data.success) {
+        setEvidences(data.data);
+        setFilteredEvidences(data.data);
+      } else {
+        // Mock evidence data
+        setEvidences([
+          { id: 1, title: 'Science Project - Model of Solar System', description: 'John created an excellent 3D model showing all planets', student_id: 1, student_name: 'John Mwangi', subject: 'Integrated Science', evidence_type: 'image', file_url: '/mock-image.jpg', created_at: '2024-03-15' },
+          { id: 2, title: 'Mathematics Problem Solving', description: 'Mary solved complex algebra problems with step-by-step working', student_id: 2, student_name: 'Mary Wanjiku', subject: 'Mathematics', evidence_type: 'document', file_url: '/mock-doc.pdf', created_at: '2024-03-14' },
+          { id: 3, title: 'Digital Literacy Project', description: 'Created a presentation on internet safety and cyberbullying', student_id: 3, student_name: 'James Otieno', subject: 'Digital Literacy', evidence_type: 'video', file_url: '/mock-video.mp4', created_at: '2024-03-13' },
+          { id: 4, title: 'English Essay - My Hero', description: 'Well-structured essay with excellent vocabulary', student_id: 4, student_name: 'Sarah Achieng', subject: 'English', evidence_type: 'document', file_url: '/mock-doc2.pdf', created_at: '2024-03-12' },
+          { id: 5, title: 'Art Project - Landscape Painting', description: 'Beautiful watercolor painting of Mt. Kenya', student_id: 5, student_name: 'David Kiprop', subject: 'Creative Arts', evidence_type: 'image', file_url: '/mock-image2.jpg', created_at: '2024-03-11' }
+        ]);
+        setFilteredEvidences([
+          { id: 1, title: 'Science Project - Model of Solar System', description: 'John created an excellent 3D model showing all planets', student_id: 1, student_name: 'John Mwangi', subject: 'Integrated Science', evidence_type: 'image', file_url: '/mock-image.jpg', created_at: '2024-03-15' },
+          { id: 2, title: 'Mathematics Problem Solving', description: 'Mary solved complex algebra problems with step-by-step working', student_id: 2, student_name: 'Mary Wanjiku', subject: 'Mathematics', evidence_type: 'document', file_url: '/mock-doc.pdf', created_at: '2024-03-14' },
+          { id: 3, title: 'Digital Literacy Project', description: 'Created a presentation on internet safety and cyberbullying', student_id: 3, student_name: 'James Otieno', subject: 'Digital Literacy', evidence_type: 'video', file_url: '/mock-video.mp4', created_at: '2024-03-13' },
+          { id: 4, title: 'English Essay - My Hero', description: 'Well-structured essay with excellent vocabulary', student_id: 4, student_name: 'Sarah Achieng', subject: 'English', evidence_type: 'document', file_url: '/mock-doc2.pdf', created_at: '2024-03-12' },
+          { id: 5, title: 'Art Project - Landscape Painting', description: 'Beautiful watercolor painting of Mt. Kenya', student_id: 5, student_name: 'David Kiprop', subject: 'Creative Arts', evidence_type: 'image', file_url: '/mock-image2.jpg', created_at: '2024-03-11' }
+        ]);
+        
+        setStudents([
+          { id: 1, name: 'John Mwangi', admission_no: 'ADM001' },
+          { id: 2, name: 'Mary Wanjiku', admission_no: 'ADM002' },
+          { id: 3, name: 'James Otieno', admission_no: 'ADM003' },
+          { id: 4, name: 'Sarah Achieng', admission_no: 'ADM004' },
+          { id: 5, name: 'David Kiprop', admission_no: 'ADM005' }
+        ]);
+        
+        setSubjects(['Mathematics', 'English', 'Kiswahili', 'Integrated Science', 'Digital Literacy', 'Creative Arts', 'Social Studies']);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      addNotification('error', 'Failed to load evidence data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filterEvidences = () => {
+    let filtered = [...evidences];
+    
+    if (selectedStudent) {
+      filtered = filtered.filter(e => e.student_id == selectedStudent);
+    }
+    
+    if (selectedSubject) {
+      filtered = filtered.filter(e => e.subject === selectedSubject);
+    }
+    
+    setFilteredEvidences(filtered);
+  };
+
+  const clearFilters = () => {
+    setSelectedStudent('');
+    setSelectedSubject('');
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadFile(e.target.files[0]);
+      // Auto-detect file type
+      const file = e.target.files[0];
+      if (file.type.startsWith('image/')) {
+        setUploadForm(prev => ({ ...prev, evidence_type: 'image' }));
+      } else if (file.type.startsWith('video/')) {
+        setUploadForm(prev => ({ ...prev, evidence_type: 'video' }));
+      } else {
+        setUploadForm(prev => ({ ...prev, evidence_type: 'document' }));
+      }
+    }
+  };
+
+  const uploadEvidence = async () => {
+    if (!uploadForm.title || !uploadForm.student_id || !uploadFile) {
+      addNotification('warning', 'Please fill in all required fields');
       return;
     }
 
     setUploading(true);
-    setError(null);
+    setUploadProgress(0);
+    
+    try {
+      const formData = new FormData();
+      formData.append('title', uploadForm.title);
+      formData.append('description', uploadForm.description);
+      formData.append('student_id', uploadForm.student_id);
+      formData.append('subject', uploadForm.subject);
+      formData.append('evidence_type', uploadForm.evidence_type);
+      formData.append('file', uploadFile);
 
-    // Simulate file upload with progress
-    for (const file of selectedFiles) {
-      for (let progress = 0; progress <= 100; progress += 10) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        setUploadProgress(prev => ({
-          ...prev,
-          [file.id]: progress
-        }));
+      const response = await fetch(`${API_BASE_URL}/api/teacher/evidence/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'Evidence uploaded successfully');
+        setShowUploadModal(false);
+        setUploadForm({ title: '', description: '', student_id: '', subject: '', evidence_type: 'image' });
+        setUploadFile(null);
+        setUploadProgress(0);
+        await fetchData();
+      } else {
+        addNotification('error', data.error || 'Failed to upload evidence');
       }
-
-      // Add to portfolio list
-      const newPortfolio = {
-        id: Date.now() + Math.random(),
-        studentName: students.find(s => s.id === parseInt(selectedStudent))?.name,
-        admissionNo: students.find(s => s.id === parseInt(selectedStudent))?.admissionNo,
-        className: classes.find(c => c.id === parseInt(selectedClass))?.name,
-        subject: subjects.find(s => s.id === parseInt(selectedSubject))?.name,
-        strand: strands.find(s => s.id === parseInt(selectedStrand))?.name,
-        subStrand: subStrands.find(s => s.id === parseInt(selectedSubStrand))?.name,
-        competency: competencies.find(c => c.id === parseInt(selectedCompetency))?.description,
-        evidenceType: file.type.split('/')[0],
-        fileName: file.name,
-        fileSize: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
-        uploadedDate: new Date().toISOString().split('T')[0],
-        status: 'pending'
-      };
-
-      setPortfolios(prev => [newPortfolio, ...prev]);
-    }
-
-    setUploading(false);
-    setSuccess(`${selectedFiles.length} file(s) uploaded successfully`);
-    setTimeout(() => setSuccess(null), 3000);
-    setSelectedFiles([]);
-    setUploadProgress({});
-  };
-
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'approved': return 'bg-green-100 text-green-700 border-green-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'rejected': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    } catch (error) {
+      console.error('Error uploading:', error);
+      addNotification('error', 'Failed to upload file');
+    } finally {
+      setUploading(false);
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'approved': return CheckCircle;
-      case 'pending': return Clock;
-      case 'rejected': return AlertCircle;
-      default: return File;
+  const confirmDelete = (evidence) => {
+    setEvidenceToDelete(evidence);
+    setShowDeleteModal(true);
+  };
+
+  const deleteEvidence = async () => {
+    if (!evidenceToDelete) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/teacher/evidence/${evidenceToDelete.id}/`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'Evidence deleted successfully');
+        await fetchData();
+      } else {
+        addNotification('error', data.error || 'Failed to delete evidence');
+      }
+    } catch (error) {
+      console.error('Error deleting:', error);
+      addNotification('error', 'Failed to delete evidence');
+    } finally {
+      setShowDeleteModal(false);
+      setEvidenceToDelete(null);
     }
   };
 
-  const getFileIcon = (type) => {
-    const evidenceType = evidenceTypes.find(et => et.value === type);
-    return evidenceType?.icon || File;
+  const viewEvidence = (evidence) => {
+    setSelectedEvidence(evidence);
+    setShowViewModal(true);
   };
 
-  if (loading) {
+  const getEvidenceIcon = (type) => {
+    switch(type) {
+      case 'image': return <Image className="h-8 w-8 text-blue-600" />;
+      case 'video': return <Video className="h-8 w-8 text-purple-600" />;
+      case 'document': return <FileText className="h-8 w-8 text-green-600" />;
+      default: return <File className="h-8 w-8 text-gray-600" />;
+    }
+  };
+
+  const downloadEvidence = async (evidence) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/teacher/evidence/${evidence.id}/download/`, {
+        headers: getAuthHeaders()
+      });
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${evidence.title}.${evidence.file_url?.split('.').pop() || 'file'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      addNotification('success', 'Download started');
+    } catch (error) {
+      console.error('Error downloading:', error);
+      addNotification('error', 'Failed to download file');
+    }
+  };
+
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <Loader className="w-12 h-12 text-blue-600 animate-spin" />
-          <p className="mt-4 text-gray-600">Loading portfolio uploader...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+          <p className="text-gray-600 mb-4">Please login to access evidence vault</p>
+          <a href="/login" className="px-6 py-3 bg-blue-600 text-white font-medium border border-blue-700 inline-block hover:bg-blue-700">
+            Go to Login
+          </a>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white w-full">
-      {/* Full-width container */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header */}
-        <div className="w-full mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Upload className="w-8 h-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Portfolio Evidence Uploader</h1>
-                <p className="text-gray-600 mt-1">Upload student work samples and project evidence</p>
-              </div>
+    <div className="min-h-screen bg-gray-50">
+      {notifications.map(notification => (
+        <Notification key={notification.id} type={notification.type} message={notification.message} onClose={() => removeNotification(notification.id)} />
+      ))}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        title="Delete Evidence"
+        message={`Are you sure you want to delete "${evidenceToDelete?.title}"? This action cannot be undone.`}
+        onConfirm={deleteEvidence}
+        onCancel={() => { setShowDeleteModal(false); setEvidenceToDelete(null); }}
+      />
+
+      {/* View Evidence Modal */}
+      {showViewModal && selectedEvidence && (
+        <ViewEvidenceModal evidence={selectedEvidence} onClose={() => { setShowViewModal(false); setSelectedEvidence(null); }} />
+      )}
+
+      {/* Header */}
+      <div className="bg-green-700 p-6">
+        <div className="mx-auto">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Evidence Vault</h1>
+              <p className="text-orange-100 mt-1">Upload and manage student work as evidence of learning</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-colors ${
-                  viewMode === 'grid' 
-                    ? 'bg-blue-100 text-blue-600' 
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <Grid className="w-5 h-5" />
+            <button onClick={() => setShowUploadModal(true)} className="px-4 py-2 bg-blue-700 text-white text-sm font-medium border border-green-700 hover:bg-green-700">
+              <Upload className="h-4 w-4 inline mr-2" />
+              Upload Evidence
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto p-6">
+        {/* Filters */}
+        <div className="bg-white border border-gray-300 p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Filter by Student</label>
+              <select value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white">
+                <option value="">All Students</option>
+                {students.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.admission_no})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Filter by Subject</label>
+              <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white">
+                <option value="">All Subjects</option>
+                {subjects.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end gap-2">
+              <button onClick={clearFilters} className="px-4 py-2 border border-gray-400 text-gray-700 text-sm font-medium bg-white hover:bg-gray-50">
+                Clear Filters
               </button>
-              <button 
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg transition-colors ${
-                  viewMode === 'list' 
-                    ? 'bg-blue-100 text-blue-600' 
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <List className="w-5 h-5" />
-              </button>
+              <div className="flex border border-gray-300">
+                <button onClick={() => setViewMode('grid')} className={`px-3 py-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}>
+                  <Grid className="h-4 w-4" />
+                </button>
+                <button onClick={() => setViewMode('list')} className={`px-3 py-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}>
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Upload Form - 4 columns on large screens */}
-          <div className="lg:col-span-4">
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm sticky top-6">
-              <div className="p-6 border-b border-gray-100">
-                <div className="flex items-center space-x-2">
-                  <Upload className="w-5 h-5 text-blue-600" />
-                  <h2 className="font-semibold text-gray-900">Upload Evidence</h2>
-                </div>
+        {/* Statistics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white border border-gray-300 p-4">
+            <p className="text-xs text-gray-600">Total Evidence Items</p>
+            <p className="text-2xl font-bold text-gray-900">{evidences.length}</p>
+          </div>
+          <div className="bg-white border border-gray-300 p-4">
+            <p className="text-xs text-gray-600">Images</p>
+            <p className="text-2xl font-bold text-blue-700">{evidences.filter(e => e.evidence_type === 'image').length}</p>
+          </div>
+          <div className="bg-white border border-gray-300 p-4">
+            <p className="text-xs text-gray-600">Documents</p>
+            <p className="text-2xl font-bold text-green-700">{evidences.filter(e => e.evidence_type === 'document').length}</p>
+          </div>
+          <div className="bg-white border border-gray-300 p-4">
+            <p className="text-xs text-gray-600">Videos</p>
+            <p className="text-2xl font-bold text-purple-700">{evidences.filter(e => e.evidence_type === 'video').length}</p>
+          </div>
+        </div>
+
+        {/* Evidence Grid View */}
+        {viewMode === 'grid' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {isLoading ? (
+              <div className="col-span-full text-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-orange-600" />
+                <p className="mt-2 text-gray-600">Loading evidence...</p>
               </div>
-
-              <div className="p-6">
-                <div className="space-y-5">
-                  {/* Class Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Class <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={selectedClass}
-                      onChange={handleClassChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                      required
-                    >
-                      <option value="">Select Class</option>
-                      {classes.map(c => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.studentCount} students)</option>
-                      ))}
-                    </select>
+            ) : filteredEvidences.length === 0 ? (
+              <div className="col-span-full bg-white border border-gray-300 p-12 text-center text-gray-400">
+                <FolderOpen className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>No evidence found. Upload some student work!</p>
+              </div>
+            ) : (
+              filteredEvidences.map(evidence => (
+                <div key={evidence.id} className="bg-white border border-gray-300 overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="h-40 bg-gray-100 flex items-center justify-center border-b border-gray-300 cursor-pointer" onClick={() => viewEvidence(evidence)}>
+                    {getEvidenceIcon(evidence.evidence_type)}
                   </div>
-
-                  {/* Student Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Student <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={selectedStudent}
-                      onChange={(e) => setSelectedStudent(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                      required
-                      disabled={!selectedClass}
-                    >
-                      <option value="">Select Student</option>
-                      {students.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} ({s.admissionNo})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Subject Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subject <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={selectedSubject}
-                      onChange={(e) => setSelectedSubject(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                      required
-                    >
-                      <option value="">Select Subject</option>
-                      {subjects.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Strand Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Strand <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={selectedStrand}
-                      onChange={handleStrandChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                      required
-                      disabled={!selectedSubject}
-                    >
-                      <option value="">Select Strand</option>
-                      {strands.filter(s => s.subjectId === parseInt(selectedSubject)).map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Sub-strand Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Sub-strand <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={selectedSubStrand}
-                      onChange={handleSubStrandChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                      required
-                      disabled={!selectedStrand}
-                    >
-                      <option value="">Select Sub-strand</option>
-                      {subStrands.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Learning Outcome Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Learning Outcome <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={selectedCompetency}
-                      onChange={(e) => setSelectedCompetency(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                      required
-                      disabled={!selectedSubStrand}
-                    >
-                      <option value="">Select Learning Outcome</option>
-                      {competencies.map(c => (
-                        <option key={c.id} value={c.id}>{c.code} - {c.description}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* File Upload Area */}
-                  <div
-                    className={`mt-4 border-2 border-dashed rounded-xl p-8 text-center transition-all ${
-                      dragActive 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-300 hover:border-gray-400 bg-gray-50'
-                    }`}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                  >
-                    <input
-                      type="file"
-                      id="file-upload"
-                      multiple
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
-                    />
-                    <label
-                      htmlFor="file-upload"
-                      className="cursor-pointer block"
-                    >
-                      <Upload className={`w-12 h-12 mx-auto mb-3 ${dragActive ? 'text-blue-500' : 'text-gray-400'}`} />
-                      <p className="text-sm text-gray-700 mb-1 font-medium">
-                        Drag & drop files here or click to browse
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Supports: Images, Videos, PDF, Office Documents (Max 100MB)
-                      </p>
-                    </label>
-                  </div>
-
-                  {/* Selected Files List */}
-                  {selectedFiles.length > 0 && (
-                    <div className="mt-4 space-y-3">
-                      <h3 className="text-sm font-medium text-gray-700 flex items-center justify-between">
-                        <span>Selected Files ({selectedFiles.length})</span>
-                        <button 
-                          onClick={() => setSelectedFiles([])}
-                          className="text-xs text-red-600 hover:text-red-700"
-                        >
-                          Clear all
-                        </button>
-                      </h3>
-                      <div className="max-h-64 overflow-y-auto space-y-2">
-                        {selectedFiles.map(file => {
-                          const FileIcon = getFileIcon(file.type.split('/')[0]);
-                          return (
-                            <div key={file.id} className="bg-white border border-gray-200 rounded-lg p-3">
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-start space-x-3 flex-1 min-w-0">
-                                  <div className="p-2 bg-blue-50 rounded-lg">
-                                    <FileIcon className="w-4 h-4 text-blue-600" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">
-                                      {file.name}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      {(file.size / (1024 * 1024)).toFixed(2)} MB
-                                    </p>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => removeFile(file.id)}
-                                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              </div>
-                              {uploadProgress[file.id] > 0 && (
-                                <div className="mt-2">
-                                  <div className="flex justify-between text-xs mb-1">
-                                    <span className="text-gray-600">Uploading...</span>
-                                    <span className="text-blue-600">{uploadProgress[file.id]}%</span>
-                                  </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div
-                                      className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                                      style={{ width: `${uploadProgress[file.id]}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <button
-                        onClick={handleUpload}
-                        disabled={uploading || selectedFiles.length === 0}
-                        className="w-full mt-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
-                      >
-                        {uploading ? (
-                          <>
-                            <Loader className="w-4 h-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-4 h-4" />
-                            Upload {selectedFiles.length} File(s)
-                          </>
-                        )}
+                  <div className="p-4">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-gray-900 truncate" title={evidence.title}>{evidence.title}</h3>
+                      <button onClick={() => confirmDelete(evidence)} className="text-red-600 hover:text-red-800">
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Portfolio List - 8 columns on large screens */}
-          <div className="lg:col-span-8">
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-              <div className="p-6 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Folder className="w-5 h-5 text-blue-600" />
-                    <h2 className="font-semibold text-gray-900">Student Portfolios</h2>
-                  </div>
-                  <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                    {portfolios.length} items
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-6">
-                {viewMode === 'grid' ? (
-                  /* Grid View */
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {portfolios.map(item => {
-                      const StatusIcon = getStatusIcon(item.status);
-                      const FileIcon = getFileIcon(item.evidenceType);
-                      return (
-                        <div key={item.id} className="bg-white border border-gray-200 rounded-xl hover:shadow-lg transition-shadow">
-                          {/* Thumbnail */}
-                          <div className="h-40 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-t-xl flex items-center justify-center relative">
-                            <FileIcon className="w-16 h-16 text-blue-400" />
-                            <span className={`absolute top-3 right-3 px-2 py-1 text-xs rounded-full border ${getStatusColor(item.status)} flex items-center gap-1`}>
-                              <StatusIcon className="w-3 h-3" />
-                              {item.status}
-                            </span>
-                          </div>
-
-                          {/* Content */}
-                          <div className="p-4">
-                            <div className="flex items-start justify-between mb-2">
-                              <div>
-                                <h3 className="font-semibold text-gray-900">{item.studentName}</h3>
-                                <p className="text-xs text-gray-500">{item.admissionNo}</p>
-                              </div>
-                            </div>
-
-                            <div className="space-y-1 mb-3">
-                              <p className="text-xs text-gray-600">
-                                <span className="font-medium">Subject:</span> {item.subject}
-                              </p>
-                              <p className="text-xs text-gray-600">
-                                <span className="font-medium">Strand:</span> {item.strand}
-                              </p>
-                              <p className="text-xs text-gray-600 truncate" title={item.competency}>
-                                <span className="font-medium">Outcome:</span> {item.competency}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                              <span>{item.fileName}</span>
-                              <span>{item.fileSize}</span>
-                            </div>
-
-                            {item.rating && (
-                              <div className="mb-3">
-                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs flex items-center gap-1 inline-flex">
-                                  <Award className="w-3 h-3" />
-                                  Rated: {item.rating}
-                                </span>
-                              </div>
-                            )}
-
-                            <div className="flex gap-2 pt-2 border-t border-gray-100">
-                              <button className="flex-1 px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-1">
-                                <Eye className="w-3 h-3" />
-                                View
-                              </button>
-                              <button className="flex-1 px-3 py-1.5 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center gap-1">
-                                <Download className="w-3 h-3" />
-                                Download
-                              </button>
-                              {item.status === 'pending' && (
-                                <button className="px-3 py-1.5 text-xs bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors">
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  /* List View */
-                  <div className="space-y-3">
-                    {portfolios.map(item => {
-                      const StatusIcon = getStatusIcon(item.status);
-                      const FileIcon = getFileIcon(item.evidenceType);
-                      return (
-                        <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-start gap-4">
-                            {/* Icon */}
-                            <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg">
-                              <FileIcon className="w-8 h-8 text-blue-500" />
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between mb-2">
-                                <div>
-                                  <h3 className="font-semibold text-gray-900">{item.studentName}</h3>
-                                  <p className="text-sm text-gray-600">{item.subject} • {item.strand}</p>
-                                </div>
-                                <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(item.status)} flex items-center gap-1`}>
-                                  <StatusIcon className="w-3 h-3" />
-                                  {item.status}
-                                </span>
-                              </div>
-
-                              <p className="text-sm text-gray-700 mb-2 line-clamp-2">{item.competency}</p>
-
-                              <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
-                                <span className="flex items-center gap-1">
-                                  <File className="w-3 h-3" />
-                                  {item.fileName}
-                                </span>
-                                <span>•</span>
-                                <span>{item.fileSize}</span>
-                                <span>•</span>
-                                <span>Uploaded: {new Date(item.uploadedDate).toLocaleDateString()}</span>
-                              </div>
-
-                              {item.rating && (
-                                <div className="mb-3">
-                                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs flex items-center gap-1 inline-flex">
-                                    <Award className="w-3 h-3" />
-                                    Rated: {item.rating}
-                                  </span>
-                                </div>
-                              )}
-
-                              <div className="flex gap-2">
-                                <button className="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1">
-                                  <Eye className="w-3 h-3" />
-                                  View
-                                </button>
-                                <button className="px-3 py-1.5 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-1">
-                                  <Download className="w-3 h-3" />
-                                  Download
-                                </button>
-                                {item.status === 'pending' && (
-                                  <button className="px-3 py-1.5 text-xs bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-1">
-                                    <Trash2 className="w-3 h-3" />
-                                    Delete
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {portfolios.length === 0 && (
-                  <div className="text-center py-16">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                      <Folder className="w-8 h-8 text-gray-400" />
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{evidence.description}</p>
+                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                      <User className="h-3 w-3" />
+                      <span className="truncate">{evidence.student_name}</span>
                     </div>
-                    <h3 className="text-gray-700 font-medium mb-1">No portfolios yet</h3>
-                    <p className="text-gray-500 text-sm">
-                      Upload evidence to start building student portfolios
-                    </p>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                      <BookOpen className="h-3 w-3" />
+                      <span>{evidence.subject}</span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                      <Calendar className="h-3 w-3" />
+                      <span>{evidence.created_at}</span>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button onClick={() => viewEvidence(evidence)} className="flex-1 px-3 py-1 bg-blue-600 text-white text-xs font-medium border border-blue-700 hover:bg-blue-700">
+                        <Eye className="h-3 w-3 inline mr-1" />
+                        View
+                      </button>
+                      <button onClick={() => downloadEvidence(evidence)} className="flex-1 px-3 py-1 bg-green-600 text-white text-xs font-medium border border-green-700 hover:bg-green-700">
+                        <Download className="h-3 w-3 inline mr-1" />
+                        Download
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Status Messages */}
-        {error && (
-          <div className="fixed bottom-6 right-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up z-50 max-w-md">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <span className="text-sm font-medium break-words">{error}</span>
+                </div>
+              ))
+            )}
           </div>
         )}
-        
-        {success && (
-          <div className="fixed bottom-6 right-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up z-50 max-w-md">
-            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-            <span className="text-sm font-medium break-words">{success}</span>
+
+        {/* Evidence List View */}
+        {viewMode === 'list' && (
+          <div className="bg-white border border-gray-300 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Type</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Title</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Student</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700 hidden md:table-cell">Subject</th>
+                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700 hidden lg:table-cell">Date</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan="6" className="border border-gray-300 px-4 py-12 text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-orange-600" />
+                      </td>
+                    </tr>
+                  ) : filteredEvidences.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="border border-gray-300 px-4 py-12 text-center text-gray-400">
+                        No evidence found
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEvidences.map(evidence => (
+                      <tr key={evidence.id} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-3">
+                          {getEvidenceIcon(evidence.evidence_type)}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 font-medium">
+                          {evidence.title}
+                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{evidence.description}</p>
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3">{evidence.student_name}</td>
+                        <td className="border border-gray-300 px-4 py-3 hidden md:table-cell">{evidence.subject}</td>
+                        <td className="border border-gray-300 px-4 py-3 hidden lg:table-cell">{evidence.created_at}</td>
+                        <td className="border border-gray-300 px-4 py-3 text-center">
+                          <div className="flex justify-center gap-2">
+                            <button onClick={() => viewEvidence(evidence)} className="px-2 py-1 bg-blue-600 text-white text-xs font-medium border border-blue-700 hover:bg-blue-700">
+                              <Eye className="h-3 w-3" />
+                            </button>
+                            <button onClick={() => downloadEvidence(evidence)} className="px-2 py-1 bg-green-600 text-white text-xs font-medium border border-green-700 hover:bg-green-700">
+                              <Download className="h-3 w-3" />
+                            </button>
+                            <button onClick={() => confirmDelete(evidence)} className="px-2 py-1 bg-red-600 text-white text-xs font-medium border border-red-700 hover:bg-red-700">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
 
-      <style jsx>{`
-        @keyframes slide-up {
-          from {
-            opacity: 0;
-            transform: translateY(1rem);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
-        }
-        
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowUploadModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-lg w-full mx-4 max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Upload Evidence</h3>
+              <button onClick={() => setShowUploadModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Title *</label>
+                <input 
+                  type="text" 
+                  value={uploadForm.title}
+                  onChange={(e) => setUploadForm({...uploadForm, title: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  placeholder="e.g., Science Project - Model of Solar System"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                <textarea 
+                  value={uploadForm.description}
+                  onChange={(e) => setUploadForm({...uploadForm, description: e.target.value})}
+                  rows="3"
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  placeholder="Describe the evidence and what it demonstrates..."
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Select Student *</label>
+                <select 
+                  value={uploadForm.student_id}
+                  onChange={(e) => setUploadForm({...uploadForm, student_id: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                >
+                  <option value="">Select Student</option>
+                  {students.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.admission_no})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Subject *</label>
+                <select 
+                  value={uploadForm.subject}
+                  onChange={(e) => setUploadForm({...uploadForm, subject: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                >
+                  <option value="">Select Subject</option>
+                  {subjects.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Evidence Type</label>
+                <select 
+                  value={uploadForm.evidence_type}
+                  onChange={(e) => setUploadForm({...uploadForm, evidence_type: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                >
+                  <option value="image">Image (JPG, PNG, GIF)</option>
+                  <option value="video">Video (MP4, MOV)</option>
+                  <option value="document">Document (PDF, DOC, PPT)</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Upload File *</label>
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx"
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+                <p className="text-xs text-gray-500 mt-1">Max file size: 50MB</p>
+              </div>
+              {uploadProgress > 0 && (
+                <div className="mb-4">
+                  <div className="bg-gray-200 h-2 rounded">
+                    <div className="bg-green-600 h-2 rounded" style={{ width: `${uploadProgress}%` }}></div>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">{uploadProgress}% uploaded</p>
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowUploadModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={uploadEvidence} disabled={uploading} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800 disabled:opacity-50">
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> : <Upload className="h-4 w-4 inline mr-2" />}
+                {uploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
+}
 
-export default PortfolioUploader;
+export default EvidenceVault;

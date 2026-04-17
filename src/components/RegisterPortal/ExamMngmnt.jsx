@@ -1,711 +1,549 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../Authentication/AuthContext';
-import { 
-  Calendar, Plus, Edit2, Trash2, Eye, FileText, 
-  Clock, Users, BookOpen, TrendingUp, Award,
-  CheckCircle, AlertCircle, RefreshCw, Download,
-  Printer, BarChart3, PieChart, Target, Medal,
-  School, User, ChevronRight, ChevronDown, Search,
-  Filter, XCircle, Loader2, Settings, Layout
-} from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// Notification Component
-const Notification = ({ type, message, onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 5000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  const icons = {
-    success: <CheckCircle className="h-5 w-5 text-green-500" />,
-    error: <AlertCircle className="h-5 w-5 text-red-500" />,
-    warning: <AlertCircle className="h-5 w-5 text-yellow-500" />,
-    info: <FileText className="h-5 w-5 text-blue-500" />
-  };
-
-  const styles = {
-    success: 'bg-green-50 border-green-200',
-    error: 'bg-red-50 border-red-200',
-    warning: 'bg-yellow-50 border-yellow-200',
-    info: 'bg-blue-50 border-blue-200'
-  };
-
-  return (
-    <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${styles[type]} animate-slide-in`}>
-      {icons[type]}
-      <p className="text-sm font-medium text-gray-800">{message}</p>
-      <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600">
-        <XCircle className="h-4 w-4" />
-      </button>
-    </div>
-  );
+// Exam Status Constants
+const EXAM_STATUS = {
+  DRAFT: { value: 'draft', label: 'Draft', color: 'bg-gray-100 text-gray-800', next: ['scheduled', 'cancelled'] },
+  SCHEDULED: { value: 'scheduled', label: 'Scheduled', color: 'bg-blue-100 text-blue-800', next: ['live', 'cancelled'] },
+  LIVE: { value: 'live', label: 'Live', color: 'bg-green-100 text-green-800', next: ['marking', 'cancelled'] },
+  MARKING: { value: 'marking', label: 'Marking', color: 'bg-yellow-100 text-yellow-800', next: ['moderation', 'published'] },
+  MODERATION: { value: 'moderation', label: 'Moderation', color: 'bg-purple-100 text-purple-800', next: ['published'] },
+  PUBLISHED: { value: 'published', label: 'Published', color: 'bg-indigo-100 text-indigo-800', next: ['archived'] },
+  ARCHIVED: { value: 'archived', label: 'Archived', color: 'bg-gray-100 text-gray-800', next: [] },
+  CANCELLED: { value: 'cancelled', label: 'Cancelled', color: 'bg-red-100 text-red-800', next: [] }
 };
 
-// Form Modal
-const FormModal = ({ isOpen, onClose, onSubmit, title, children, submitText = "Save" }) => {
-  if (!isOpen) return null;
+const EXAM_TYPES = [
+  { value: 'cba', label: 'Classroom-Based Assessment (CBA)', weight: 0.2 },
+  { value: 'sba', label: 'School-Based Assessment (SBA)', weight: 0.2 },
+  { value: 'cat', label: 'Continuous Assessment Test (CAT)', weight: 0.2 },
+  { value: 'end_term', label: 'End of Term Exam', weight: 0.6 },
+  { value: 'mock', label: 'Mock Exam', weight: 1.0 },
+  { value: 'kpsea', label: 'KPSEA (Grade 6)', weight: 1.0 },
+  { value: 'kjsea', label: 'KJSEA (Grade 9)', weight: 1.0 },
+  { value: 'kcse', label: 'KCSE (Form 4)', weight: 1.0 }
+];
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XCircle className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="p-6">
-          {children}
-        </div>
-        <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-            Cancel
-          </button>
-          <button onClick={onSubmit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            {submitText}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+const SUBJECTS = {
+  'early_years': ['Language Activities', 'Mathematical Activities', 'Environmental Activities', 'Psychomotor and Creative Activities', 'Religious Education'],
+  'lower_primary': ['English', 'Kiswahili', 'Mathematics', 'Environmental Activities', 'Hygiene and Nutrition', 'Religious Education', 'Creative Arts'],
+  'upper_primary': ['English', 'Kiswahili', 'Mathematics', 'Science and Technology', 'Social Studies', 'Religious Education', 'Creative Arts', 'Physical Education'],
+  'junior': ['English', 'Kiswahili', 'Mathematics', 'Integrated Science', 'Pre-Technical Studies', 'Social Studies', 'Religious Education', 'Creative Arts', 'Physical Education', 'Agriculture and Nutrition']
 };
 
-// Stat Card
-const StatCard = ({ title, value, icon, color, trend }) => {
-  const colors = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    purple: 'bg-purple-50 text-purple-600',
-    orange: 'bg-orange-50 text-orange-600',
-    pink: 'bg-pink-50 text-pink-600',
-    indigo: 'bg-indigo-50 text-indigo-600'
-  };
+const CBC_COMPETENCIES = [
+  'Communication and Collaboration',
+  'Critical Thinking and Problem Solving',
+  'Creativity and Imagination',
+  'Citizenship',
+  'Digital Literacy',
+  'Learning to Learn',
+  'Self-Efficacy'
+];
 
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{value}</p>
-          {trend && <p className="text-xs text-green-600 mt-2">{trend}</p>}
-        </div>
-        <div className={`p-3 rounded-lg ${colors[color]}`}>
-          {icon}
-        </div>
-      </div>
-    </div>
-  );
-};
+const CBC_VALUES = [
+  'Love',
+  'Responsibility',
+  'Respect',
+  'Unity',
+  'Peace',
+  'Patriotism',
+  'Integrity'
+];
 
-// Performance Bar
-const PerformanceBar = ({ label, percentage, color }) => {
-  const colors = {
-    green: 'bg-green-500',
-    blue: 'bg-blue-500',
-    yellow: 'bg-yellow-500',
-    red: 'bg-red-500',
-    purple: 'bg-purple-500'
-  };
+const FOUR_POINT_SCALE = [
+  { level: 4, label: 'Exceeding Expectations (EE)', description: 'Exceptional mastery independently', percentage: '90-100%' },
+  { level: 3, label: 'Meeting Expectations (ME)', description: 'Performs correctly and independently', percentage: '75-89%' },
+  { level: 2, label: 'Approaching Expectations (AE)', description: 'Progress with occasional support', percentage: '58-74%' },
+  { level: 1, label: 'Below Expectations (BE)', description: 'Requires significant intervention', percentage: '0-57%' }
+];
 
-  return (
-    <div className="mb-4">
-      <div className="flex justify-between mb-1">
-        <span className="text-sm font-medium text-gray-700">{label}</span>
-        <span className="text-sm text-gray-600">{percentage}%</span>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div className={`${colors[color]} h-2 rounded-full transition-all duration-500`} style={{ width: `${percentage}%` }}></div>
-      </div>
-    </div>
-  );
-};
+const EIGHT_POINT_SCALE = [
+  { points: 8, level: 'EE 1', original: 'Exceeding Expectations', percentage: '90-100%' },
+  { points: 7, level: 'EE 2', original: 'Exceeding Expectations', percentage: '75-89%' },
+  { points: 6, level: 'ME 1', original: 'Meeting Expectations', percentage: '58-74%' },
+  { points: 5, level: 'ME 2', original: 'Meeting Expectations', percentage: '41-57%' },
+  { points: 4, level: 'AE 1', original: 'Approaching Expectations', percentage: '31-40%' },
+  { points: 3, level: 'AE 2', original: 'Approaching Expectations', percentage: '21-30%' },
+  { points: 2, level: 'BE 1', original: 'Below Expectations', percentage: '11-20%' },
+  { points: 1, level: 'BE 2', original: 'Below Expectations', percentage: '0-10%' }
+];
 
-// Rating Badge
-const RatingBadge = ({ rating, count }) => {
-  const config = {
-    EE: { label: 'Exceeding', color: 'bg-green-100 text-green-800', icon: '🏆' },
-    ME: { label: 'Meeting', color: 'bg-blue-100 text-blue-800', icon: '✓' },
-    AE: { label: 'Approaching', color: 'bg-yellow-100 text-yellow-800', icon: '⚠️' },
-    BE: { label: 'Below', color: 'bg-red-100 text-red-800', icon: '❌' }
-  };
-
-  const { label, color, icon } = config[rating] || config.ME;
-
-  return (
-    <div className="text-center">
-      <div className={`px-3 py-2 rounded-lg ${color}`}>
-        <div className="text-lg font-bold">{count}</div>
-        <div className="text-xs font-medium">{label}</div>
-      </div>
-    </div>
-  );
-};
-
-function ExamAndReportManagement() {
-  const { user, getAuthHeaders, isAuthenticated } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [activeTab, setActiveTab] = useState('assessment-windows');
-  
-  // Data States
-  const [academicYears, setAcademicYears] = useState([]);
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState(null);
-  const [terms, setTerms] = useState([]);
-  const [selectedTerm, setSelectedTerm] = useState(null);
+function ExamManagement() {
+  const { getAuthHeaders, isAuthenticated } = useAuth();
+  const [exams, setExams] = useState([]);
+  const [filteredExams, setFilteredExams] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [selectedClass, setSelectedClass] = useState(null);
-  const [learningAreas, setLearningAreas] = useState([]);
-  const [assessmentWindows, setAssessmentWindows] = useState([]);
-  const [summativeAssessments, setSummativeAssessments] = useState([]);
-  const [timetable, setTimetable] = useState([]);
-  
-  // Performance Analysis
-  const [analysisLevel, setAnalysisLevel] = useState('school');
-  const [analysisData, setAnalysisData] = useState(null);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [students, setStudents] = useState([]);
-  
-  // UI States
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
-  const [formData, setFormData] = useState({});
+  const [teachers, setTeachers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedExamType, setSelectedExamType] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [showExamModal, setShowExamModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showMarkingModal, setShowMarkingModal] = useState(false);
+  const [showModerationModal, setShowModerationModal] = useState(false);
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [selectedExam, setSelectedExam] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [schedules, setSchedules] = useState([]);
+  const [conflicts, setConflicts] = useState([]);
+  const [markingData, setMarkingData] = useState({});
+  const [moderationData, setModerationData] = useState({});
+  const [permissions, setPermissions] = useState({
+    schoolWide: false,
+    gradeLevels: {},
+    subjectTeachers: {},
+    autoPublish: false,
+    requireModeration: true
+  });
+  const [scheduledLock, setScheduledLock] = useState({
+    enabled: false,
+    lockUntil: ''
+  });
+
+  const Notification = ({ type, message, onClose }) => {
+    useEffect(() => {
+      const timer = setTimeout(onClose, 5000);
+      return () => clearTimeout(timer);
+    }, [onClose]);
+
+    const styles = {
+      success: 'bg-green-50 border-green-400 text-green-800',
+      error: 'bg-red-50 border-red-400 text-red-800',
+      warning: 'bg-yellow-50 border-yellow-400 text-yellow-800',
+      info: 'bg-blue-50 border-blue-400 text-blue-800'
+    };
+
+    return (
+      <div className={`fixed top-4 right-4 z-50 max-w-md w-full border p-4 bg-white shadow-lg animate-slide-in ${styles[type]}`}>
+        <div className="flex items-start justify-between">
+          <p className="text-sm font-medium">{message}</p>
+          <button onClick={onClose} className="ml-4 text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
+        </div>
+      </div>
+    );
+  };
 
   const addNotification = (type, message) => {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, type, message }]);
-    setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 5000);
   };
 
-  // Fetch Data
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
   useEffect(() => {
-    if (isAuthenticated) fetchAllData();
-  }, [isAuthenticated]);
-
-  const fetchAllData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        fetchAcademicYears(),
-        fetchClasses(),
-        fetchLearningAreas(),
-        fetchAssessmentWindows()
-      ]);
-    } catch (error) {
-      addNotification('error', 'Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAcademicYears = async () => {
-    const res = await fetch(`${API_BASE_URL}/api/registrar/academic/academic-years/`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) {
-      setAcademicYears(data.data);
-      const current = data.data.find(y => y.is_current);
-      if (current) {
-        setSelectedAcademicYear(current);
-        fetchTerms(current.id);
-      }
-    }
-  };
-
-  const fetchTerms = async (yearId) => {
-    const res = await fetch(`${API_BASE_URL}/api/registrar/academic/terms/?academic_year=${yearId}`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) {
-      setTerms(data.data);
-      const current = data.data.find(t => t.is_current);
-      if (current) setSelectedTerm(current);
-    }
-  };
-
-  const fetchClasses = async () => {
-    const res = await fetch(`${API_BASE_URL}/api/registrar/classes/`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) setClasses(data.data);
-  };
-
-  const fetchStudents = async (classId) => {
-    const res = await fetch(`${API_BASE_URL}/api/registrar/students/?class_id=${classId}`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) setStudents(data.data);
-  };
-
-  const fetchLearningAreas = async () => {
-    const res = await fetch(`${API_BASE_URL}/api/registrar/academic/learning-areas/`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) setLearningAreas(data.data);
-  };
-
-  const fetchAssessmentWindows = async () => {
-    let url = `${API_BASE_URL}/api/registrar/academic/assessment-windows/`;
-    if (selectedTerm) url += `?term=${selectedTerm.id}`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
-    const data = await res.json();
-    if (data.success) setAssessmentWindows(data.data);
-  };
-
-  const fetchSummativeAssessments = async () => {
-    let url = `${API_BASE_URL}/api/registrar/academic/summative-assessments/`;
-    if (selectedClass) url += `?class_id=${selectedClass.id}`;
-    if (selectedTerm) url += `${selectedClass ? '&' : '?'}term=${selectedTerm.id}`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
-    const data = await res.json();
-    if (data.success) setSummativeAssessments(data.data);
-  };
-
-  const fetchTimetable = async () => {
-    if (!selectedClass || !selectedTerm) return;
-    const res = await fetch(`${API_BASE_URL}/api/registrar/academic/timetable/?class_id=${selectedClass.id}&term=${selectedTerm.id}`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (data.success) setTimetable(data.data);
-  };
-
-  const fetchPerformanceData = async () => {
-    setLoading(true);
-    try {
-      let url = `${API_BASE_URL}/api/registrar/academic/performance-analysis/`;
-      const params = new URLSearchParams();
-      if (selectedTerm) params.append('term', selectedTerm.id);
-      if (analysisLevel === 'class' && selectedClass) params.append('class_id', selectedClass.id);
-      if (analysisLevel === 'student' && selectedStudent) params.append('student_id', selectedStudent);
-      if (params.toString()) url += `?${params.toString()}`;
-      
-      const res = await fetch(url, { headers: getAuthHeaders() });
-      const data = await res.json();
-      if (data.success) setAnalysisData(data.data);
-      else addNotification('error', data.error || 'Failed to load performance data');
-    } catch (error) {
-      addNotification('error', 'Failed to load performance data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // CRUD Operations
-  const handleCreateAssessmentWindow = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/assessment-windows/create/`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ ...formData, term: selectedTerm.id })
-      });
-      const data = await res.json();
-      if (data.success) {
-        addNotification('success', 'Assessment window created');
-        setShowModal(false);
-        fetchAssessmentWindows();
-      } else {
-        addNotification('error', data.error || 'Creation failed');
-      }
-    } catch (error) {
-      addNotification('error', 'Failed to create');
-    }
-  };
-
-  const handleCreateSummativeAssessment = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/summative-assessments/create/`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ ...formData, term: selectedTerm.id, class_id: selectedClass?.id })
-      });
-      const data = await res.json();
-      if (data.success) {
-        addNotification('success', 'Summative assessment created');
-        setShowModal(false);
-        fetchSummativeAssessments();
-      } else {
-        addNotification('error', data.error || 'Creation failed');
-      }
-    } catch (error) {
-      addNotification('error', 'Failed to create');
-    }
-  };
-
-  const handleGenerateTimetable = async () => {
-    if (!selectedClass || !selectedTerm) {
-      addNotification('warning', 'Please select class and term');
+    if (!isAuthenticated) {
+      addNotification('error', 'Please login to access exam management');
       return;
     }
+    fetchData();
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [exams, searchTerm, selectedStatus, selectedExamType]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/timetable/generate/`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ class_id: selectedClass.id, term: selectedTerm.id })
+      const examsRes = await fetch(`${API_BASE_URL}/api/registrar/exams/`, {
+        headers: getAuthHeaders()
       });
-      const data = await res.json();
-      if (data.success) {
-        setTimetable(data.data);
-        addNotification('success', 'Timetable generated');
-      } else {
-        addNotification('error', data.error || 'Generation failed');
+      const examsData = await examsRes.json();
+      if (examsData.success) {
+        setExams(examsData.data);
+      }
+
+      const classesRes = await fetch(`${API_BASE_URL}/api/registrar/classes/`, {
+        headers: getAuthHeaders()
+      });
+      const classesData = await classesRes.json();
+      if (classesData.success) {
+        setClasses(classesData.data);
+      }
+
+      const teachersRes = await fetch(`${API_BASE_URL}/api/registrar/teachers/`, {
+        headers: getAuthHeaders()
+      });
+      const teachersData = await teachersRes.json();
+      if (teachersData.success) {
+        setTeachers(teachersData.data);
       }
     } catch (error) {
-      addNotification('error', 'Failed to generate timetable');
+      console.error('Error fetching data:', error);
+      addNotification('error', 'Failed to connect to backend server');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Stats
-  const stats = {
-    assessmentWindows: assessmentWindows.length,
-    activeWindows: assessmentWindows.filter(w => w.is_active).length,
-    summativeAssessments: summativeAssessments.length,
-    publishedAssessments: summativeAssessments.filter(a => a.status === 'Published').length
+  const applyFilters = () => {
+    let filtered = [...exams];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(e =>
+        e.title?.toLowerCase().includes(term) ||
+        e.exam_code?.toLowerCase().includes(term)
+      );
+    }
+
+    if (selectedStatus) {
+      filtered = filtered.filter(e => e.status === selectedStatus);
+    }
+
+    if (selectedExamType) {
+      filtered = filtered.filter(e => e.exam_type === selectedExamType);
+    }
+
+    setFilteredExams(filtered);
+    setCurrentPage(1);
   };
 
-  const renderAssessmentWindows = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Assessment Windows" value={stats.assessmentWindows} icon={<Calendar className="h-6 w-6" />} color="blue" />
-        <StatCard title="Active Windows" value={stats.activeWindows} icon={<CheckCircle className="h-6 w-6" />} color="green" />
-        <StatCard title="Summative Assessments" value={stats.summativeAssessments} icon={<FileText className="h-6 w-6" />} color="purple" />
-        <StatCard title="Published" value={stats.publishedAssessments} icon={<Eye className="h-6 w-6" />} color="indigo" />
-      </div>
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedStatus('');
+    setSelectedExamType('');
+  };
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 flex justify-between items-center">
-          <div>
-            <h3 className="font-semibold text-gray-800 flex items-center">
-              <Calendar className="h-5 w-5 text-blue-600 mr-2" />
-              Assessment Windows
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">Opener, Mid-Term, and End-Term assessment periods</p>
-          </div>
-          <button
-            onClick={() => {
-              setModalType('assessmentWindow');
-              setFormData({ assessment_type: '', weight_percentage: '', open_date: '', close_date: '', is_active: true });
-              setShowModal(true);
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Window
-          </button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
-          {assessmentWindows.map(window => (
-            <div key={window.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all hover:border-blue-200">
-              <div className="flex justify-between items-start mb-3">
-                <h4 className="font-semibold text-gray-800 text-lg">{window.assessment_type}</h4>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${window.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                  {window.is_active ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Weight:</span>
-                  <span className="font-medium text-gray-700">{window.weight_percentage}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Period:</span>
-                  <span className="text-gray-700">{window.open_date} - {window.close_date}</span>
-                </div>
-                {window.term_name && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Term:</span>
-                    <span className="text-gray-700">{window.term_name}</span>
-                  </div>
-                )}
-              </div>
-              <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end gap-2">
-                <button className="p-1 text-gray-400 hover:text-blue-600">
-                  <Edit2 className="h-4 w-4" />
-                </button>
-                <button className="p-1 text-gray-400 hover:text-red-600">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  const getPaginatedItems = () => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredExams.slice(start, start + itemsPerPage);
+  };
 
-  const renderTimetable = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
-            <select
-              value={selectedClass?.id || ''}
-              onChange={(e) => {
-                const cls = classes.find(c => c.id === e.target.value);
-                setSelectedClass(cls);
-                if (cls) fetchStudents(cls.id);
-              }}
-              className="border border-gray-300 rounded-lg px-3 py-2 w-64"
-            >
-              <option value="">Select Class</option>
-              {classes.map(c => (
-                <option key={c.id} value={c.id}>{c.class_name} ({c.class_code})</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Term</label>
-            <select
-              value={selectedTerm?.id || ''}
-              onChange={(e) => setSelectedTerm(terms.find(t => t.id === e.target.value))}
-              className="border border-gray-300 rounded-lg px-3 py-2 w-48"
-            >
-              <option value="">Select Term</option>
-              {terms.map(t => (
-                <option key={t.id} value={t.id}>{t.term} {t.is_current ? '(Current)' : ''}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={handleGenerateTimetable}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Generate Timetable
-          </button>
-        </div>
-      </div>
+  const totalPages = Math.ceil(filteredExams.length / itemsPerPage);
 
-      {timetable.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="font-semibold text-gray-800 flex items-center">
-              <Clock className="h-5 w-5 text-purple-600 mr-2" />
-              Exam Timetable - {selectedClass?.class_name}
-            </h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Learning Area</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Venue</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {timetable.map((slot, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm">{slot.date}</td>
-                    <td className="px-4 py-3 text-sm">{slot.time}</td>
-                    <td className="px-4 py-3 text-sm font-medium">{slot.learning_area}</td>
-                    <td className="px-4 py-3 text-sm">{slot.duration} mins</td>
-                    <td className="px-4 py-3 text-sm">{slot.venue || 'Classroom'}</td>
-                    <td className="px-4 py-3">
-                      <button className="text-blue-600 hover:text-blue-800 text-sm">Edit</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const createExam = () => {
+    setSelectedExam(null);
+    setEditFormData({
+      exam_code: '',
+      title: '',
+      exam_type: '',
+      academic_year: new Date().getFullYear(),
+      term: 1,
+      grade_level: '',
+      start_date: '',
+      end_date: '',
+      duration_minutes: 180,
+      total_marks: 100,
+      passing_marks: 50,
+      status: 'draft',
+      instructions: '',
+      subjects: [],
+      classes: [],
+      marking_scheme: '',
+      weighting: {},
+      room_allocation: [],
+      invigilators: []
+    });
+    setShowExamModal(true);
+  };
 
-  const renderPerformanceAnalysis = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Analysis Level</label>
-            <select
-              value={analysisLevel}
-              onChange={(e) => setAnalysisLevel(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2"
-            >
-              <option value="school">School-wide Analysis</option>
-              <option value="class">Class Analysis</option>
-              <option value="student">Student Analysis</option>
-            </select>
-          </div>
-          {analysisLevel === 'class' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
-              <select
-                value={selectedClass?.id || ''}
-                onChange={(e) => {
-                  const cls = classes.find(c => c.id === e.target.value);
-                  setSelectedClass(cls);
-                  if (cls) fetchStudents(cls.id);
-                }}
-                className="border border-gray-300 rounded-lg px-3 py-2 w-48"
-              >
-                <option value="">Select Class</option>
-                {classes.map(c => (
-                  <option key={c.id} value={c.id}>{c.class_name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          {analysisLevel === 'student' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
-                <select
-                  value={selectedClass?.id || ''}
-                  onChange={(e) => {
-                    const cls = classes.find(c => c.id === e.target.value);
-                    setSelectedClass(cls);
-                    if (cls) fetchStudents(cls.id);
-                  }}
-                  className="border border-gray-300 rounded-lg px-3 py-2 w-48"
-                >
-                  <option value="">Select Class</option>
-                  {classes.map(c => (
-                    <option key={c.id} value={c.id}>{c.class_name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select Student</label>
-                <select
-                  value={selectedStudent?.id || ''}
-                  onChange={(e) => setSelectedStudent(students.find(s => s.id === e.target.value))}
-                  className="border border-gray-300 rounded-lg px-3 py-2 w-64"
-                  disabled={!selectedClass}
-                >
-                  <option value="">Select Student</option>
-                  {students.map(s => (
-                    <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Term</label>
-            <select
-              value={selectedTerm?.id || ''}
-              onChange={(e) => setSelectedTerm(terms.find(t => t.id === e.target.value))}
-              className="border border-gray-300 rounded-lg px-3 py-2 w-40"
-            >
-              <option value="">Select Term</option>
-              {terms.map(t => (
-                <option key={t.id} value={t.id}>{t.term}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={fetchPerformanceData}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <TrendingUp className="h-4 w-4" />
-            Load Analysis
-          </button>
-        </div>
-      </div>
+  const editExam = (exam) => {
+    setSelectedExam(exam);
+    setEditFormData({
+      id: exam.id,
+      exam_code: exam.exam_code,
+      title: exam.title,
+      exam_type: exam.exam_type,
+      academic_year: exam.academic_year,
+      term: exam.term,
+      grade_level: exam.grade_level,
+      start_date: exam.start_date,
+      end_date: exam.end_date,
+      duration_minutes: exam.duration_minutes,
+      total_marks: exam.total_marks,
+      passing_marks: exam.passing_marks,
+      status: exam.status,
+      instructions: exam.instructions,
+      subjects: exam.subjects || [],
+      classes: exam.classes || [],
+      marking_scheme: exam.marking_scheme || '',
+      weighting: exam.weighting || {},
+      room_allocation: exam.room_allocation || [],
+      invigilators: exam.invigilators || []
+    });
+    setShowExamModal(true);
+  };
 
-      {analysisData && (
-        <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
-              <p className="text-sm opacity-90">Average Performance</p>
-              <p className="text-3xl font-bold mt-1">{analysisData.average_performance}%</p>
-              <p className="text-xs opacity-75 mt-2">Overall CBE rating</p>
-            </div>
-            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
-              <p className="text-sm opacity-90">Competency Mastery</p>
-              <p className="text-3xl font-bold mt-1">{analysisData.competency_mastery}%</p>
-              <p className="text-xs opacity-75 mt-2">ME & EE combined</p>
-            </div>
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-6 text-white">
-              <p className="text-sm opacity-90">Top Performing Area</p>
-              <p className="text-xl font-bold truncate mt-1">{analysisData.top_performing_area}</p>
-              <p className="text-xs opacity-75 mt-2">Highest mastery</p>
-            </div>
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white">
-              <p className="text-sm opacity-90">Needs Improvement</p>
-              <p className="text-xl font-bold truncate mt-1">{analysisData.needs_improvement_area}</p>
-              <p className="text-xs opacity-75 mt-2">Requires intervention</p>
-            </div>
-          </div>
+  const saveExam = async () => {
+    try {
+      const url = selectedExam 
+        ? `${API_BASE_URL}/api/registrar/exams/update/${selectedExam.id}/`
+        : `${API_BASE_URL}/api/registrar/exams/create/`;
+      const method = selectedExam ? 'PUT' : 'POST';
 
-          {/* Competency Rating Breakdown */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
-              <Target className="h-5 w-5 text-blue-600 mr-2" />
-              Competency Rating Distribution
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <RatingBadge rating="EE" count={analysisData.competency_breakdown?.EE || 0} />
-              <RatingBadge rating="ME" count={analysisData.competency_breakdown?.ME || 0} />
-              <RatingBadge rating="AE" count={analysisData.competency_breakdown?.AE || 0} />
-              <RatingBadge rating="BE" count={analysisData.competency_breakdown?.BE || 0} />
-            </div>
-          </div>
+      const response = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(editFormData)
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        addNotification('success', `Exam ${selectedExam ? 'updated' : 'created'} successfully!`);
+        await fetchData();
+        setShowExamModal(false);
+      } else {
+        addNotification('error', data.error || 'Failed to save exam');
+      }
+    } catch (error) {
+      console.error('Error saving exam:', error);
+      addNotification('error', 'Failed to save exam.');
+    }
+  };
 
-          {/* Learning Area Performance */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
-              <BookOpen className="h-5 w-5 text-green-600 mr-2" />
-              Learning Area Performance
-            </h3>
-            <div className="space-y-4">
-              {analysisData.learning_areas?.map(area => (
-                <PerformanceBar
-                  key={area.name}
-                  label={area.name}
-                  percentage={area.percentage}
-                  color={area.percentage >= 80 ? 'green' : area.percentage >= 60 ? 'blue' : area.percentage >= 40 ? 'yellow' : 'red'}
-                />
-              ))}
-            </div>
-          </div>
+  const updateExamStatus = async (examId, newStatus) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/exams/update/${examId}/`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        addNotification('success', `Exam status updated to ${EXAM_STATUS[newStatus.toUpperCase()]?.label || newStatus}`);
+        await fetchData();
+      } else {
+        addNotification('error', data.error || 'Failed to update status');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      addNotification('error', 'Failed to update status.');
+    }
+  };
 
-          {/* Recommendations */}
-          {analysisData.recommendations && analysisData.recommendations.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-              <h3 className="font-semibold text-amber-800 mb-3 flex items-center">
-                <AlertCircle className="h-5 w-5 mr-2" />
-                Recommendations
-              </h3>
-              <ul className="space-y-2">
-                {analysisData.recommendations.map((rec, idx) => (
-                  <li key={idx} className="flex items-start text-amber-700">
-                    <ChevronRight className="h-4 w-4 mt-0.5 mr-2 flex-shrink-0" />
-                    <span className="text-sm">{rec}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
+  const openScheduleModal = (exam) => {
+    setSelectedExam(exam);
+    setSchedules([]);
+    setShowScheduleModal(true);
+  };
+
+  const openMarkingModal = (exam) => {
+    setSelectedExam(exam);
+    setMarkingData({});
+    setShowMarkingModal(true);
+  };
+
+  const openModerationModal = (exam) => {
+    setSelectedExam(exam);
+    setModerationData({});
+    setShowModerationModal(true);
+  };
+
+  const checkConflicts = (schedules) => {
+    const conflictsList = [];
+    for (let i = 0; i < schedules.length; i++) {
+      for (let j = i + 1; j < schedules.length; j++) {
+        if (schedules[i].class_id === schedules[j].class_id &&
+            schedules[i].date === schedules[j].date) {
+          const start1 = new Date(`2000-01-01T${schedules[i].start_time}`);
+          const end1 = new Date(`2000-01-01T${schedules[i].end_time}`);
+          const start2 = new Date(`2000-01-01T${schedules[j].start_time}`);
+          const end2 = new Date(`2000-01-01T${schedules[j].end_time}`);
+          
+          if ((start1 < end2 && end1 > start2)) {
+            conflictsList.push({
+              exam1: schedules[i],
+              exam2: schedules[j],
+              class: classes.find(c => c.id == schedules[i].class_id)?.class_name
+            });
+          }
+        }
+      }
+    }
+    return conflictsList;
+  };
+
+  const saveSchedule = async () => {
+    const detectedConflicts = checkConflicts(schedules);
+    if (detectedConflicts.length > 0) {
+      setConflicts(detectedConflicts);
+      setShowConflictModal(true);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/exams/schedule/${selectedExam.id}/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ schedules })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        addNotification('success', 'Schedule saved successfully');
+        setShowScheduleModal(false);
+        await fetchData();
+      } else {
+        addNotification('error', data.error || 'Failed to save schedule');
+      }
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      addNotification('error', 'Failed to save schedule.');
+    }
+  };
+
+  const openPermissionModal = () => {
+    setShowPermissionModal(true);
+  };
+
+  const savePermissions = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/exams/permissions/${selectedExam?.id || 'global'}/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ permissions, scheduledLock })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        addNotification('success', 'Permissions updated successfully');
+        setShowPermissionModal(false);
+      } else {
+        addNotification('error', data.error || 'Failed to save permissions');
+      }
+    } catch (error) {
+      console.error('Error saving permissions:', error);
+      addNotification('error', 'Failed to save permissions.');
+    }
+  };
+
+  const assignMarkers = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/exams/markers/${selectedExam.id}/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(markingData)
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        addNotification('success', 'Markers assigned successfully');
+        setShowMarkingModal(false);
+      } else {
+        addNotification('error', data.error || 'Failed to assign markers');
+      }
+    } catch (error) {
+      console.error('Error assigning markers:', error);
+      addNotification('error', 'Failed to assign markers.');
+    }
+  };
+
+  const submitModeration = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/exams/moderate/${selectedExam.id}/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(moderationData)
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        addNotification('success', 'Moderation completed successfully');
+        setShowModerationModal(false);
+        await fetchData();
+      } else {
+        addNotification('error', data.error || 'Failed to submit moderation');
+      }
+    } catch (error) {
+      console.error('Error submitting moderation:', error);
+      addNotification('error', 'Failed to submit moderation.');
+    }
+  };
+
+  const deleteExam = async (exam) => {
+    if (!window.confirm(`Are you sure you want to delete ${exam.title}?`)) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/exams/delete/${exam.id}/`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        addNotification('success', `Exam ${exam.title} deleted successfully`);
+        await fetchData();
+      } else {
+        addNotification('error', data.error || 'Failed to delete exam');
+      }
+    } catch (error) {
+      console.error('Error deleting exam:', error);
+      addNotification('error', 'Failed to delete exam.');
+    }
+  };
+
+  const exportToCSV = () => {
+    try {
+      const exportData = filteredExams.map(exam => ({
+        'Exam Code': exam.exam_code,
+        'Title': exam.title,
+        'Type': EXAM_TYPES.find(t => t.value === exam.exam_type)?.label || exam.exam_type,
+        'Year': exam.academic_year,
+        'Term': exam.term,
+        'Start Date': exam.start_date,
+        'End Date': exam.end_date,
+        'Duration (mins)': exam.duration_minutes,
+        'Total Marks': exam.total_marks,
+        'Passing Marks': exam.passing_marks,
+        'Status': EXAM_STATUS[exam.status?.toUpperCase()]?.label || exam.status
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Exams');
+      XLSX.writeFile(workbook, `exams_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+      addNotification('success', `Exported ${exportData.length} exams successfully`);
+    } catch (error) {
+      console.error('Error exporting:', error);
+      addNotification('error', 'Failed to export data.');
+    }
+  };
+
+  const canEdit = (status) => {
+    return status === 'draft' || status === 'scheduled';
+  };
+
+  const getSubjectsForGrade = (gradeLevel) => {
+    if (gradeLevel === 'pp1' || gradeLevel === 'pp2') return SUBJECTS.early_years;
+    if (['1', '2', '3'].includes(gradeLevel)) return SUBJECTS.lower_primary;
+    if (['4', '5', '6'].includes(gradeLevel)) return SUBJECTS.upper_primary;
+    if (['7', '8', '9'].includes(gradeLevel)) return SUBJECTS.junior;
+    return SUBJECTS.upper_primary;
+  };
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <div className="w-16 h-16 bg-blue-100 flex items-center justify-center mx-auto mb-4 border border-blue-300">
+            <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
           <h2 className="text-2xl font-bold text-gray-900">Authentication Required</h2>
-          <p className="text-gray-600 mt-2 mb-6">Please login to access exam and report management</p>
-          <a href="/login" className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <p className="text-gray-600 mt-2">Please login to access exam management</p>
+          <a href="/login" className="mt-6 inline-block px-6 py-3 bg-blue-600 text-white font-medium border border-blue-700 hover:bg-blue-700">
             Go to Login
           </a>
         </div>
@@ -720,197 +558,610 @@ function ExamAndReportManagement() {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
         }
-        .animate-slide-in { animation: slideIn 0.3s ease-out; }
+        .animate-slide-in {
+          animation: slideIn 0.3s ease-out;
+        }
       `}</style>
 
-      {notifications.map(n => (
-        <Notification key={n.id} type={n.type} message={n.message} onClose={() => setNotifications(prev => prev.filter(n => n.id !== n.id))} />
+      {notifications.map(notification => (
+        <Notification
+          key={notification.id}
+          type={notification.type}
+          message={notification.message}
+          onClose={() => removeNotification(notification.id)}
+        />
       ))}
 
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="px-6 py-4">
-          <div className="flex justify-between items-center">
+      <div className="p-6">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                <FileText className="h-7 w-7 text-blue-600 mr-2" />
-                Exam & Report Management
-              </h1>
-              <p className="text-gray-500 text-sm mt-1">
-                Manage assessment windows, exam timetables, and performance analysis
-              </p>
-              {user && <p className="text-xs text-gray-400 mt-1">{user.first_name} {user.last_name} • {user.role}</p>}
+              <h1 className="text-2xl font-bold text-gray-900">Examination Management</h1>
+              <p className="text-sm text-gray-600 mt-1">Enterprise control tower for CBC/CBE examinations</p>
             </div>
-            <div className="flex items-center gap-3">
-              <select
-                value={selectedAcademicYear?.id || ''}
-                onChange={(e) => {
-                  const year = academicYears.find(y => y.id === e.target.value);
-                  setSelectedAcademicYear(year);
-                  if (year) fetchTerms(year.id);
-                }}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
-              >
-                {academicYears.map(year => (
-                  <option key={year.id} value={year.id}>
-                    {year.year_name} {year.is_current ? '(Current)' : ''}
-                  </option>
-                ))}
-              </select>
-              <button onClick={fetchAllData} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                <RefreshCw className="h-5 w-5" />
+            <div className="flex gap-3">
+              <button onClick={openPermissionModal} className="px-5 py-2 bg-purple-600 text-white text-sm font-medium border border-purple-700 hover:bg-purple-700">
+                Global Permissions
+              </button>
+              <button onClick={exportToCSV} className="px-5 py-2 bg-green-600 text-white text-sm font-medium border border-green-700 hover:bg-green-700">
+                Export CSV
+              </button>
+              <button onClick={createExam} className="px-5 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700">
+                Create Exam
               </button>
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="px-6 border-b border-gray-200">
-          <div className="flex gap-6">
-            {[
-              { id: 'assessment-windows', label: 'Assessment Windows', icon: Calendar },
-              { id: 'timetable', label: 'Exam Timetable', icon: Clock },
-              { id: 'performance', label: 'Performance Analysis', icon: TrendingUp }
-            ].map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
-                    activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+          <div className="bg-white border border-gray-300 p-3">
+            <p className="text-xs text-gray-600">Total Exams</p>
+            <p className="text-2xl font-bold text-gray-900">{exams.length}</p>
           </div>
+          <div className="bg-white border border-gray-300 p-3">
+            <p className="text-xs text-gray-600">Draft</p>
+            <p className="text-2xl font-bold text-gray-900">{exams.filter(e => e.status === 'draft').length}</p>
+          </div>
+          <div className="bg-white border border-gray-300 p-3">
+            <p className="text-xs text-gray-600">Scheduled</p>
+            <p className="text-2xl font-bold text-blue-700">{exams.filter(e => e.status === 'scheduled').length}</p>
+          </div>
+          <div className="bg-white border border-gray-300 p-3">
+            <p className="text-xs text-gray-600">Live</p>
+            <p className="text-2xl font-bold text-green-700">{exams.filter(e => e.status === 'live').length}</p>
+          </div>
+          <div className="bg-white border border-gray-300 p-3">
+            <p className="text-xs text-gray-600">Marking</p>
+            <p className="text-2xl font-bold text-yellow-700">{exams.filter(e => e.status === 'marking').length}</p>
+          </div>
+          <div className="bg-white border border-gray-300 p-3">
+            <p className="text-xs text-gray-600">Moderation</p>
+            <p className="text-2xl font-bold text-purple-700">{exams.filter(e => e.status === 'moderation').length}</p>
+          </div>
+          <div className="bg-white border border-gray-300 p-3">
+            <p className="text-xs text-gray-600">Published</p>
+            <p className="text-2xl font-bold text-indigo-700">{exams.filter(e => e.status === 'published').length}</p>
+          </div>
+          <div className="bg-white border border-gray-300 p-3">
+            <p className="text-xs text-gray-600">Archived</p>
+            <p className="text-2xl font-bold text-gray-700">{exams.filter(e => e.status === 'archived').length}</p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white border border-gray-300 p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Search</label>
+              <input 
+                type="text" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by code or title..." 
+                className="w-full px-3 py-2 text-sm border border-gray-400 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Status</label>
+              <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white">
+                <option value="">All Status</option>
+                {Object.values(EXAM_STATUS).map(status => (
+                  <option key={status.value} value={status.value}>{status.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Exam Type</label>
+              <select value={selectedExamType} onChange={(e) => setSelectedExamType(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white">
+                <option value="">All Types</option>
+                {EXAM_TYPES.map(type => (
+                  <option key={type.value} value={type.value}>{type.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <button onClick={clearFilters} className="text-xs text-blue-700 hover:text-blue-900 font-bold">Clear All Filters</button>
+          </div>
+        </div>
+
+        {/* Exams Table */}
+        <div className="bg-white border border-gray-300 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="border border-gray-300 px-4 py-3 text-left text-xs font-bold text-gray-700 bg-gray-100">Exam Code</th>
+                  <th className="border border-gray-300 px-4 py-3 text-left text-xs font-bold text-gray-700 bg-gray-100">Title</th>
+                  <th className="border border-gray-300 px-4 py-3 text-left text-xs font-bold text-gray-700 bg-gray-100 hidden md:table-cell">Type</th>
+                  <th className="border border-gray-300 px-4 py-3 text-left text-xs font-bold text-gray-700 bg-gray-100 hidden lg:table-cell">Period</th>
+                  <th className="border border-gray-300 px-4 py-3 text-left text-xs font-bold text-gray-700 bg-gray-100 hidden sm:table-cell">Status</th>
+                  <th className="border border-gray-300 px-4 py-3 text-right text-xs font-bold text-gray-700 bg-gray-100">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan="6" className="border border-gray-300 px-4 py-12 text-center text-gray-500">Loading exams...</td>
+                  </tr>
+                ) : getPaginatedItems().length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="border border-gray-300 px-4 py-12 text-center text-gray-500">No exams found</td>
+                  </tr>
+                ) : (
+                  getPaginatedItems().map(exam => {
+                    const status = EXAM_STATUS[exam.status?.toUpperCase()];
+                    return (
+                      <tr key={exam.id} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-3 font-mono text-xs">{exam.exam_code}</td>
+                        <td className="border border-gray-300 px-4 py-3 font-medium">{exam.title}</td>
+                        <td className="border border-gray-300 px-4 py-3 hidden md:table-cell text-xs">
+                          {EXAM_TYPES.find(t => t.value === exam.exam_type)?.label || exam.exam_type}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 hidden lg:table-cell text-xs">
+                          {exam.start_date} to {exam.end_date}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 hidden sm:table-cell">
+                          <span className={`px-2 py-1 text-xs font-bold border ${status?.color}`}>
+                            {status?.label}
+                          </span>
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 text-right">
+                          <div className="flex justify-end gap-2 flex-wrap">
+                            <button 
+                              onClick={() => editExam(exam)} 
+                              disabled={!canEdit(exam.status)}
+                              className={`px-3 py-1 text-xs font-medium border ${canEdit(exam.status) ? 'bg-green-600 text-white border-green-700 hover:bg-green-700' : 'bg-gray-300 text-gray-500 border-gray-400 cursor-not-allowed'}`}
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={() => openScheduleModal(exam)} 
+                              className="px-3 py-1 bg-purple-600 text-white text-xs font-medium border border-purple-700 hover:bg-purple-700"
+                            >
+                              Schedule
+                            </button>
+                            {exam.status === 'marking' && (
+                              <button 
+                                onClick={() => openMarkingModal(exam)} 
+                                className="px-3 py-1 bg-yellow-600 text-white text-xs font-medium border border-yellow-700 hover:bg-yellow-700"
+                              >
+                                Marking
+                              </button>
+                            )}
+                            {exam.status === 'moderation' && (
+                              <button 
+                                onClick={() => openModerationModal(exam)} 
+                                className="px-3 py-1 bg-purple-600 text-white text-xs font-medium border border-purple-700 hover:bg-purple-700"
+                              >
+                                Moderate
+                              </button>
+                            )}
+                            {exam.status !== 'archived' && exam.status !== 'cancelled' && (
+                              <select
+                                value=""
+                                onChange={(e) => updateExamStatus(exam.id, e.target.value)}
+                                className="px-2 py-1 text-xs border border-gray-400 bg-white"
+                              >
+                                <option value="">Change Status</option>
+                                {status?.next.map(nextStatus => (
+                                  <option key={nextStatus} value={nextStatus}>
+                                    Move to {EXAM_STATUS[nextStatus.toUpperCase()]?.label}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                            <button 
+                              onClick={() => deleteExam(exam)} 
+                              className="px-3 py-1 bg-red-600 text-white text-xs font-medium border border-red-700 hover:bg-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {filteredExams.length > 0 && (
+            <div className="px-4 py-3 border-t border-gray-300 bg-gray-50 flex flex-col sm:flex-row items-center justify-between gap-2">
+              <p className="text-xs text-gray-700">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredExams.length)} of {filteredExams.length} exams
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-1 text-sm border border-gray-400 bg-white text-gray-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100">
+                  Previous
+                </button>
+                <span className="px-3 py-1 text-sm text-gray-700">Page {currentPage} of {totalPages}</span>
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-4 py-1 text-sm border border-gray-400 bg-white text-gray-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100">
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="p-6">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />
+      {/* Create/Edit Exam Modal */}
+      {showExamModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowExamModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">{selectedExam ? 'Edit Exam' : 'Create Exam'}</h3>
+              <button onClick={() => setShowExamModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Exam Code *</label>
+                  <input type="text" name="exam_code" value={editFormData.exam_code} onChange={(e) => setEditFormData({...editFormData, exam_code: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Exam Title *</label>
+                  <input type="text" name="title" value={editFormData.title} onChange={(e) => setEditFormData({...editFormData, title: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Exam Type *</label>
+                  <select name="exam_type" value={editFormData.exam_type} onChange={(e) => setEditFormData({...editFormData, exam_type: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" required>
+                    <option value="">Select Type</option>
+                    {EXAM_TYPES.map(type => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Grade Level *</label>
+                  <select name="grade_level" value={editFormData.grade_level} onChange={(e) => setEditFormData({...editFormData, grade_level: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" required>
+                    <option value="">Select Grade</option>
+                    <option value="pp1">Pre-Primary 1 (PP1)</option>
+                    <option value="pp2">Pre-Primary 2 (PP2)</option>
+                    <option value="1">Grade 1</option>
+                    <option value="2">Grade 2</option>
+                    <option value="3">Grade 3</option>
+                    <option value="4">Grade 4</option>
+                    <option value="5">Grade 5</option>
+                    <option value="6">Grade 6</option>
+                    <option value="7">Grade 7</option>
+                    <option value="8">Grade 8</option>
+                    <option value="9">Grade 9</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Academic Year</label>
+                  <input type="number" name="academic_year" value={editFormData.academic_year} onChange={(e) => setEditFormData({...editFormData, academic_year: parseInt(e.target.value)})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Term</label>
+                  <select name="term" value={editFormData.term} onChange={(e) => setEditFormData({...editFormData, term: parseInt(e.target.value)})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white">
+                    <option value="1">Term 1</option>
+                    <option value="2">Term 2</option>
+                    <option value="3">Term 3</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Start Date</label>
+                  <input type="date" name="start_date" value={editFormData.start_date} onChange={(e) => setEditFormData({...editFormData, start_date: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">End Date</label>
+                  <input type="date" name="end_date" value={editFormData.end_date} onChange={(e) => setEditFormData({...editFormData, end_date: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Duration (minutes)</label>
+                  <input type="number" name="duration_minutes" value={editFormData.duration_minutes} onChange={(e) => setEditFormData({...editFormData, duration_minutes: parseInt(e.target.value)})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Total Marks</label>
+                  <input type="number" name="total_marks" value={editFormData.total_marks} onChange={(e) => setEditFormData({...editFormData, total_marks: parseInt(e.target.value)})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Passing Marks</label>
+                  <input type="number" name="passing_marks" value={editFormData.passing_marks} onChange={(e) => setEditFormData({...editFormData, passing_marks: parseInt(e.target.value)})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Subjects</label>
+                  <div className="border border-gray-300 p-3 max-h-40 overflow-y-auto">
+                    {getSubjectsForGrade(editFormData.grade_level).map(subject => (
+                      <label key={subject} className="flex items-center mr-4 mb-2">
+                        <input type="checkbox" checked={editFormData.subjects?.includes(subject)} onChange={(e) => {
+                          const subjects = e.target.checked 
+                            ? [...(editFormData.subjects || []), subject]
+                            : (editFormData.subjects || []).filter(s => s !== subject);
+                          setEditFormData({...editFormData, subjects});
+                        }} className="mr-2" />
+                        <span className="text-sm">{subject}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Instructions</label>
+                  <textarea name="instructions" value={editFormData.instructions} onChange={(e) => setEditFormData({...editFormData, instructions: e.target.value})} rows="3" className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" />
+                </div>
+              </div>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowExamModal(false)} className="px-4 py-2 border border-gray-400 text-gray-700 text-sm font-medium bg-white hover:bg-gray-100">Cancel</button>
+              <button onClick={saveExam} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700">Save Exam</button>
+            </div>
           </div>
-        ) : (
-          <>
-            {activeTab === 'assessment-windows' && renderAssessmentWindows()}
-            {activeTab === 'timetable' && renderTimetable()}
-            {activeTab === 'performance' && renderPerformanceAnalysis()}
-          </>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Form Modal */}
-      <FormModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onSubmit={modalType === 'assessmentWindow' ? handleCreateAssessmentWindow : handleCreateSummativeAssessment}
-        title={modalType === 'assessmentWindow' ? 'Add Assessment Window' : 'Create Summative Assessment'}
-      >
-        {modalType === 'assessmentWindow' ? (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Type</label>
-              <select
-                value={formData.assessment_type || ''}
-                onChange={e => setFormData({...formData, assessment_type: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              >
-                <option value="">Select Type</option>
-                <option value="Opener">Opener</option>
-                <option value="Mid-Term">Mid-Term</option>
-                <option value="End-Term">End-Term</option>
-              </select>
+      {/* Schedule Modal */}
+      {showScheduleModal && selectedExam && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowScheduleModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Schedule Exam: {selectedExam.title}</h3>
+              <button onClick={() => setShowScheduleModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Weight Percentage</label>
-              <input
-                type="number"
-                value={formData.weight_percentage || ''}
-                onChange={e => setFormData({...formData, weight_percentage: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                placeholder="e.g., 15"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Open Date</label>
-                <input
-                  type="date"
-                  value={formData.open_date || ''}
-                  onChange={e => setFormData({...formData, open_date: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
+            <div className="p-5">
+              <div className="mb-4 bg-yellow-50 border border-yellow-300 p-3">
+                <p className="text-sm text-yellow-800">⚠️ Schedule each subject with date, time, and room. The system will detect conflicts automatically.</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Close Date</label>
-                <input
-                  type="date"
-                  value={formData.close_date || ''}
-                  onChange={e => setFormData({...formData, close_date: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse mb-4">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="border border-gray-300 px-3 py-2 text-left text-xs font-bold">Subject</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-xs font-bold">Date</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-xs font-bold">Start Time</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-xs font-bold">End Time</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-xs font-bold">Room</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-xs font-bold">Invigilator</th>
+                      <th className="border border-gray-300 px-3 py-2 text-center text-xs font-bold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {schedules.map((schedule, index) => (
+                      <tr key={index}>
+                        <td className="border border-gray-300 px-3 py-2">
+                          <select value={schedule.subject} onChange={(e) => {
+                            const newSchedules = [...schedules];
+                            newSchedules[index].subject = e.target.value;
+                            setSchedules(newSchedules);
+                          }} className="w-full px-2 py-1 text-sm border border-gray-400 bg-white">
+                            <option value="">Select</option>
+                            {(editFormData.subjects || getSubjectsForGrade(selectedExam.grade_level)).map(s => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2">
+                          <input type="date" value={schedule.date} onChange={(e) => {
+                            const newSchedules = [...schedules];
+                            newSchedules[index].date = e.target.value;
+                            setSchedules(newSchedules);
+                          }} className="w-full px-2 py-1 text-sm border border-gray-400 bg-white" />
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2">
+                          <input type="time" value={schedule.start_time} onChange={(e) => {
+                            const newSchedules = [...schedules];
+                            newSchedules[index].start_time = e.target.value;
+                            setSchedules(newSchedules);
+                          }} className="w-full px-2 py-1 text-sm border border-gray-400 bg-white" />
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2">
+                          <input type="time" value={schedule.end_time} onChange={(e) => {
+                            const newSchedules = [...schedules];
+                            newSchedules[index].end_time = e.target.value;
+                            setSchedules(newSchedules);
+                          }} className="w-full px-2 py-1 text-sm border border-gray-400 bg-white" />
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2">
+                          <input type="text" value={schedule.room} onChange={(e) => {
+                            const newSchedules = [...schedules];
+                            newSchedules[index].room = e.target.value;
+                            setSchedules(newSchedules);
+                          }} placeholder="Room No" className="w-full px-2 py-1 text-sm border border-gray-400 bg-white" />
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2">
+                          <select value={schedule.invigilator} onChange={(e) => {
+                            const newSchedules = [...schedules];
+                            newSchedules[index].invigilator = e.target.value;
+                            setSchedules(newSchedules);
+                          }} className="w-full px-2 py-1 text-sm border border-gray-400 bg-white">
+                            <option value="">Select</option>
+                            {teachers.map(t => (
+                              <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2 text-center">
+                          <button onClick={() => setSchedules(schedules.filter((_, i) => i !== index))} className="text-red-600 hover:text-red-800">Remove</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+              
+              <button onClick={() => setSchedules([...schedules, { subject: '', date: '', start_time: '', end_time: '', room: '', invigilator: '', class_id: selectedExam.classes?.[0] }])} className="mb-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700">
+                + Add Schedule
+              </button>
             </div>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={formData.is_active !== false}
-                onChange={e => setFormData({...formData, is_active: e.target.checked})}
-                className="h-4 w-4 text-blue-600 rounded"
-              />
-              <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">Active</label>
+            <div className="px-5 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowScheduleModal(false)} className="px-4 py-2 border border-gray-400 text-gray-700 text-sm font-medium bg-white hover:bg-gray-100">Cancel</button>
+              <button onClick={saveSchedule} className="px-4 py-2 bg-purple-600 text-white text-sm font-medium border border-purple-700 hover:bg-purple-700">Save Schedule</button>
             </div>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Code</label>
-              <input
-                type="text"
-                value={formData.assessment_code || ''}
-                onChange={e => setFormData({...formData, assessment_code: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                placeholder="e.g., ASS-202403-001"
-              />
+        </div>
+      )}
+
+      {/* Marking Modal */}
+      {showMarkingModal && selectedExam && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowMarkingModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-2xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Assign Markers: {selectedExam.title}</h3>
+              <button onClick={() => setShowMarkingModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Learning Area</label>
-              <select
-                value={formData.learning_area || ''}
-                onChange={e => setFormData({...formData, learning_area: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              >
-                <option value="">Select Learning Area</option>
-                {learningAreas.map(area => (
-                  <option key={area.id} value={area.id}>{area.area_name}</option>
-                ))}
-              </select>
+            <div className="p-5">
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-3">Assign teachers to mark each subject. Multiple markers can be assigned to the same subject.</p>
+              </div>
+              
+              {(selectedExam.subjects || getSubjectsForGrade(selectedExam.grade_level)).map(subject => (
+                <div key={subject} className="mb-4 p-3 border border-gray-300">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">{subject}</label>
+                  <select 
+                    multiple 
+                    value={markingData[subject] || []}
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.selectedOptions, option => option.value);
+                      setMarkingData({...markingData, [subject]: selected});
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-400 bg-white h-32"
+                  >
+                    {teachers.map(teacher => (
+                      <option key={teacher.id} value={teacher.id}>{teacher.first_name} {teacher.last_name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Hold Ctrl to select multiple markers</p>
+                </div>
+              ))}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Window</label>
-              <select
-                value={formData.assessment_window || ''}
-                onChange={e => setFormData({...formData, assessment_window: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              >
-                <option value="">Select Assessment Window</option>
-                {assessmentWindows.map(window => (
-                  <option key={window.id} value={window.id}>{window.assessment_type} ({window.weight_percentage}%)</option>
-                ))}
-              </select>
+            <div className="px-5 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowMarkingModal(false)} className="px-4 py-2 border border-gray-400 text-gray-700 text-sm font-medium bg-white hover:bg-gray-100">Cancel</button>
+              <button onClick={assignMarkers} className="px-4 py-2 bg-yellow-600 text-white text-sm font-medium border border-yellow-700 hover:bg-yellow-700">Assign Markers</button>
             </div>
           </div>
-        )}
-      </FormModal>
+        </div>
+      )}
+
+      {/* Moderation Modal */}
+      {showModerationModal && selectedExam && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModerationModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-2xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Moderate Exam: {selectedExam.title}</h3>
+              <button onClick={() => setShowModerationModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-5">
+              <div className="mb-4 bg-purple-50 border border-purple-300 p-3">
+                <p className="text-sm text-purple-800">Review and moderate all marked scripts before publishing.</p>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-gray-700 mb-1">Moderator</label>
+                <select value={moderationData.moderator} onChange={(e) => setModerationData({...moderationData, moderator: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white">
+                  <option value="">Select Moderator</option>
+                  {teachers.filter(t => t.role === 'senior_teacher' || t.role === 'hod').map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>{teacher.first_name} {teacher.last_name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-gray-700 mb-1">Moderation Notes</label>
+                <textarea value={moderationData.notes} onChange={(e) => setModerationData({...moderationData, notes: e.target.value})} rows="4" className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" placeholder="Enter moderation comments, discrepancies found, recommendations..."></textarea>
+              </div>
+              
+              <div className="mb-4">
+                <label className="flex items-center">
+                  <input type="checkbox" checked={moderationData.approved} onChange={(e) => setModerationData({...moderationData, approved: e.target.checked})} className="mr-2" />
+                  <span className="text-sm">Approve all results for publication</span>
+                </label>
+              </div>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowModerationModal(false)} className="px-4 py-2 border border-gray-400 text-gray-700 text-sm font-medium bg-white hover:bg-gray-100">Cancel</button>
+              <button onClick={submitModeration} className="px-4 py-2 bg-purple-600 text-white text-sm font-medium border border-purple-700 hover:bg-purple-700">Submit Moderation</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permissions Modal */}
+      {showPermissionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowPermissionModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-2xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Global Permission Settings</h3>
+              <button onClick={() => setShowPermissionModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-5">
+              <div className="mb-6">
+                <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-300">
+                  <div>
+                    <p className="font-bold text-sm">School-Wide Mark Uploading</p>
+                    <p className="text-xs text-gray-600">Allow all teachers to upload marks for any exam</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={permissions.schoolWide} onChange={(e) => setPermissions({...permissions, schoolWide: e.target.checked})} />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 border border-gray-400 peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:h-5 after:w-5 after:transition-all"></div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-300 mb-2">
+                  <div>
+                    <p className="font-bold text-sm">Require Moderation</p>
+                    <p className="text-xs text-gray-600">Results must be moderated before publication</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={permissions.requireModeration} onChange={(e) => setPermissions({...permissions, requireModeration: e.target.checked})} />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 border border-gray-400 peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:h-5 after:w-5 after:transition-all"></div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-300 mb-2">
+                  <div>
+                    <p className="font-bold text-sm">Scheduled Lock</p>
+                    <p className="text-xs text-gray-600">Auto-expire permissions after timestamp</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={scheduledLock.enabled} onChange={(e) => setScheduledLock({...scheduledLock, enabled: e.target.checked})} />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 border border-gray-400 peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:h-5 after:w-5 after:transition-all"></div>
+                  </label>
+                </div>
+                {scheduledLock.enabled && (
+                  <div className="mt-2">
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Lock Until</label>
+                    <input type="datetime-local" value={scheduledLock.lockUntil} onChange={(e) => setScheduledLock({...scheduledLock, lockUntil: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white" />
+                    <p className="text-xs text-gray-500 mt-1">Permissions will automatically expire after this timestamp</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-6">
+                <p className="font-bold text-sm mb-3">Grade Level Permissions</p>
+                <div className="max-h-60 overflow-y-auto border border-gray-300">
+                  {classes.map(cls => (
+                    <div key={cls.id} className="flex items-center justify-between p-2 border-b border-gray-200">
+                      <span className="text-sm">{cls.class_name}</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={permissions.gradeLevels[cls.id] || false} onChange={(e) => setPermissions({
+                          ...permissions,
+                          gradeLevels: {...permissions.gradeLevels, [cls.id]: e.target.checked}
+                        })} />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 border border-gray-400 peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:h-5 after:w-5 after:transition-all"></div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowPermissionModal(false)} className="px-4 py-2 border border-gray-400 text-gray-700 text-sm font-medium bg-white hover:bg-gray-100">Cancel</button>
+              <button onClick={savePermissions} className="px-4 py-2 bg-purple-600 text-white text-sm font-medium border border-purple-700 hover:bg-purple-700">Save Permissions</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export default ExamAndReportManagement;
+export default ExamManagement;

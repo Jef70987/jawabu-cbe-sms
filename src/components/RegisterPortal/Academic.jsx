@@ -1,122 +1,89 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../Authentication/AuthContext';
+import React, { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { 
-  Plus, Edit2, Trash2, Eye, RefreshCw, Calendar, BookOpen, 
-  Layers, Target, CheckCircle, AlertCircle, X, Loader2, 
-  ChevronDown, ChevronRight, FolderTree, GraduationCap, Clock,
-  Award, Users, FileText, Upload, Download, Filter, Search,
-  LogOut
+  BookOpen, Plus, RefreshCw, Download, Upload, FileText, 
+  Layers, GitBranch, Target, Award, Users, Settings, 
+  AlertCircle, CheckCircle, X, Loader2, Eye, Edit2, 
+  Trash2, Copy, Archive, Lock, Unlock, ChevronDown, 
+  ChevronRight, Search, Filter, Globe, School, 
+  Calendar, Clock, Link2, Database, HardDrive, Shield,
+  ChevronUp, Star, TrendingUp, BarChart3, PieChart,
+  Activity, UserCheck, ClipboardList, GraduationCap
 } from 'lucide-react';
+import { useAuth } from '../Authentication/AuthContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// Helper function to get current term based on month
-const getCurrentTermFromDate = () => {
-  const currentMonth = new Date().getMonth() + 1;
-  if (currentMonth >= 1 && currentMonth <= 3) return 'Term 1';
-  if (currentMonth >= 5 && currentMonth <= 7) return 'Term 2';
-  if (currentMonth >= 9 && currentMonth <= 11) return 'Term 3';
-  return null;
-};
-
-// Session Expired Modal
-const SessionExpiredModal = ({ isOpen, onLogout }) => {
-  if (!isOpen) return null;
-  
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-        <div className="p-6">
-          <div className="flex items-center mb-4">
-            <AlertCircle className="h-8 w-8 text-red-500 mr-3" />
-            <h3 className="text-xl font-semibold text-gray-900">Session Expired</h3>
-          </div>
-          <p className="text-gray-600 mb-6">
-            Your session has expired. Please login again to continue using the system.
-          </p>
-          <div className="flex justify-end">
-            <button
-              onClick={onLogout}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+// Learning Domains - Static (never changes)
+const LEARNING_DOMAINS = [
+  { id: 'cognitive', name: 'Cognitive (Knowledge)', code: 'C' },
+  { id: 'psychomotor', name: 'Psychomotor (Skills)', code: 'P' },
+  { id: 'affective', name: 'Affective (Values/Attitudes)', code: 'A' }
+];
 
 // Notification Component
-const Notification = ({ type, message, onClose }) => {
+const Notification = ({ type, message, onClose, duration = 5000 }) => {
+  const [visible, setVisible] = useState(true);
+
   useEffect(() => {
-    const timer = setTimeout(onClose, 5000);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      setTimeout(() => onClose?.(), 300);
+    }, duration);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, [duration, onClose]);
 
-  const icons = {
-    success: <CheckCircle className="h-5 w-5 text-green-500" />,
-    error: <AlertCircle className="h-5 w-5 text-red-500" />,
-    warning: <AlertCircle className="h-5 w-5 text-yellow-500" />,
-    info: <FileText className="h-5 w-5 text-blue-500" />
+  const getStyles = () => {
+    switch (type) {
+      case 'success': return 'bg-green-50 border-green-300 text-green-800';
+      case 'error': return 'bg-red-50 border-red-300 text-red-800';
+      case 'warning': return 'bg-yellow-50 border-yellow-300 text-yellow-800';
+      default: return 'bg-blue-50 border-blue-300 text-blue-800';
+    }
   };
 
-  const styles = {
-    success: 'bg-green-50 border-green-200 text-green-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    info: 'bg-blue-50 border-blue-200 text-blue-800'
-  };
+  if (!visible) return null;
 
   return (
-    <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${styles[type]} animate-slide-in`}>
-      {icons[type]}
-      <p className="text-sm font-medium">{message}</p>
-      <button onClick={onClose} className="ml-4"><X className="h-4 w-4" /></button>
-    </div>
-  );
-};
-
-// Confirmation Modal
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, type = 'warning' }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-        <div className="p-6">
-          <div className="flex items-center mb-4">
-            <AlertCircle className={`h-6 w-6 ${type === 'danger' ? 'text-red-500' : 'text-yellow-500'} mr-3`} />
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          </div>
-          <p className="text-gray-600 mb-6">{message}</p>
-          <div className="flex justify-end gap-3">
-            <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={onConfirm} className={`px-4 py-2 text-white rounded-lg ${type === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>Confirm</button>
-          </div>
+    <div className={`fixed top-4 right-4 z-50 max-w-md w-full md:w-auto ${getStyles()} border p-4 shadow-lg`}>
+      <div className="flex items-start">
+        {type === 'success' && <CheckCircle className="h-5 w-5 text-green-600 mr-3" />}
+        {type === 'error' && <AlertCircle className="h-5 w-5 text-red-600 mr-3" />}
+        {type === 'warning' && <AlertCircle className="h-5 w-5 text-yellow-600 mr-3" />}
+        {(type === 'info' || !type) && <AlertCircle className="h-5 w-5 text-blue-600 mr-3" />}
+        <div className="flex-1">
+          <p className="text-sm font-bold">{type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information'}</p>
+          <p className="text-sm mt-1">{message}</p>
         </div>
+        <button onClick={() => { setVisible(false); setTimeout(() => onClose?.(), 300); }} className="ml-4 text-gray-500 hover:text-gray-700">
+          <X className="h-5 w-5" />
+        </button>
       </div>
     </div>
   );
 };
 
-// Form Modal
-const FormModal = ({ isOpen, onClose, onSubmit, title, children, submitText = "Save", loading = false }) => {
+// Confirmation Modal Component
+const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText = 'Confirm', cancelText = 'Cancel' }) => {
   if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onCancel}>
+      <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-300 bg-gray-100">
+          <h3 className="text-md font-bold text-gray-900">{title}</h3>
         </div>
-        <div className="p-6">{children}</div>
-        <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-          <button onClick={onSubmit} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}{submitText}
+        <div className="p-6">
+          <p className="text-sm text-gray-800">{message}</p>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+          <button onClick={onCancel} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            {cancelText}
+          </button>
+          <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white text-sm font-bold border border-red-700 hover:bg-red-700">
+            {confirmText}
           </button>
         </div>
       </div>
@@ -124,647 +91,1397 @@ const FormModal = ({ isOpen, onClose, onSubmit, title, children, submitText = "S
   );
 };
 
-// Grading Scale Component
-const GradingScale = () => {
-  const gradingLevels = [
-    { rating: 'EE', subLevel: 1, label: 'Exceeding Expectations', color: 'bg-green-100 text-green-800', percentage: '80-100%', points: 8 },
-    { rating: 'EE', subLevel: 2, label: 'Exceeding Expectations', color: 'bg-green-100 text-green-800', percentage: '70-79%', points: 7 },
-    { rating: 'ME', subLevel: 1, label: 'Meeting Expectations', color: 'bg-blue-100 text-blue-800', percentage: '60-69%', points: 6 },
-    { rating: 'ME', subLevel: 2, label: 'Meeting Expectations', color: 'bg-blue-100 text-blue-800', percentage: '50-59%', points: 5 },
-    { rating: 'AE', subLevel: 1, label: 'Approaching Expectations', color: 'bg-yellow-100 text-yellow-800', percentage: '40-49%', points: 4 },
-    { rating: 'AE', subLevel: 2, label: 'Approaching Expectations', color: 'bg-yellow-100 text-yellow-800', percentage: '30-39%', points: 3 },
-    { rating: 'BE', subLevel: 1, label: 'Below Expectations', color: 'bg-red-100 text-red-800', percentage: '20-29%', points: 2 },
-    { rating: 'BE', subLevel: 2, label: 'Below Expectations', color: 'bg-red-100 text-red-800', percentage: '0-19%', points: 1 },
-  ];
+function AcademicManagement() {
+  const { getAuthHeaders, isAuthenticated, user } = useAuth();
+  
+  // State
+  const [curriculum, setCurriculum] = useState([]);
+  const [versions, setVersions] = useState([]);
+  const [activeVersion, setActiveVersion] = useState(null);
+  const [gradeLevels, setGradeLevels] = useState([]);
+  const [coreCompetencies, setCoreCompetencies] = useState([]);
+  const [coreValues, setCoreValues] = useState([]);
+  const [weightConfig, setWeightConfig] = useState({ sbaWeight: 40, examWeight: 60 });
+  const [selectedGrade, setSelectedGrade] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [selectedStrand, setSelectedStrand] = useState(null);
+  const [selectedSubStrand, setSelectedSubStrand] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [activeTab, setActiveTab] = useState('subjects');
+  
+  // Modal States
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
+  const [showStrandModal, setShowStrandModal] = useState(false);
+  const [showSubStrandModal, setShowSubStrandModal] = useState(false);
+  const [showOutcomeModal, setShowOutcomeModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [showVersionModal, setShowVersionModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [showPublishConfirmModal, setShowPublishConfirmModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  
+  // Form Data
+  const [subjectForm, setSubjectForm] = useState({
+    name: '', code: '', isCore: true, isActive: true, description: ''
+  });
+  const [strandForm, setStrandForm] = useState({ 
+    name: '', 
+    code: '', 
+    description: '',
+    gradeLevel: ''  // ADDED: grade level for strand
+  });
+  const [subStrandForm, setSubStrandForm] = useState({ name: '', code: '', description: '' });
+  const [outcomeForm, setOutcomeForm] = useState({
+    description: '', domain: 'cognitive', competencies: []
+  });
+  const [versionForm, setVersionForm] = useState({ name: '', academicYear: '', isActive: false });
+  
+  // Bulk Import
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [importPreview, setImportPreview] = useState([]);
+  
+  // Editing State
+  const [editingItem, setEditingItem] = useState(null);
+  
+  // Expanded/Collapsed State for Tree View
+  const [expandedGrades, setExpandedGrades] = useState({});
+  const [expandedSubjects, setExpandedSubjects] = useState({});
+  const [expandedStrands, setExpandedStrands] = useState({});
 
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Award className="h-4 w-4" /> CBC Grading Scale (8 Levels)</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-        {gradingLevels.map((level, idx) => (
-          <div key={idx} className={`${level.color} rounded-lg p-2 text-center border`}>
-            <div className="font-bold text-sm">{level.rating}{level.subLevel}</div>
-            <div className="text-xs">{level.percentage}</div>
-            <div className="text-xs font-medium mt-1">{level.points} pts</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
+  const addNotification = (type, message) => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, type, message }]);
+  };
 
-// Competency Table for Class
-const CompetencyTable = ({ classData, competencies, onClose }) => {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800">Competencies - {classData?.class_name} (Level {classData?.numeric_level})</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const fetchAllData = async () => {
+    setIsLoading(true);
+    await Promise.all([
+      fetchCurriculum(),
+      fetchVersions(),
+      fetchGradeLevels(),
+      fetchCoreCompetencies(),
+      fetchCoreValues(),
+      fetchWeightConfig()
+    ]);
+    setIsLoading(false);
+  };
+
+  const fetchCurriculum = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/curriculum/`, {
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCurriculum(data.data);
+        if (data.data && data.data.length > 0 && !selectedGrade) {
+          setSelectedGrade(data.data[0].gradeId);
+        }
+      } else {
+        addNotification('error', data.error || 'Failed to load curriculum');
+      }
+    } catch (error) {
+   
+      addNotification('error', 'Failed to load curriculum data');
+    }
+  };
+
+  const fetchVersions = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/curriculum/versions/`, {
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      if (data.success) {
+        setVersions(data.data);
+        const active = data.data.find(v => v.isActive);
+        if (active) setActiveVersion(active);
+      }
+    } catch (error) {
+      console.error('Error fetching versions:', error);
+      addNotification('error', 'Failed to load versions');
+    }
+  };
+
+  const fetchGradeLevels = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/grade-levels/`, {
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      if (data.success) {
+        setGradeLevels(data.data);
+        const initialExpanded = {};
+        data.data.forEach(grade => {
+          initialExpanded[grade.id] = false;
+        });
+        setExpandedGrades(initialExpanded);
+      }
+    } catch (error) {
+      console.error('Error fetching grade levels:', error);
+    }
+  };
+
+  const fetchCoreCompetencies = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/core-competencies/`, {
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCoreCompetencies(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching core competencies:', error);
+    }
+  };
+
+  const fetchCoreValues = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/core-values/`, {
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCoreValues(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching core values:', error);
+    }
+  };
+
+  const fetchWeightConfig = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/weight-config/`, {
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      if (data.success) {
+        setWeightConfig({
+          sbaWeight: data.data.sba_weight,
+          examWeight: data.data.exam_weight
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching weight config:', error);
+    }
+  };
+
+  // Subject CRUD
+  const createSubject = async () => {
+    if (!subjectForm.name || !subjectForm.code) {
+      addNotification('warning', 'Please fill in required fields');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/learning-areas/create/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          area_name: subjectForm.name,
+          area_code: subjectForm.code,
+          area_type: subjectForm.isCore ? 'Core' : 'Optional',
+          is_active: subjectForm.isActive,
+          description: subjectForm.description
+        })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        addNotification('success', `Subject "${subjectForm.name}" created successfully`);
+        setShowSubjectModal(false);
+        resetSubjectForm();
+        await fetchCurriculum();
+      } else {
+        addNotification('error', data.error || 'Failed to create subject');
+      }
+    } catch (error) {
+      console.error('Error creating subject:', error);
+      addNotification('error', 'Failed to create subject');
+    }
+  };
+
+  const updateSubject = async () => {
+    if (!editingItem) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/learning-areas/${editingItem.id}/`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          area_name: subjectForm.name,
+          area_code: subjectForm.code,
+          area_type: subjectForm.isCore ? 'Core' : 'Optional',
+          is_active: subjectForm.isActive,
+          description: subjectForm.description
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', `Subject "${subjectForm.name}" updated successfully`);
+        setShowSubjectModal(false);
+        setEditingItem(null);
+        resetSubjectForm();
+        await fetchCurriculum();
+      } else {
+        addNotification('error', data.error || 'Failed to update subject');
+      }
+    } catch (error) {
+      console.error('Error updating subject:', error);
+      addNotification('error', 'Failed to update subject');
+    }
+  };
+
+  const confirmDeleteSubject = (subject) => {
+    setItemToDelete({ type: 'subject', data: subject });
+    setShowDeleteConfirmModal(true);
+  };
+
+  const deleteSubject = async () => {
+    if (!itemToDelete) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/learning-areas/${itemToDelete.data.id}/`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', `Subject "${itemToDelete.data.name}" deleted successfully`);
+        setShowDeleteConfirmModal(false);
+        setItemToDelete(null);
+        await fetchCurriculum();
+      } else {
+        addNotification('error', data.error || 'Failed to delete subject');
+      }
+    } catch (error) {
+      console.error('Error deleting subject:', error);
+      addNotification('error', 'Failed to delete subject');
+    }
+  };
+
+  // Strand CRUD - FIXED with grade_level
+  const createStrand = async () => {
+    if (!strandForm.name || !selectedSubject) {
+      addNotification('warning', 'Please select a subject and fill in strand name');
+      return;
+    }
+    
+    if (!strandForm.gradeLevel) {
+      addNotification('warning', 'Please select a grade level for this strand');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/strands/create/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          learning_area: selectedSubject.id,
+          strand_name: strandForm.name,
+          strand_code: strandForm.code || strandForm.name.substring(0, 3).toUpperCase(),
+          grade_level: strandForm.gradeLevel,  // ✅ FIXED: Send grade_level
+          description: strandForm.description,
+          display_order: 0
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', `Strand "${strandForm.name}" created successfully for grade`);
+        setShowStrandModal(false);
+        setStrandForm({ name: '', code: '', description: '', gradeLevel: '' });
+        await fetchCurriculum();
+      } else {
+        addNotification('error', data.error || 'Failed to create strand');
+      }
+    } catch (error) {
+      console.error('Error creating strand:', error);
+      addNotification('error', 'Failed to create strand');
+    }
+  };
+
+  // Sub-Strand CRUD
+  const createSubStrand = async () => {
+    if (!subStrandForm.name || !selectedStrand) {
+      addNotification('warning', 'Please select a strand and fill in sub-strand name');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/substrands/create/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          strand: selectedStrand.id,
+          substrand_name: subStrandForm.name,
+          substrand_code: subStrandForm.code || subStrandForm.name.substring(0, 4).toUpperCase(),
+          description: subStrandForm.description,
+          display_order: 0
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', `Sub-Strand "${subStrandForm.name}" created successfully`);
+        setShowSubStrandModal(false);
+        setSubStrandForm({ name: '', code: '', description: '' });
+        await fetchCurriculum();
+      } else {
+        addNotification('error', data.error || 'Failed to create sub-strand');
+      }
+    } catch (error) {
+      console.error('Error creating sub-strand:', error);
+      addNotification('error', 'Failed to create sub-strand');
+    }
+  };
+
+  // Learning Outcome CRUD
+  const createOutcome = async () => {
+    if (!outcomeForm.description || !selectedSubStrand) {
+      addNotification('warning', 'Please fill in learning outcome description');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/outcomes/create/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          substrand: selectedSubStrand.id,
+          description: outcomeForm.description,
+          domain: outcomeForm.domain,
+          competencies: outcomeForm.competencies
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'Learning outcome created successfully');
+        setShowOutcomeModal(false);
+        setOutcomeForm({ description: '', domain: 'cognitive', competencies: [] });
+        await fetchCurriculum();
+      } else {
+        addNotification('error', data.error || 'Failed to create learning outcome');
+      }
+    } catch (error) {
+      console.error('Error creating outcome:', error);
+      addNotification('error', 'Failed to create learning outcome');
+    }
+  };
+
+  // Clone Curriculum
+  const cloneCurriculum = async () => {
+    if (!versionForm.academicYear) {
+      addNotification('warning', 'Please enter target academic year');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/curriculum/clone/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          target_year: versionForm.academicYear,
+          target_name: versionForm.name || `${versionForm.academicYear} Curriculum`,
+          source_year: activeVersion?.academicYear
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', `Curriculum cloned to ${versionForm.academicYear} successfully`);
+        setShowCloneModal(false);
+        setVersionForm({ name: '', academicYear: '', isActive: false });
+        await fetchVersions();
+        await fetchCurriculum();
+      } else {
+        addNotification('error', data.error || 'Failed to clone curriculum');
+      }
+    } catch (error) {
+      console.error('Error cloning curriculum:', error);
+      addNotification('error', 'Failed to clone curriculum');
+    }
+  };
+
+  // Create New Version
+  const createNewVersion = async () => {
+    if (!versionForm.name || !versionForm.academicYear) {
+      addNotification('warning', 'Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/curriculum/versions/create/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: versionForm.name,
+          academic_year: versionForm.academicYear,
+          is_active: versionForm.isActive
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'New version created successfully');
+        setShowVersionModal(false);
+        setVersionForm({ name: '', academicYear: '', isActive: false });
+        await fetchVersions();
+      } else {
+        addNotification('error', data.error || 'Failed to create version');
+      }
+    } catch (error) {
+      console.error('Error creating version:', error);
+      addNotification('error', 'Failed to create version');
+    }
+  };
+
+  // Publish Curriculum
+  const confirmPublishCurriculum = () => {
+    setShowPublishConfirmModal(true);
+  };
+
+  const publishCurriculum = async () => {
+    if (!activeVersion) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/curriculum/versions/${activeVersion.id}/publish/`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'Curriculum published and locked successfully');
+        setShowPublishConfirmModal(false);
+        await fetchVersions();
+      } else {
+        addNotification('error', data.error || 'Failed to publish curriculum');
+      }
+    } catch (error) {
+      console.error('Error publishing curriculum:', error);
+      addNotification('error', 'Failed to publish curriculum');
+    }
+  };
+
+  // Update Weight Configuration
+  const updateWeightConfig = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/weight-config/update/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          sba_weight: weightConfig.sbaWeight,
+          exam_weight: weightConfig.examWeight
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'Weight configuration updated successfully');
+        setShowWeightModal(false);
+      } else {
+        addNotification('error', data.error || 'Failed to update weight configuration');
+      }
+    } catch (error) {
+      console.error('Error updating weight config:', error);
+      addNotification('error', 'Failed to update weight configuration');
+    }
+  };
+
+  // Bulk Import
+  const handleBulkUpload = async () => {
+    if (!uploadFile) {
+      addNotification('warning', 'Please select a file to upload');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/bulk-import/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': getAuthHeaders()['Authorization']
+        },
+        body: formData
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', `Curriculum imported successfully: ${data.imported_count} items`);
+        setShowBulkImportModal(false);
+        setUploadFile(null);
+        await fetchCurriculum();
+      } else {
+        addNotification('error', data.error || 'Failed to import curriculum');
+      }
+    } catch (error) {
+      console.error('Error importing curriculum:', error);
+      addNotification('error', 'Failed to import curriculum');
+    }
+  };
+
+  const downloadTemplate = () => {
+    const template = [
+      {
+        Grade_Level: 'G7',
+        Subject_Name: 'Integrated Science',
+        Strand_Name: 'Human Health',
+        Sub_Strand_Name: 'Respiratory System',
+        Learning_Outcome: 'Learner should be able to model the breathing process',
+        Competency_Key: 'CT, DL',
+        Assessment_Scale: '8',
+        SBA_Weight: '40',
+        Summative_Weight: '60',
+        Is_Optional: 'FALSE'
+      }
+    ];
+    const worksheet = XLSX.utils.json_to_sheet(template);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Curriculum_Template');
+    XLSX.writeFile(workbook, 'curriculum_import_template.xlsx');
+    addNotification('success', 'Template downloaded');
+  };
+
+  const resetSubjectForm = () => {
+    setSubjectForm({
+      name: '', code: '', gradeLevel: selectedGrade, isCore: true, isActive: true, description: ''
+    });
+  };
+
+  const getSubjectsForGrade = (gradeId) => {
+    // Convert to string for comparison
+    const searchId = String(gradeId);
+    const gradeData = curriculum.find(g => String(g.gradeId) === searchId);
+    return gradeData?.subjects || [];
+  };
+
+  const toggleGradeExpanded = (gradeId) => {
+    setExpandedGrades(prev => ({ ...prev, [gradeId]: !prev[gradeId] }));
+  };
+
+  const toggleSubjectExpanded = (subjectId) => {
+    setExpandedSubjects(prev => ({ ...prev, [subjectId]: !prev[subjectId] }));
+  };
+
+  const toggleStrandExpanded = (strandId) => {
+    setExpandedStrands(prev => ({ ...prev, [strandId]: !prev[strandId] }));
+  };
+
+  // Fetch all data on mount
+  useEffect(() => {
+    if (!isAuthenticated) {
+      addNotification('error', 'Please login to access curriculum management');
+      return;
+    }
+    fetchAllData();
+  }, [isAuthenticated]);
+
+  // Authentication check
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+          <p className="text-gray-600 mb-4">Please login to access curriculum management</p>
+          <a href="/login" className="px-6 py-3 bg-green-700 text-white font-medium border border-green-800 inline-block hover:bg-green-800">
+            Go to Login
+          </a>
         </div>
-        <div className="p-6">
+      </div>
+    );
+  }
+
+  const displayGradeLevels = gradeLevels.length > 0 ? gradeLevels : [];
+
+  return (
+    <div className="mx-auto p-6 bg-gray-50 min-h-screen">
+      {/* Notifications */}
+      {notifications.map(notification => (
+        <Notification key={notification.id} type={notification.type} message={notification.message} onClose={() => removeNotification(notification.id)} />
+      ))}
+
+      {/* Confirmation Modals */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirmModal}
+        title="Confirm Delete"
+        message={`Are you sure you want to delete "${itemToDelete?.data?.name || itemToDelete?.data?.class_name || 'this item'}"? This action cannot be undone.`}
+        onConfirm={deleteSubject}
+        onCancel={() => { setShowDeleteConfirmModal(false); setItemToDelete(null); }}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      <ConfirmationModal
+        isOpen={showPublishConfirmModal}
+        title="Publish Curriculum"
+        message="Are you sure you want to publish and lock this curriculum version? No further changes will be allowed for this academic year."
+        onConfirm={publishCurriculum}
+        onCancel={() => setShowPublishConfirmModal(false)}
+        confirmText="Publish"
+        cancelText="Cancel"
+      />
+
+      {/* Header with Green Color */}
+      <div className="mb-8 bg-green-700 p-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Curriculum Management (CBC/CBE)</h1>
+            <p className="text-green-100 mt-1">The "DNA" of the curriculum - Manage subjects, strands, competencies, and learning outcomes</p>
+            {activeVersion && (
+              <p className="text-sm text-green-200 mt-2">
+                Active Version: <span className="font-bold">{activeVersion.name}</span> ({activeVersion.academicYear})
+              </p>
+            )}
+          </div>
+          <div className="flex gap-3">
+            {!activeVersion?.isPublished && (
+              <button onClick={confirmPublishCurriculum} className="px-5 py-2 bg-yellow-600 text-white text-sm font-medium border border-yellow-700 hover:bg-yellow-700">
+                <Lock className="h-4 w-4 inline mr-2" />
+                Publish & Lock
+              </button>
+            )}
+            <button onClick={() => setShowCloneModal(true)} className="px-5 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700">
+              <Copy className="h-4 w-4 inline mr-2" />
+              Clone Year
+            </button>
+            <button onClick={() => setShowBulkImportModal(true)} className="px-5 py-2 bg-green-600 text-white text-sm font-medium border border-green-700 hover:bg-green-700">
+              <Upload className="h-4 w-4 inline mr-2" />
+              Bulk Import
+            </button>
+            <button onClick={fetchAllData} className="px-5 py-2 bg-gray-600 text-white text-sm font-medium border border-gray-700 hover:bg-gray-700">
+              <RefreshCw className="h-4 w-4 inline mr-2" />
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs - Green Theme */}
+      <div className="mb-6 flex flex-wrap gap-2 border-b border-gray-300 pb-4">
+        <button 
+          onClick={() => setActiveTab('subjects')} 
+          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'subjects' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+        >
+          <BookOpen className="h-4 w-4 inline mr-2" />
+          Subjects & Strands
+        </button>
+        <button 
+          onClick={() => setActiveTab('competencies')} 
+          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'competencies' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+        >
+          <Target className="h-4 w-4 inline mr-2" />
+          Competencies & Values
+        </button>
+        <button 
+          onClick={() => setActiveTab('weights')} 
+          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'weights' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+        >
+          <Settings className="h-4 w-4 inline mr-2" />
+          Weight Configuration
+        </button>
+        <button 
+          onClick={() => setActiveTab('versions')} 
+          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'versions' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+        >
+          <Database className="h-4 w-4 inline mr-2" />
+          Version History
+        </button>
+      </div>
+
+      {/* TAB 1: SUBJECTS & STRANDS */}
+      {activeTab === 'subjects' && (
+        <div>
+          {/* Grade Level Selector */}
+          <div className="bg-white border border-gray-300 p-4 mb-6">
+            <div className="flex flex-wrap gap-2">
+              {displayGradeLevels.map(grade => (
+                <button
+                  key={grade.id}
+                  onClick={() => setSelectedGrade(grade.id)}
+                  className={`px-4 py-2 text-sm font-medium border ${selectedGrade === grade.id ? 'bg-green-700 text-white border-green-800' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  {grade.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Add Subject Button */}
+          <div className="flex justify-end mb-4">
+            <button 
+              onClick={() => { resetSubjectForm(); setShowSubjectModal(true); }} 
+              className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800"
+            >
+              <Plus className="h-4 w-4 inline mr-2" />
+              Add Subject
+            </button>
+          </div>
+
+          {/* Curriculum Tree View */}
+          {isLoading ? (
+            <div className="bg-white border border-gray-300 p-12 text-center">
+              <Loader2 className="h-12 w-12 text-green-700 animate-spin mx-auto" />
+              <p className="mt-4 text-gray-600">Loading curriculum...</p>
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-300">
+              {displayGradeLevels.filter(g => g.id === selectedGrade).map(grade => {
+                const subjects = getSubjectsForGrade(grade.id);
+                return (
+                  <div key={grade.id}>
+                    <div 
+                      className="border-b border-gray-300 px-6 py-4 bg-gray-100 cursor-pointer hover:bg-gray-200"
+                      onClick={() => toggleGradeExpanded(grade.id)}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h2 className="text-md font-bold text-gray-900">{grade.name}</h2>
+                          <p className="text-xs text-gray-600">{subjects.length} subjects</p>
+                        </div>
+                        {expandedGrades[grade.id] ? <ChevronUp className="h-5 w-5 text-gray-600" /> : <ChevronDown className="h-5 w-5 text-gray-600" />}
+                      </div>
+                    </div>
+                    
+                    {expandedGrades[grade.id] && (
+                      <div className="p-4">
+                        {subjects.length === 0 ? (
+                          <div className="text-center py-8 text-gray-400">
+                            No subjects configured for this grade. Click "Add Subject" to get started.
+                          </div>
+                        ) : (
+                          subjects.map(subject => (
+                            <div key={subject.id} className="mb-4 border border-gray-200">
+                              <div 
+                                className="px-4 py-3 bg-gray-50 cursor-pointer hover:bg-gray-100 flex justify-between items-center"
+                                onClick={() => toggleSubjectExpanded(subject.id)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <BookOpen className="h-5 w-5 text-green-600" />
+                                  <div>
+                                    <h3 className="font-bold text-gray-900">{subject.name}</h3>
+                                    <p className="text-xs text-gray-500">Code: {subject.code} | {subject.isCore ? 'Core Subject' : 'Optional'}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); setSelectedSubject(subject); setShowStrandModal(true); }}
+                                    className="px-2 py-1 bg-blue-600 text-white text-xs font-medium border border-blue-700 hover:bg-blue-700"
+                                  >
+                                    <Plus className="h-3 w-3 inline mr-1" />
+                                    Add Strand
+                                  </button>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); setEditingItem(subject); setSubjectForm({...subject, name: subject.name, code: subject.code, isCore: subject.isCore}); setShowSubjectModal(true); }}
+                                    className="px-2 py-1 bg-yellow-600 text-white text-xs font-medium border border-yellow-700 hover:bg-yellow-700"
+                                  >
+                                    <Edit2 className="h-3 w-3 inline" />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); confirmDeleteSubject(subject); }}
+                                    className="px-2 py-1 bg-red-600 text-white text-xs font-medium border border-red-700 hover:bg-red-700"
+                                  >
+                                    <Trash2 className="h-3 w-3 inline" />
+                                  </button>
+                                  {expandedSubjects[subject.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                </div>
+                              </div>
+                              
+                              {expandedSubjects[subject.id] && (
+                                <div className="p-4 border-t border-gray-200">
+                                  {subject.strands?.length === 0 ? (
+                                    <div className="text-center py-4 text-gray-400">
+                                      No strands configured. Click "Add Strand" to add topics.
+                                    </div>
+                                  ) : (
+                                    subject.strands?.map(strand => (
+                                      <div key={strand.id} className="mb-3 border border-gray-200">
+                                        <div 
+                                          className="px-4 py-2 bg-white cursor-pointer hover:bg-gray-50 flex justify-between items-center"
+                                          onClick={() => toggleStrandExpanded(strand.id)}
+                                        >
+                                          <div>
+                                            <h4 className="font-medium text-gray-800">{strand.name}</h4>
+                                            <p className="text-xs text-gray-500">Code: {strand.code}</p>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <button 
+                                              onClick={(e) => { e.stopPropagation(); setSelectedStrand(strand); setShowSubStrandModal(true); }}
+                                              className="px-2 py-1 bg-teal-600 text-white text-xs font-medium border border-teal-700 hover:bg-teal-700"
+                                            >
+                                              <Plus className="h-3 w-3 inline mr-1" />
+                                              Add Sub-Strand
+                                            </button>
+                                            {expandedStrands[strand.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                          </div>
+                                        </div>
+                                        
+                                        {expandedStrands[strand.id] && (
+                                          <div className="p-4 border-t border-gray-200 bg-gray-50">
+                                            {strand.subStrands?.length === 0 ? (
+                                              <div className="text-center py-4 text-gray-400">
+                                                No sub-strands configured. Click "Add Sub-Strand" to add specific topics.
+                                              </div>
+                                            ) : (
+                                              strand.subStrands?.map(subStrand => (
+                                                <div key={subStrand.id} className="mb-3 border border-gray-200 bg-white">
+                                                  <div className="px-4 py-2 flex justify-between items-center">
+                                                    <div>
+                                                      <h5 className="font-medium text-gray-800">{subStrand.name}</h5>
+                                                      <p className="text-xs text-gray-500">Code: {subStrand.code}</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                      <button 
+                                                        onClick={() => { setSelectedSubStrand(subStrand); setShowOutcomeModal(true); }}
+                                                        className="px-2 py-1 bg-purple-600 text-white text-xs font-medium border border-purple-700 hover:bg-purple-700"
+                                                      >
+                                                        <Target className="h-3 w-3 inline mr-1" />
+                                                        Add Learning Outcome
+                                                      </button>
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  {/* Learning Outcomes */}
+                                                  {subStrand.outcomes?.length > 0 && (
+                                                    <div className="px-4 pb-3">
+                                                      <p className="text-xs font-bold text-gray-700 mb-2">Learning Outcomes:</p>
+                                                      <ul className="list-disc list-inside space-y-1">
+                                                        {subStrand.outcomes.map(outcome => (
+                                                          <li key={outcome.id} className="text-sm text-gray-600">
+                                                            {outcome.description}
+                                                            <span className="ml-2 text-xs text-purple-600">
+                                                              [{outcome.domain}] - Competencies: {outcome.competencies?.join(', ')}
+                                                            </span>
+                                                          </li>
+                                                        ))}
+                                                      </ul>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              ))
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: COMPETENCIES & VALUES */}
+      {activeTab === 'competencies' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Core Competencies */}
+          <div className="bg-white border border-gray-300">
+            <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
+              <h2 className="text-md font-bold text-gray-900">Core Competencies (KICD)</h2>
+              <p className="text-sm text-gray-600 mt-0.5">The 7 competencies of the CBC framework</p>
+            </div>
+            <div className="p-4">
+              {coreCompetencies.map(comp => (
+                <div key={comp.id} className="mb-4 p-3 border border-gray-200 hover:bg-gray-50">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-bold text-gray-900">{comp.name}</h3>
+                      <p className="text-xs text-gray-500">Code: {comp.code}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-700 mb-1">Indicators:</p>
+                    <ul className="list-disc list-inside">
+                      {(comp.indicators || []).map((ind, idx) => (
+                        <li key={idx} className="text-xs text-gray-600">{ind}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Core Values */}
+          <div className="bg-white border border-gray-300">
+            <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
+              <h2 className="text-md font-bold text-gray-900">Core Values (KICD)</h2>
+              <p className="text-sm text-gray-600 mt-0.5">The 7 values of the CBC framework</p>
+            </div>
+            <div className="p-4">
+              {coreValues.map(value => (
+                <div key={value.id} className="mb-4 p-3 border border-gray-200 hover:bg-gray-50">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-gray-900">{value.name}</h3>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-700 mb-1">Indicators:</p>
+                    <ul className="list-disc list-inside">
+                      {(value.indicators || []).map((ind, idx) => (
+                        <li key={idx} className="text-xs text-gray-600">{ind}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Learning Domains */}
+          <div className="bg-white border border-gray-300 lg:col-span-2">
+            <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
+              <h2 className="text-md font-bold text-gray-900">Learning Domains</h2>
+              <p className="text-sm text-gray-600 mt-0.5">Cognitive, Psychomotor, and Affective domains for learning outcomes</p>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {LEARNING_DOMAINS.map(domain => (
+                  <div key={domain.id} className="p-3 border border-gray-200">
+                    <h3 className="font-bold text-gray-900">{domain.name}</h3>
+                    <p className="text-xs text-gray-500 mt-1">Code: {domain.code}</p>
+                    <p className="text-xs text-gray-600 mt-2">Used for categorizing learning outcomes based on the type of learning objective.</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: WEIGHT CONFIGURATION */}
+      {activeTab === 'weights' && (
+        <div className="bg-white border border-gray-300">
+          <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
+            <h2 className="text-md font-bold text-gray-900">Assessment Weight Configuration</h2>
+            <p className="text-sm text-gray-600 mt-0.5">Define SBA vs Summative assessment ratios</p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">School-Based Assessment (SBA) Weight</label>
+                <div className="flex items-center gap-4">
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={weightConfig.sbaWeight}
+                    onChange={(e) => setWeightConfig({ sbaWeight: parseInt(e.target.value), examWeight: 100 - parseInt(e.target.value) })}
+                    className="flex-1"
+                  />
+                  <span className="text-lg font-bold text-green-700">{weightConfig.sbaWeight}%</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Includes CATs, projects, assignments, and continuous assessment</p>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Summative Assessment Weight</label>
+                <div className="flex items-center gap-4">
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={weightConfig.examWeight}
+                    onChange={(e) => setWeightConfig({ examWeight: parseInt(e.target.value), sbaWeight: 100 - parseInt(e.target.value) })}
+                    className="flex-1"
+                  />
+                  <span className="text-lg font-bold text-green-700">{weightConfig.examWeight}%</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Includes end of term exams and national assessments</p>
+              </div>
+            </div>
+            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-300">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div>
+                  <p className="font-bold text-yellow-800">Weight Configuration Notice</p>
+                  <p className="text-sm text-yellow-700 mt-1">Changes to weight configuration will affect all future assessments. The total must always equal 100%.</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button onClick={() => setShowWeightModal(true)} className="px-5 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">
+                Save Configuration
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Weight Config Modal */}
+      {showWeightModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowWeightModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Confirm Weight Configuration</h3>
+              <button onClick={() => setShowWeightModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-800">Are you sure you want to update the weight configuration?</p>
+              <p className="text-xs text-gray-600 mt-2">SBA: {weightConfig.sbaWeight}% | Exam: {weightConfig.examWeight}%</p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowWeightModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
+              <button onClick={updateWeightConfig} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: VERSION HISTORY */}
+      {activeTab === 'versions' && (
+        <div className="bg-white border border-gray-300">
+          <div className="border-b border-gray-300 px-6 py-4 bg-gray-100 flex justify-between items-center">
+            <div>
+              <h2 className="text-md font-bold text-gray-900">Curriculum Version History</h2>
+              <p className="text-sm text-gray-600 mt-0.5">Track changes and manage curriculum versions across academic years</p>
+            </div>
+            <button onClick={() => setShowVersionModal(true)} className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800">
+              <Plus className="h-4 w-4 inline mr-2" />
+              New Version
+            </button>
+          </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Learning Area</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Strand</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sub-strand</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Competency Code</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Competency Statement</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Version Name</th>
+                  <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Academic Year</th>
+                  <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Status</th>
+                  <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Created Date</th>
+                  <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {competencies.map((comp, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm">{comp.learning_area}</td>
-                    <td className="px-4 py-3 text-sm">{comp.strand}</td>
-                    <td className="px-4 py-3 text-sm">{comp.substrand}</td>
-                    <td className="px-4 py-3 text-sm font-mono text-blue-600">{comp.competency_code}</td>
-                    <td className="px-4 py-3 text-sm">{comp.competency_statement}</td>
-                    <td className="px-4 py-3 text-sm"><span className={`px-2 py-1 text-xs rounded-full ${comp.is_core ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>{comp.is_core ? 'Core' : 'Supplementary'}</span></td>
+              <tbody>
+                {versions.map(version => (
+                  <tr key={version.id} className="hover:bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-3 font-medium">{version.name}</td>
+                    <td className="border border-gray-300 px-4 py-3">{version.academicYear}</td>
+                    <td className="border border-gray-300 px-4 py-3 text-center">
+                      {version.isActive ? (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium border border-green-200">Active</span>
+                      ) : version.isPublished ? (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium border border-blue-200">Published</span>
+                      ) : (
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium border border-yellow-200">Draft</span>
+                      )}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-center">{new Date(version.createdAt).toLocaleDateString()}</td>
+                    <td className="border border-gray-300 px-4 py-3 text-center">
+                      <div className="flex justify-center gap-2">
+                        <button className="px-2 py-1 bg-blue-600 text-white text-xs font-medium border border-blue-700 hover:bg-blue-700">
+                          <Eye className="h-3 w-3 inline" />
+                        </button>
+                        {!version.isPublished && !version.isActive && (
+                          <button 
+                            onClick={async () => {
+                              const response = await fetch(`${API_BASE_URL}/api/registrar/academic/curriculum/versions/${version.id}/activate/`, {
+                                method: 'POST',
+                                headers: getAuthHeaders()
+                              });
+                              const data = await response.json();
+                              if (data.success) {
+                                addNotification('success', 'Version activated');
+                                await fetchVersions();
+                              }
+                            }}
+                            className="px-2 py-1 bg-green-600 text-white text-xs font-medium border border-green-700 hover:bg-green-700"
+                          >
+                            <Lock className="h-3 w-3 inline" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
-      </div>
-    </div>
-  );
-};
+      )}
 
-function AcademicManagement() {
-  const { user, getAuthHeaders, isAuthenticated, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('academic-calendar');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
-  const [formData, setFormData] = useState({});
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [showCompetencyTable, setShowCompetencyTable] = useState(false);
-  const [selectedClassForCompetencies, setSelectedClassForCompetencies] = useState(null);
-  const [classCompetencies, setClassCompetencies] = useState([]);
-  const [showSessionExpired, setShowSessionExpired] = useState(false);
-
-  // Data States
-  const [academicYears, setAcademicYears] = useState([]);
-  const [terms, setTerms] = useState([]);
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState(null);
-  const [currentTerm, setCurrentTerm] = useState(null);
-  const [learningAreas, setLearningAreas] = useState([]);
-  const [strands, setStrands] = useState([]);
-  const [substrands, setSubstrands] = useState([]);
-  const [competencies, setCompetencies] = useState([]);
-  const [selectedLearningArea, setSelectedLearningArea] = useState(null);
-  const [selectedStrand, setSelectedStrand] = useState(null);
-  const [selectedSubstrand, setSelectedSubstrand] = useState(null);
-  const [classes, setClasses] = useState([]);
-  const [selectedGradeLevel, setSelectedGradeLevel] = useState(null);
-
-  // Get current term based on month
-  useEffect(() => {
-    const term = getCurrentTermFromDate();
-    setCurrentTerm(term);
-  }, []);
-
-  const addNotification = (type, message) => {
-    setError(type === 'error' ? message : null);
-    setSuccess(type === 'success' ? message : null);
-    setTimeout(() => { setError(null); setSuccess(null); }, 5000);
-  };
-
-  // Handle session expiration
-  const handleApiError = (error) => {
-    if (error?.status === 401 || error?.message?.includes('401') || error?.message?.includes('unauthorized')) {
-      setShowSessionExpired(true);
-    }
-  };
-
-  const handleLogout = () => {
-    setShowSessionExpired(false);
-    logout();
-    window.location.href = '/logout';
-  };
-
-  // Fetch Data
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchAcademicYears();
-      fetchLearningAreas();
-      fetchClasses();
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (selectedAcademicYear) fetchTerms(selectedAcademicYear.id);
-  }, [selectedAcademicYear]);
-
-  const fetchAcademicYears = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/academic-years/`, { headers: getAuthHeaders() });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) {
-        setAcademicYears(data.data);
-        const current = data.data.find(y => y.is_current);
-        if (current) setSelectedAcademicYear(current);
-        else if (data.data.length > 0) setSelectedAcademicYear(data.data[0]);
-      }
-    } catch (err) { 
-      addNotification('error', 'Failed to fetch academic years');
-      if (err.message?.includes('401')) handleApiError({ status: 401 });
-    } finally { setLoading(false); }
-  };
-
-  const fetchTerms = async (yearId) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/terms/?academic_year=${yearId}`, { headers: getAuthHeaders() });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) setTerms(data.data);
-    } catch (err) { addNotification('error', 'Failed to fetch terms'); }
-  };
-
-  const fetchClasses = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/classes/`, { headers: getAuthHeaders() });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) setClasses(data.data);
-    } catch (err) { addNotification('error', 'Failed to fetch classes'); }
-  };
-
-  const fetchLearningAreas = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/learning-areas/`, { headers: getAuthHeaders() });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) setLearningAreas(data.data);
-    } catch (err) { addNotification('error', 'Failed to fetch learning areas'); }
-  };
-
-  const fetchStrands = async (areaId) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/strands/?learning_area=${areaId}`, { headers: getAuthHeaders() });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) setStrands(data.data);
-    } catch (err) { addNotification('error', 'Failed to fetch strands'); }
-  };
-
-  const fetchSubstrands = async (strandId) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/substrands/?strand=${strandId}`, { headers: getAuthHeaders() });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) setSubstrands(data.data);
-    } catch (err) { addNotification('error', 'Failed to fetch substrands'); }
-  };
-
-  const fetchCompetencies = async (substrandId) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/competencies/?substrand=${substrandId}`, { headers: getAuthHeaders() });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) setCompetencies(data.data);
-    } catch (err) { addNotification('error', 'Failed to fetch competencies'); }
-  };
-
-  const fetchClassCompetencies = async (classId) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/class-competencies/?class_id=${classId}`, { headers: getAuthHeaders() });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) {
-        setClassCompetencies(data.data);
-        setShowCompetencyTable(true);
-      }
-    } catch (err) { addNotification('error', 'Failed to fetch competencies'); }
-    finally { setLoading(false); }
-  };
-
-  // CRUD Operations
-  const handleCreateAcademicYear = async () => {
-    if (!formData.year_name || !formData.year_code || !formData.start_date || !formData.end_date) {
-      addNotification('warning', 'Please fill all required fields');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/academic-years/create/`, {
-        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(formData)
-      });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) {
-        addNotification('success', 'Academic year created');
-        setShowModal(false);
-        fetchAcademicYears();
-        setFormData({});
-      } else addNotification('error', data.error || 'Creation failed');
-    } catch (err) { addNotification('error', 'Failed to create'); }
-    finally { setSubmitting(false); }
-  };
-
-  const handleCreateTerm = async () => {
-    if (!formData.term || !formData.start_date || !formData.end_date) {
-      addNotification('warning', 'Please fill all required fields');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/terms/create/`, {
-        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ ...formData, academic_year: selectedAcademicYear.id })
-      });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) {
-        addNotification('success', 'Term created');
-        setShowModal(false);
-        fetchTerms(selectedAcademicYear.id);
-        setFormData({});
-      } else addNotification('error', data.error || 'Creation failed');
-    } catch (err) { addNotification('error', 'Failed to create'); }
-    finally { setSubmitting(false); }
-  };
-
-  const handleCreateLearningArea = async () => {
-    if (!formData.area_code || !formData.area_name) {
-      addNotification('warning', 'Area code and name are required');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/learning-areas/create/`, {
-        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(formData)
-      });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) {
-        addNotification('success', 'Learning area created');
-        setShowModal(false);
-        fetchLearningAreas();
-        setFormData({});
-      } else addNotification('error', data.error || 'Creation failed');
-    } catch (err) { addNotification('error', 'Failed to create'); }
-    finally { setSubmitting(false); }
-  };
-
-  const handleCreateStrand = async () => {
-    if (!formData.strand_code || !formData.strand_name || !selectedLearningArea) {
-      addNotification('warning', 'Please fill all required fields');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/strands/create/`, {
-        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ ...formData, learning_area: selectedLearningArea.id })
-      });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) {
-        addNotification('success', 'Strand created');
-        setShowModal(false);
-        fetchStrands(selectedLearningArea.id);
-        setFormData({});
-      } else addNotification('error', data.error || 'Creation failed');
-    } catch (err) { addNotification('error', 'Failed to create'); }
-    finally { setSubmitting(false); }
-  };
-
-  const handleCreateSubstrand = async () => {
-    if (!formData.substrand_code || !formData.substrand_name || !selectedStrand) {
-      addNotification('warning', 'Please fill all required fields');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/substrands/create/`, {
-        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ ...formData, strand: selectedStrand.id })
-      });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) {
-        addNotification('success', 'Sub-strand created');
-        setShowModal(false);
-        fetchSubstrands(selectedStrand.id);
-        setFormData({});
-      } else addNotification('error', data.error || 'Creation failed');
-    } catch (err) { addNotification('error', 'Failed to create'); }
-    finally { setSubmitting(false); }
-  };
-
-  const handleCreateCompetency = async () => {
-    if (!formData.competency_code || !formData.competency_statement || !selectedSubstrand) {
-      addNotification('warning', 'Please fill all required fields');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/registrar/academic/competencies/create/`, {
-        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ ...formData, substrand: selectedSubstrand.id })
-      });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) {
-        addNotification('success', 'Competency created');
-        setShowModal(false);
-        fetchCompetencies(selectedSubstrand.id);
-        setFormData({});
-      } else addNotification('error', data.error || 'Creation failed');
-    } catch (err) { addNotification('error', 'Failed to create'); }
-    finally { setSubmitting(false); }
-  };
-
-  const handleDelete = async (type, id) => {
-    let endpoint = '';
-    if (type === 'academicYear') endpoint = `/api/registrar/academic/academic-years/${id}/`;
-    else if (type === 'term') endpoint = `/api/registrar/academic/terms/${id}/`;
-    else if (type === 'learningArea') endpoint = `/api/registrar/academic/learning-areas/${id}/`;
-    else if (type === 'strand') endpoint = `/api/registrar/academic/strands/${id}/`;
-    else if (type === 'substrand') endpoint = `/api/registrar/academic/substrands/${id}/`;
-    else if (type === 'competency') endpoint = `/api/registrar/academic/competencies/${id}/`;
-    
-    setSubmitting(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}${endpoint}`, { method: 'DELETE', headers: getAuthHeaders() });
-      if (res.status === 401) { handleApiError({ status: 401 }); return; }
-      const data = await res.json();
-      if (data.success) {
-        addNotification('success', `${type} deleted`);
-        if (type === 'academicYear') fetchAcademicYears();
-        else if (type === 'term') fetchTerms(selectedAcademicYear?.id);
-        else if (type === 'learningArea') fetchLearningAreas();
-        else if (type === 'strand') fetchStrands(selectedLearningArea?.id);
-        else if (type === 'substrand') fetchSubstrands(selectedStrand?.id);
-        else if (type === 'competency') fetchCompetencies(selectedSubstrand?.id);
-      } else addNotification('error', data.error || 'Delete failed');
-    } catch (err) { addNotification('error', 'Failed to delete'); }
-    finally { setSubmitting(false); setDeleteConfirm(null); }
-  };
-
-  const handleSelectLearningArea = async (area) => {
-    setSelectedLearningArea(area);
-    setSelectedStrand(null);
-    setSelectedSubstrand(null);
-    await fetchStrands(area.id);
-  };
-
-  const handleSelectStrand = async (strand) => {
-    setSelectedStrand(strand);
-    setSelectedSubstrand(null);
-    await fetchSubstrands(strand.id);
-  };
-
-  const handleSelectSubstrand = async (substrand) => {
-    setSelectedSubstrand(substrand);
-    await fetchCompetencies(substrand.id);
-  };
-
-  // Render Academic Calendar Tab
-  const renderAcademicCalendar = () => (
-    <div className="space-y-8">
-      {currentTerm && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <Clock className="h-8 w-8 text-blue-600" />
-            <div>
-              <h3 className="font-semibold text-blue-800">Current Academic Period</h3>
-              <p className="text-sm text-blue-700">Based on current month ({new Date().toLocaleString('default', { month: 'long' })}), the active term is <span className="font-bold">{currentTerm}</span></p>
+      {/* Subject Modal */}
+      {showSubjectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowSubjectModal(false); setEditingItem(null); resetSubjectForm(); }}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">{editingItem ? 'Edit Subject' : 'Add Subject'}</h3>
+              <button onClick={() => { setShowSubjectModal(false); setEditingItem(null); resetSubjectForm(); }} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Subject Name *</label>
+                <input type="text" value={subjectForm.name} onChange={(e) => setSubjectForm({...subjectForm, name: e.target.value})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Subject Code *</label>
+                <input type="text" value={subjectForm.code} onChange={(e) => setSubjectForm({...subjectForm, code: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Subject Type</label>
+                <select value={subjectForm.isCore} onChange={(e) => setSubjectForm({...subjectForm, isCore: e.target.value === 'true'})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white">
+                  <option value="true">Core Subject (Ministry Mandated)</option>
+                  <option value="false">Optional/Elective Subject</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                <textarea value={subjectForm.description} onChange={(e) => setSubjectForm({...subjectForm, description: e.target.value})} rows="3" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => { setShowSubjectModal(false); setEditingItem(null); resetSubjectForm(); }} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
+              <button onClick={editingItem ? updateSubject : createSubject} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">
+                {editingItem ? 'Update' : 'Create'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <div><h2 className="font-semibold text-gray-800">Academic Years</h2><p className="text-sm text-gray-500">Manage school academic years</p></div>
-          <button onClick={() => { setModalType('academicYear'); setFormData({ year_name: '', year_code: '', start_date: '', end_date: '', is_current: false }); setShowModal(true); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"><Plus className="h-4 w-4" /> Add Year</button>
+      {/* Strand Modal - FIXED with Grade Level Selector */}
+      {showStrandModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowStrandModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Add Strand</h3>
+              <button onClick={() => setShowStrandModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">Subject: <span className="font-bold">{selectedSubject?.name}</span></p>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Grade Level *</label>
+                <select 
+                  value={strandForm.gradeLevel} 
+                  onChange={(e) => setStrandForm({...strandForm, gradeLevel: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                >
+                  <option value="">Select Grade Level</option>
+                  {gradeLevels.map(grade => (
+                    <option key={grade.id} value={grade.id}>{grade.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Strand Name *</label>
+                <input type="text" value={strandForm.name} onChange={(e) => setStrandForm({...strandForm, name: e.target.value})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Strand Code</label>
+                <input type="text" value={strandForm.code} onChange={(e) => setStrandForm({...strandForm, code: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                <textarea value={strandForm.description} onChange={(e) => setStrandForm({...strandForm, description: e.target.value})} rows="2" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowStrandModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
+              <button onClick={createStrand} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">Create</button>
+            </div>
+          </div>
         </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {academicYears.map(year => (
-              <div key={year.id} className={`border rounded-lg p-4 ${year.is_current ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-gray-800">{year.year_name}</h3>
-                  <span className={`px-2 py-1 text-xs rounded-full ${year.is_current ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{year.is_current ? 'Current' : 'Inactive'}</span>
-                </div>
-                <p className="text-sm text-gray-600 mb-2">{year.year_code}</p>
-                <p className="text-xs text-gray-500">{new Date(year.start_date).toLocaleDateString()} - {new Date(year.end_date).toLocaleDateString()}</p>
-                <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-gray-100">
-                  <button onClick={() => setDeleteConfirm({ id: year.id, name: year.year_name, type: 'academicYear' })} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
+      )}
+
+      {/* Sub-Strand Modal */}
+      {showSubStrandModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSubStrandModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Add Sub-Strand</h3>
+              <button onClick={() => setShowSubStrandModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">Strand: <span className="font-bold">{selectedStrand?.name}</span></p>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Sub-Strand Name *</label>
+                <input type="text" value={subStrandForm.name} onChange={(e) => setSubStrandForm({...subStrandForm, name: e.target.value})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Sub-Strand Code</label>
+                <input type="text" value={subStrandForm.code} onChange={(e) => setSubStrandForm({...subStrandForm, code: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                <textarea value={subStrandForm.description} onChange={(e) => setSubStrandForm({...subStrandForm, description: e.target.value})} rows="2" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowSubStrandModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
+              <button onClick={createSubStrand} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Learning Outcome Modal */}
+      {showOutcomeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowOutcomeModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-lg w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Add Learning Outcome</h3>
+              <button onClick={() => setShowOutcomeModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">Sub-Strand: <span className="font-bold">{selectedSubStrand?.name}</span></p>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Learning Outcome Description *</label>
+                <textarea value={outcomeForm.description} onChange={(e) => setOutcomeForm({...outcomeForm, description: e.target.value})} rows="3" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" placeholder="By the end of the lesson, the learner should be able to..." />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Learning Domain</label>
+                <select value={outcomeForm.domain} onChange={(e) => setOutcomeForm({...outcomeForm, domain: e.target.value})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white">
+                  {LEARNING_DOMAINS.map(domain => (
+                    <option key={domain.id} value={domain.id}>{domain.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Associated Competencies</label>
+                <div className="border border-gray-400 p-3 max-h-32 overflow-y-auto">
+                  {coreCompetencies.map(comp => (
+                    <label key={comp.id} className="flex items-center mb-2">
+                      <input type="checkbox" value={comp.code} onChange={(e) => {
+                        const competencies = e.target.checked 
+                          ? [...outcomeForm.competencies, comp.code]
+                          : outcomeForm.competencies.filter(c => c !== comp.code);
+                        setOutcomeForm({...outcomeForm, competencies});
+                      }} className="mr-2" />
+                      <span className="text-sm">{comp.name} ({comp.code})</span>
+                    </label>
+                  ))}
                 </div>
               </div>
-            ))}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowOutcomeModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
+              <button onClick={createOutcome} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">Create</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {selectedAcademicYear && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-            <div><h2 className="font-semibold text-gray-800">Terms - {selectedAcademicYear.year_name}</h2><p className="text-sm text-gray-500">Term 1: Jan-Mar | Term 2: May-Jul | Term 3: Sep-Nov</p></div>
-            <button onClick={() => { setModalType('term'); setFormData({ term: '', start_date: '', end_date: '', is_current: false }); setShowModal(true); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"><Plus className="h-4 w-4" /> Add Term</button>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {terms.map(term => {
-                const isCurrent = term.is_current || (currentTerm && term.term === currentTerm && !term.is_current);
-                return (
-                  <div key={term.id} className={`border rounded-lg p-4 ${isCurrent ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold text-gray-800">{term.term}</h3>
-                      {isCurrent && <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">Current</span>}
-                    </div>
-                    <p className="text-sm text-gray-600">{new Date(term.start_date).toLocaleDateString()} - {new Date(term.end_date).toLocaleDateString()}</p>
-                    <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-gray-100">
-                      <button onClick={() => setDeleteConfirm({ id: term.id, name: term.term, type: 'term' })} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
-                    </div>
+      {/* Bulk Import Modal */}
+      {showBulkImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowBulkImportModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-2xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Bulk Import Curriculum</h3>
+              <button onClick={() => setShowBulkImportModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-300">
+                <h4 className="text-sm font-bold text-blue-900 mb-2">CSV/Excel Format Requirements</h4>
+                <p className="text-xs text-blue-800">Your file must include these columns:</p>
+                <ul className="text-xs text-blue-800 mt-2 list-disc list-inside">
+                  <li>Grade_Level (e.g., G1, G7, PP1)</li>
+                  <li>Subject_Name (e.g., "Integrated Science")</li>
+                  <li>Strand_Name (e.g., "Human Health")</li>
+                  <li>Sub_Strand_Name (e.g., "Respiratory System")</li>
+                  <li>Learning_Outcome (Measurable goal)</li>
+                  <li>Competency_Key (e.g., "CT, DL")</li>
+                  <li>Assessment_Scale (4 or 8)</li>
+                  <li>SBA_Weight (e.g., 40)</li>
+                  <li>Summative_Weight (e.g., 60)</li>
+                  <li>Is_Optional (TRUE/FALSE)</li>
+                </ul>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-2">Select File</label>
+                <input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setUploadFile(e.target.files[0])} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+              {uploadProgress > 0 && (
+                <div className="mt-4">
+                  <div className="bg-gray-200 h-2">
+                    <div className="bg-green-600 h-2" style={{ width: `${uploadProgress}%` }}></div>
                   </div>
-                );
-              })}
+                  <p className="text-xs text-gray-600 mt-1">{uploadProgress}% uploaded</p>
+                </div>
+              )}
+              <div className="mt-4 flex justify-end">
+                <button onClick={downloadTemplate} className="text-sm text-green-600 hover:text-green-800">
+                  <Download className="h-4 w-4 inline mr-1" />
+                  Download Template
+                </button>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowBulkImportModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
+              <button onClick={handleBulkUpload} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">Upload & Import</button>
             </div>
           </div>
         </div>
       )}
 
-      <GradingScale />
-    </div>
-  );
-
-  // Render Curriculum Tab
-  const renderCurriculum = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <h3 className="font-semibold text-gray-800 flex items-center gap-2"><GraduationCap className="h-4 w-4" /> Grade Levels</h3>
-        </div>
-        <div className="max-h-[600px] overflow-y-auto">
-          {classes.map(cls => (
-            <div key={cls.id} className={`border-b border-gray-100 ${selectedGradeLevel?.id === cls.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-              <div className="px-4 py-3 cursor-pointer flex justify-between items-center" onClick={() => setSelectedGradeLevel(cls)}>
-                <div><span className="font-medium text-gray-800">{cls.class_name}</span><span className="text-xs text-gray-500 ml-2">Level {cls.numeric_level}</span></div>
-                <button onClick={(e) => { e.stopPropagation(); setSelectedClassForCompetencies(cls); fetchClassCompetencies(cls.id); }} className="text-blue-500 hover:text-blue-700"><Eye className="h-4 w-4" /></button>
+      {/* Clone Modal */}
+      {showCloneModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCloneModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Clone Curriculum</h3>
+              <button onClick={() => setShowCloneModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">Copy the entire {activeVersion?.academicYear} curriculum to a new academic year.</p>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Target Academic Year *</label>
+                <input type="text" value={versionForm.academicYear} onChange={(e) => setVersionForm({...versionForm, academicYear: e.target.value})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" placeholder="e.g., 2026" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Version Name</label>
+                <input type="text" value={versionForm.name} onChange={(e) => setVersionForm({...versionForm, name: e.target.value})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" placeholder="e.g., 2026 Curriculum" />
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="lg:col-span-3 bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <h3 className="font-semibold text-gray-800 flex items-center gap-2"><BookOpen className="h-4 w-4" /> Learning Areas</h3>
-          <button onClick={() => { if (!selectedGradeLevel) { addNotification('warning', 'Select a grade level first'); return; } setModalType('learningArea'); setFormData({ area_code: '', area_name: '', short_name: '', area_type: 'Core', description: '', is_active: true }); setShowModal(true); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Plus className="h-4 w-4" /></button>
-        </div>
-        <div className="max-h-[600px] overflow-y-auto">
-          {learningAreas.map(area => (
-            <div key={area.id} className={`border-b border-gray-100 ${selectedLearningArea?.id === area.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-              <div className="px-4 py-3 cursor-pointer flex justify-between items-center" onClick={() => handleSelectLearningArea(area)}>
-                <div><span className="font-medium text-gray-800">{area.area_name}</span><span className="text-xs text-gray-500 ml-2">({area.area_code})</span></div>
-                <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: area.id, name: area.area_name, type: 'learningArea' }); }} className="text-red-500 hover:text-red-700"><Trash2 className="h-3 w-3" /></button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="lg:col-span-7 space-y-6">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2"><Layers className="h-4 w-4" /> Strands</h3>
-            <button onClick={() => { if (!selectedLearningArea) { addNotification('warning', 'Select a learning area first'); return; } setModalType('strand'); setFormData({ strand_code: '', strand_name: '', description: '', display_order: '' }); setShowModal(true); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Plus className="h-4 w-4" /></button>
-          </div>
-          <div className="max-h-[200px] overflow-y-auto">
-            {selectedLearningArea ? strands.map(strand => (
-              <div key={strand.id} className={`border-b border-gray-100 ${selectedStrand?.id === strand.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                <div className="px-4 py-2 cursor-pointer flex justify-between items-center" onClick={() => handleSelectStrand(strand)}>
-                  <div><span className="text-sm text-gray-800">{strand.strand_name}</span><span className="text-xs text-gray-500 ml-2">({strand.strand_code})</span></div>
-                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: strand.id, name: strand.strand_name, type: 'strand' }); }} className="text-red-500 hover:text-red-700"><Trash2 className="h-3 w-3" /></button>
-                </div>
-              </div>
-            )) : <div className="p-4 text-center text-gray-500">Select a learning area to view strands</div>}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2"><FolderTree className="h-4 w-4" /> Sub-strands</h3>
-            <button onClick={() => { if (!selectedStrand) { addNotification('warning', 'Select a strand first'); return; } setModalType('substrand'); setFormData({ substrand_code: '', substrand_name: '', description: '', display_order: '' }); setShowModal(true); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Plus className="h-4 w-4" /></button>
-          </div>
-          <div className="max-h-[200px] overflow-y-auto">
-            {selectedStrand ? substrands.map(sub => (
-              <div key={sub.id} className={`border-b border-gray-100 ${selectedSubstrand?.id === sub.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                <div className="px-4 py-2 cursor-pointer flex justify-between items-center" onClick={() => handleSelectSubstrand(sub)}>
-                  <div><span className="text-sm text-gray-800">{sub.substrand_name}</span><span className="text-xs text-gray-500 ml-2">({sub.substrand_code})</span></div>
-                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: sub.id, name: sub.substrand_name, type: 'substrand' }); }} className="text-red-500 hover:text-red-700"><Trash2 className="h-3 w-3" /></button>
-                </div>
-              </div>
-            )) : <div className="p-4 text-center text-gray-500">Select a strand to view sub-strands</div>}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2"><Target className="h-4 w-4" /> Competencies</h3>
-            <button onClick={() => { if (!selectedSubstrand) { addNotification('warning', 'Select a sub-strand first'); return; } setModalType('competency'); setFormData({ competency_code: '', competency_statement: '', performance_indicator: '', is_core_competency: true, display_order: '' }); setShowModal(true); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Plus className="h-4 w-4" /></button>
-          </div>
-          <div className="max-h-[250px] overflow-y-auto p-2">
-            {selectedSubstrand ? competencies.map(comp => (
-              <div key={comp.id} className="p-2 border-b border-gray-100">
-                <div className="flex justify-between">
-                  <div className="flex-1"><span className="font-mono text-xs text-blue-600">{comp.competency_code}</span><p className="text-xs text-gray-700 mt-1">{comp.competency_statement?.substring(0, 100)}...</p></div>
-                  <button onClick={() => setDeleteConfirm({ id: comp.id, name: comp.competency_code, type: 'competency' })} className="text-red-500 hover:text-red-700"><Trash2 className="h-3 w-3" /></button>
-                </div>
-              </div>
-            )) : <div className="p-4 text-center text-gray-500">Select a sub-strand to view competencies</div>}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderModalContent = () => {
-    switch (modalType) {
-      case 'academicYear':
-        return (<div className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Year Code *</label><input type="text" value={formData.year_code || ''} onChange={e => setFormData({...formData, year_code: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="2024-2025" /></div><div><label className="block text-sm font-medium mb-1">Year Name *</label><input type="text" value={formData.year_name || ''} onChange={e => setFormData({...formData, year_name: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="2024-2025 Academic Year" /></div></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Start Date *</label><input type="date" value={formData.start_date || ''} onChange={e => setFormData({...formData, start_date: e.target.value})} className="w-full border rounded-lg px-3 py-2" /></div><div><label className="block text-sm font-medium mb-1">End Date *</label><input type="date" value={formData.end_date || ''} onChange={e => setFormData({...formData, end_date: e.target.value})} className="w-full border rounded-lg px-3 py-2" /></div></div><div className="flex items-center"><input type="checkbox" id="isCurrent" checked={formData.is_current || false} onChange={e => setFormData({...formData, is_current: e.target.checked})} className="h-4 w-4 rounded" /><label htmlFor="isCurrent" className="ml-2 text-sm">Set as current academic year</label></div></div>);
-      case 'term':
-        return (<div className="space-y-4"><div><label className="block text-sm font-medium mb-1">Term Name *</label><select value={formData.term || ''} onChange={e => setFormData({...formData, term: e.target.value})} className="w-full border rounded-lg px-3 py-2"><option value="">Select Term</option><option value="Term 1">Term 1 (Jan-Mar)</option><option value="Term 2">Term 2 (May-Jul)</option><option value="Term 3">Term 3 (Sep-Nov)</option></select></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Start Date *</label><input type="date" value={formData.start_date || ''} onChange={e => setFormData({...formData, start_date: e.target.value})} className="w-full border rounded-lg px-3 py-2" /></div><div><label className="block text-sm font-medium mb-1">End Date *</label><input type="date" value={formData.end_date || ''} onChange={e => setFormData({...formData, end_date: e.target.value})} className="w-full border rounded-lg px-3 py-2" /></div></div><div className="flex items-center"><input type="checkbox" id="isCurrentTerm" checked={formData.is_current || false} onChange={e => setFormData({...formData, is_current: e.target.checked})} className="h-4 w-4 rounded" /><label htmlFor="isCurrentTerm" className="ml-2 text-sm">Set as current term</label></div></div>);
-      case 'learningArea':
-        return (<div className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Area Code *</label><input type="text" value={formData.area_code || ''} onChange={e => setFormData({...formData, area_code: e.target.value.toUpperCase()})} className="w-full border rounded-lg px-3 py-2" placeholder="ENG" /></div><div><label className="block text-sm font-medium mb-1">Short Name</label><input type="text" value={formData.short_name || ''} onChange={e => setFormData({...formData, short_name: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="English" /></div></div><div><label className="block text-sm font-medium mb-1">Area Name *</label><input type="text" value={formData.area_name || ''} onChange={e => setFormData({...formData, area_name: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="English Language" /></div><div><label className="block text-sm font-medium mb-1">Area Type</label><select value={formData.area_type || 'Core'} onChange={e => setFormData({...formData, area_type: e.target.value})} className="w-full border rounded-lg px-3 py-2"><option value="Core">Core</option><option value="Optional">Optional</option><option value="Extracurricular">Extracurricular</option></select></div><div><label className="block text-sm font-medium mb-1">Description</label><textarea value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} rows="2" className="w-full border rounded-lg px-3 py-2" /></div><div className="flex items-center"><input type="checkbox" id="isActive" checked={formData.is_active !== false} onChange={e => setFormData({...formData, is_active: e.target.checked})} className="h-4 w-4 rounded" /><label htmlFor="isActive" className="ml-2 text-sm">Active</label></div></div>);
-      case 'strand':
-        return (<div className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Strand Code *</label><input type="text" value={formData.strand_code || ''} onChange={e => setFormData({...formData, strand_code: e.target.value.toUpperCase()})} className="w-full border rounded-lg px-3 py-2" placeholder="ENG-L" /></div><div><label className="block text-sm font-medium mb-1">Display Order</label><input type="number" value={formData.display_order || ''} onChange={e => setFormData({...formData, display_order: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="1" /></div></div><div><label className="block text-sm font-medium mb-1">Strand Name *</label><input type="text" value={formData.strand_name || ''} onChange={e => setFormData({...formData, strand_name: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="Listening and Speaking" /></div><div><label className="block text-sm font-medium mb-1">Description</label><textarea value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} rows="2" className="w-full border rounded-lg px-3 py-2" /></div></div>);
-      case 'substrand':
-        return (<div className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Sub-strand Code *</label><input type="text" value={formData.substrand_code || ''} onChange={e => setFormData({...formData, substrand_code: e.target.value.toUpperCase()})} className="w-full border rounded-lg px-3 py-2" placeholder="ENG-L1" /></div><div><label className="block text-sm font-medium mb-1">Display Order</label><input type="number" value={formData.display_order || ''} onChange={e => setFormData({...formData, display_order: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="1" /></div></div><div><label className="block text-sm font-medium mb-1">Sub-strand Name *</label><input type="text" value={formData.substrand_name || ''} onChange={e => setFormData({...formData, substrand_name: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="Oral Communication" /></div><div><label className="block text-sm font-medium mb-1">Description</label><textarea value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} rows="2" className="w-full border rounded-lg px-3 py-2" /></div></div>);
-      case 'competency':
-        return (<div className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Competency Code *</label><input type="text" value={formData.competency_code || ''} onChange={e => setFormData({...formData, competency_code: e.target.value.toUpperCase()})} className="w-full border rounded-lg px-3 py-2" placeholder="ENG-L1.1" /></div><div><label className="block text-sm font-medium mb-1">Display Order</label><input type="number" value={formData.display_order || ''} onChange={e => setFormData({...formData, display_order: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="1" /></div></div><div><label className="block text-sm font-medium mb-1">Competency Statement *</label><textarea value={formData.competency_statement || ''} onChange={e => setFormData({...formData, competency_statement: e.target.value})} rows="3" className="w-full border rounded-lg px-3 py-2" placeholder="Describe the specific skill..." /></div><div><label className="block text-sm font-medium mb-1">Performance Indicator</label><textarea value={formData.performance_indicator || ''} onChange={e => setFormData({...formData, performance_indicator: e.target.value})} rows="2" className="w-full border rounded-lg px-3 py-2" placeholder="How will this be measured?" /></div><div className="flex items-center"><input type="checkbox" id="isCore" checked={formData.is_core_competency !== false} onChange={e => setFormData({...formData, is_core_competency: e.target.checked})} className="h-4 w-4 rounded" /><label htmlFor="isCore" className="ml-2 text-sm">Core Competency</label></div></div>);
-      default: return null;
-    }
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center"><AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" /><h2 className="text-2xl font-bold text-gray-900">Authentication Required</h2><p className="text-gray-600 mt-2 mb-6">Please login to access academic management</p><a href="/login" className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Go to Login</a></div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } } .animate-slide-in { animation: slideIn 0.3s ease-out; }`}</style>
-
-      <SessionExpiredModal isOpen={showSessionExpired} onLogout={handleLogout} />
-
-      {error && <Notification type="error" message={error} onClose={() => setError(null)} />}
-      {success && <Notification type="success" message={success} onClose={() => setSuccess(null)} />}
-
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><GraduationCap className="h-7 w-7 text-blue-600" /> Academic Management</h1>
-              <p className="text-gray-500 text-sm">Manage academic years, terms, and CBE curriculum structure by grade level</p>
-              {user && <p className="text-xs text-gray-400 mt-1">{user.first_name} {user.last_name} • {user.role}</p>}
-            </div>
-            <div className="flex items-center gap-3">
-              {currentTerm && <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium flex items-center gap-1"><Clock className="h-3 w-3" /> Current: {currentTerm}</div>}
-              <button onClick={() => { fetchAcademicYears(); fetchLearningAreas(); fetchClasses(); }} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"><RefreshCw className="h-5 w-5" /></button>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowCloneModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
+              <button onClick={cloneCurriculum} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">Clone</button>
             </div>
           </div>
         </div>
+      )}
 
-        <div className="px-6 border-b border-gray-200">
-          <div className="flex gap-6">
-            <button onClick={() => setActiveTab('academic-calendar')} className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${activeTab === 'academic-calendar' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}><Calendar className="h-4 w-4" /> Academic Calendar</button>
-            <button onClick={() => setActiveTab('curriculum')} className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${activeTab === 'curriculum' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}><BookOpen className="h-4 w-4" /> Curriculum Structure</button>
+      {/* Version Modal */}
+      {showVersionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowVersionModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">Create New Version</h3>
+              <button onClick={() => setShowVersionModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Version Name *</label>
+                <input type="text" value={versionForm.name} onChange={(e) => setVersionForm({...versionForm, name: e.target.value})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" placeholder="e.g., 2026 Curriculum" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Academic Year *</label>
+                <input type="text" value={versionForm.academicYear} onChange={(e) => setVersionForm({...versionForm, academicYear: e.target.value})} className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" placeholder="e.g., 2026" />
+              </div>
+              <div className="mb-4">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={versionForm.isActive} onChange={(e) => setVersionForm({...versionForm, isActive: e.target.checked})} />
+                  <span className="text-sm font-medium text-gray-700">Set as active version</span>
+                </label>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowVersionModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
+              <button onClick={createNewVersion} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">Create</button>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="p-6">
-        {loading ? (<div className="flex justify-center items-center h-64"><Loader2 className="h-12 w-12 text-blue-600 animate-spin" /></div>) : activeTab === 'academic-calendar' ? renderAcademicCalendar() : renderCurriculum()}
-      </div>
-
-      <FormModal isOpen={showModal} onClose={() => setShowModal(false)} onSubmit={() => {
-        if (modalType === 'academicYear') handleCreateAcademicYear();
-        else if (modalType === 'term') handleCreateTerm();
-        else if (modalType === 'learningArea') handleCreateLearningArea();
-        else if (modalType === 'strand') handleCreateStrand();
-        else if (modalType === 'substrand') handleCreateSubstrand();
-        else if (modalType === 'competency') handleCreateCompetency();
-      }} title={`Add ${modalType?.replace(/([A-Z])/g, ' $1').trim()}`} loading={submitting}>{renderModalContent()}</FormModal>
-
-      <ConfirmationModal isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} onConfirm={() => handleDelete(deleteConfirm?.type, deleteConfirm?.id)} title="Delete Item" message={`Are you sure you want to delete "${deleteConfirm?.name}"? This cannot be undone.`} type="danger" />
-
-      {showCompetencyTable && selectedClassForCompetencies && (
-        <CompetencyTable classData={selectedClassForCompetencies} competencies={classCompetencies} onClose={() => { setShowCompetencyTable(false); setSelectedClassForCompetencies(null); setClassCompetencies([]); }} />
       )}
     </div>
   );

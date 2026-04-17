@@ -43,11 +43,10 @@ function RegisterSidebar({ children }) {
 
   return (
     <>
-      {/* Mobile Top Bar - Thin, Logo on left, Username on right */}
+      {/* Mobile Top Bar */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-800 to-blue-900 shadow-md z-50 lg:hidden">
+        <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-green-700 to-green-800 shadow-md z-50 lg:hidden">
           <div className="flex items-center justify-between px-4 py-2">
-            {/* Logo Section - Left Side */}
             <button 
               onClick={toggleSidebar}
               className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
@@ -62,23 +61,21 @@ function RegisterSidebar({ children }) {
               </div>
               <div className="flex flex-col leading-tight">
                 <h1 className="text-white font-bold text-sm leading-tight">JAWABU</h1>
-                <h2 className="text-white text-[10px] font-semibold leading-tight">SCHOOL</h2>
+                <h2 className="text-white text-[10px] font-semibold leading-tight">Register Portal</h2>
               </div>
             </button>
-
-            {/* User Info Section - Right Side */}
             <div className="text-right">
-              <p className="text-white text-xs font-semibold">{user?.username}</p>
-              <p className="text-blue-200 text-[10px] font-medium">{user?.first_name} | {user?.role}</p>
+              <p className="text-white text-xs font-semibold">{user?.username || 'User'}</p>
+              <p className="text-green-200 text-[10px] font-medium">{user?.role || 'Register'}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Mobile Bottom Navigation - Thin */}
+      {/* Mobile Bottom Navigation */}
       {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-blue-900 to-blue-800 shadow-lg z-50 lg:hidden">
-          <div className="flex items-center h-12 px-2 overflow-x-auto scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-blue-800">
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-green-800 to-green-700 shadow-lg z-50 lg:hidden">
+          <div className="flex items-center h-12 px-2 overflow-x-auto">
             <div className="flex justify-around gap-1">
               {RegisterSidebarData.slice(0, 15).map((val, key) => (
                 <button
@@ -87,8 +84,8 @@ function RegisterSidebar({ children }) {
                   className={`
                     flex flex-col items-center justify-center px-2 py-1 rounded-lg transition-all duration-300 min-w-[60px]
                     ${window.location.pathname === val.link 
-                      ? 'text-white bg-blue-600/50' 
-                      : 'text-blue-100 hover:text-white hover:bg-blue-600/30'
+                      ? 'text-white bg-green-600/50' 
+                      : 'text-green-100 hover:text-white hover:bg-green-600/30'
                     }
                   `}
                 >
@@ -101,17 +98,17 @@ function RegisterSidebar({ children }) {
         </div>
       )}
 
-      {/* Main Content Area with proper spacing */}
+      {/* Main Content */}
       <div className={isMobile ? "pt-12 pb-12" : ""}>
         {children}
       </div>
 
-      {/* Desktop Toggle Button - Hidden on mobile */}
+      {/* Desktop Toggle Button */}
       {!isMobile && (
         <button 
           onClick={toggleSidebar}
-          className="fixed top-4 left-4 bg-blue-500 hover:bg-blue-600 text-white rounded-full p-3 shadow-xl border-2 border-blue-400/50 transition-all duration-300 hover:scale-110 hover:rotate-12 z-50"
-          aria-label="Open sidebar"
+          className="fixed top-4 left-4 bg-green-500 hover:bg-green-600 text-white rounded-full p-3 shadow-xl border-2 border-green-400/50 transition-all duration-300 hover:scale-110 hover:rotate-12 z-50"
+          aria-label="Toggle sidebar"
         >
           <svg 
             className="w-5 h-5"
@@ -127,11 +124,11 @@ function RegisterSidebar({ children }) {
       {/* Sidebar */}
       <div 
         className={`
-          h-screen bg-blue-900 shadow-2xl border-r-0 transition-all duration-500 ease-in-out z-50
-          ${isCollapsed ? 'w-20' : 'w-72'}
+          h-screen bg-green-900 shadow-2xl border-r-0 transition-all duration-500 ease-in-out z-50
           fixed lg:relative top-0 left-0
-          ${isCollapsed && isMobile ? '-translate-x-full' : 'translate-x-0'}
           overflow-hidden flex flex-col
+          ${isCollapsed ? 'w-20' : 'w-72'}
+          ${isCollapsed && isMobile ? '-translate-x-full' : 'translate-x-0'}
         `}
       >
         {/* Background Pattern */}
@@ -152,15 +149,14 @@ function RegisterSidebar({ children }) {
 
         {/* Header Section */}
         <div className="relative z-10">
-          <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+          <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-green-400 to-green-600"></div>
           
           <div className={`
-            flex items-center p-5 border-b border-red-700 bg-blue-900 backdrop-blur-sm
+            flex items-center p-5 border-b border-red-700 bg-green-900 backdrop-blur-sm
             ${isCollapsed ? 'justify-center' : 'justify-between'}
           `}>
             <div className={`flex items-center ${isCollapsed ? 'flex-col' : 'space-x-4'}`}>
               <div className="relative group">
-                <div className="bg-blue-400 rounded-xl blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
                 <img 
                   src="/logo.jpeg" 
                   alt="Logo" 
@@ -175,8 +171,8 @@ function RegisterSidebar({ children }) {
               {!isCollapsed && (
                 <div className="flex flex-col">
                   <h1 className="text-white font-bold text-lg leading-tight">JAWABU</h1>
-                  <h2 className="text-white text-xs font-semibold">SCHOOL</h2>
-                  <p className="text-sm font-extrabold text-white truncate">{user?.username} | {user?.role}</p>
+                  <h2 className="text-white text-xs font-semibold">REGISTER PORTAL</h2>
+                  <p className="text-sm font-extrabold text-white truncate">{user?.username || 'User'} | {user?.role || 'Register'}</p>
                 </div>
               )}
             </div>
@@ -186,8 +182,8 @@ function RegisterSidebar({ children }) {
               <button 
                 onClick={toggleSidebar}
                 className={`
-                  bg-blue-600/50 hover:bg-blue-600 backdrop-blur-sm text-white rounded-full p-2 
-                  shadow-lg border-2 border-blue-400/40 transition-all duration-300 hover:scale-110 hover:rotate-180
+                  bg-green-600/50 hover:bg-green-600 backdrop-blur-sm text-white rounded-full p-2 
+                  shadow-lg border-2 border-green-400/40 transition-all duration-300 hover:scale-110 hover:rotate-180
                   ${isCollapsed ? 'absolute -right-3 top-5' : ''}
                 `}
                 aria-label="Toggle sidebar"
@@ -206,19 +202,16 @@ function RegisterSidebar({ children }) {
         </div>
 
         {/* Navigation Items */}
-        <nav className="relative z-10 flex-1 overflow-y-auto py-6 px-3 scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-blue-900/30">
+        <nav className="relative z-10 flex-1 overflow-y-auto py-6 px-3">
           <ul className="space-y-2">
             {RegisterSidebarData.map((val, key) => (
-              <li key={key} className="relative">
+              <li key={key}>
                 <div
                   className={`
                     flex items-center w-full p-3 rounded-xl cursor-pointer transition-all duration-300 group
-                    ${window.location.pathname === val.link 
-                      ? 'bg-blue-600 text-white shadow-xl scale-105 border border-blue-400/50' 
-                      : 'hover:bg-blue-700/50 text-blue-100 hover:text-white hover:scale-105 border border-transparent hover:border-blue-500/50'
-                    }
+                    relative overflow-hidden text-white hover:bg-green-700/50
+                    ${window.location.pathname === val.link ? 'bg-green-600' : ''}
                     ${isCollapsed ? 'justify-center' : 'justify-start'}
-                    relative overflow-hidden
                   `}
                   onClick={() => {
                     if (val.subNav) {
@@ -228,25 +221,19 @@ function RegisterSidebar({ children }) {
                     }
                   }}
                 >
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-
-                  {window.location.pathname === val.link && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-300 to-blue-500 rounded-r-full"></div>
-                  )}
-
-                  <div className={`flex-shrink-0 transition-all duration-300 ${isCollapsed ? 'text-2xl' : 'text-xl'}`}>
-                    {val.icon}
+                  <div className="flex-shrink-0 transition-all duration-300">
+                    <div className={isCollapsed ? 'text-2xl' : 'text-xl'}>
+                      {val.icon}
+                    </div>
                   </div>
 
                   {!isCollapsed && (
-                    <div className="ml-3 flex-1">
-                      <span className="font-bold whitespace-nowrap">{val.title}</span>
-                    </div>
+                    <span className="ml-3 font-bold whitespace-nowrap">{val.title}</span>
                   )}
 
                   {!isCollapsed && val.subNav && (
                     <svg 
-                      className={`w-4 h-4 transition-all duration-300 ${openDropdown === key ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 ml-auto transition-all duration-300 ${openDropdown === key ? 'rotate-180' : ''}`}
                       fill="none" 
                       stroke="currentColor" 
                       viewBox="0 0 24 24"
@@ -262,18 +249,15 @@ function RegisterSidebar({ children }) {
                       <li key={subKey}>
                         <div
                           className={`
-                            flex items-center p-2.5 rounded-lg cursor-pointer transition-all duration-300 group
-                            ${window.location.pathname === subVal.link 
-                              ? 'bg-blue-600/80 text-white shadow-lg border border-blue-400/50' 
-                              : 'hover:bg-blue-700/50 text-blue-200 hover:text-white border border-transparent hover:border-blue-500/50'
-                            }
+                            flex items-center p-2.5 rounded-lg cursor-pointer transition-all duration-300
+                            text-white/80 hover:text-white hover:bg-green-700/50
+                            ${window.location.pathname === subVal.link ? 'bg-green-600/80' : ''}
                           `}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleNavigation(subVal.link);
                           }}
                         >
-                          <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
                           <div className="text-sm">{subVal.icon}</div>
                           <span className="ml-2 text-sm font-semibold">{subVal.title}</span>
                         </div>
@@ -288,19 +272,17 @@ function RegisterSidebar({ children }) {
 
         {/* Footer */}
         <div className={`
-          relative z-10 border-t border-blue-700/30 p-4 bg-blue-800/30 backdrop-blur-md
+          relative z-10 border-t border-green-700/30 p-4 bg-green-800/30 backdrop-blur-md
           ${isCollapsed ? 'text-center' : ''}
         `}>
           <div className={`text-white/80 transition-all duration-300 ${isCollapsed ? 'text-xs' : 'text-sm'}`}>
             {!isCollapsed ? (
-              <div className="space-y-1">
+              <div>
                 <p className="font-bold">© {new Date().getFullYear()} jawabu</p>
-                <p className="text-xs text-blue-300 font-semibold">powered by syntelsafe</p>
+                <p className="text-xs text-green-300 font-semibold">powered by syntelsafe</p>
               </div>
             ) : (
-              <div className="flex flex-col items-center">
-                <span className="text-xs font-bold text-blue-300">©{new Date().getFullYear()}</span>
-              </div>
+              <span className="text-xs font-bold text-green-300">©{new Date().getFullYear()}</span>
             )}
           </div>
         </div>
@@ -320,24 +302,6 @@ function RegisterSidebar({ children }) {
             opacity: 1;
             transform: translateY(0);
           }
-        }
-
-        .scrollbar-thin::-webkit-scrollbar {
-          width: 4px;
-        }
-
-        .scrollbar-thin::-webkit-scrollbar-track {
-          background: rgba(30, 58, 138, 0.3);
-          border-radius: 20px;
-        }
-
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-          background: #3b82f6;
-          border-radius: 20px;
-        }
-
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-          background: #2563eb;
         }
       `}</style>
     </>

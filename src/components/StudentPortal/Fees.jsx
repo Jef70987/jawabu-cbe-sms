@@ -69,7 +69,7 @@ const Toast = ({ message, type, onClose }) => {
 
   return (
     <div className="fixed top-4 left-0 right-0 z-50 px-4">
-      <div className={`${bgColor[type]} text-white rounded-lg shadow-xl p-3 max-w-md mx-auto`}>
+      <div className={`${bgColor[type]} text-white shadow-lg p-3 max-w-md mx-auto`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
             <p className="font-semibold capitalize text-sm">{type}</p>
@@ -90,7 +90,7 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
   
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+      <div className="bg-white shadow-xl max-w-md w-full">
         <div className="p-5">
           <div className="flex items-center mb-3">
             <AlertCircle className="h-6 w-6 text-red-500 mr-2" />
@@ -98,7 +98,7 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
           </div>
           <p className="text-sm text-gray-600 mb-5">Your session has expired. Please login again to continue.</p>
           <div className="flex justify-end">
-            <button onClick={onLogout} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm">
+            <button onClick={onLogout} className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2 text-sm">
               <LogOut className="h-4 h-4" />
               Logout
             </button>
@@ -112,19 +112,19 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
 // Stat Card Component
 const StatCard = ({ title, value, icon: Icon, color, onClick, subtitle }) => {
   const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    purple: 'bg-purple-50 text-purple-600',
-    orange: 'bg-orange-50 text-orange-600',
-    red: 'bg-red-50 text-red-600',
-    cyan: 'bg-cyan-50 text-cyan-600',
-    amber: 'bg-amber-50 text-amber-600'
+    blue: 'bg-blue-100 text-blue-700',
+    green: 'bg-green-100 text-green-700',
+    purple: 'bg-purple-100 text-purple-700',
+    orange: 'bg-orange-100 text-orange-700',
+    red: 'bg-red-100 text-red-700',
+    cyan: 'bg-cyan-100 text-cyan-700',
+    amber: 'bg-amber-100 text-amber-700'
   };
 
   return (
     <div 
       onClick={onClick}
-      className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-all cursor-pointer active:bg-gray-50"
+      className="bg-white shadow-sm border border-gray-200 p-4 hover:shadow-md transition-all cursor-pointer active:bg-gray-50"
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -132,7 +132,7 @@ const StatCard = ({ title, value, icon: Icon, color, onClick, subtitle }) => {
           <p className="text-lg font-bold text-gray-900 mt-0.5 break-words">{value}</p>
           {subtitle && <p className="text-xs text-gray-400 mt-0.5 truncate">{subtitle}</p>}
         </div>
-        <div className={`p-2 rounded-lg ${colorClasses[color]} shrink-0`}>
+        <div className={`p-2 ${colorClasses[color]} shrink-0`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
@@ -159,13 +159,13 @@ const InvoiceCard = ({ invoice, onViewDetails, onPrintReceipt }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-all">
+    <div className="bg-white shadow-sm border border-gray-200 p-4 hover:shadow-md transition-all">
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-sm font-semibold text-gray-900">{invoice.invoice_no}</p>
           <p className="text-xs text-gray-500 mt-0.5">{invoice.term} - {invoice.academic_year}</p>
         </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[invoice.status]}`}>
+        <span className={`px-2 py-1 text-xs font-medium ${statusColors[invoice.status]}`}>
           {invoice.status}
         </span>
       </div>
@@ -194,7 +194,7 @@ const InvoiceCard = ({ invoice, onViewDetails, onPrintReceipt }) => {
       <div className="flex gap-2">
         <button
           onClick={() => onViewDetails(invoice)}
-          className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
+          className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 flex items-center justify-center gap-1"
         >
           <Eye className="w-4 h-4" />
           View Details
@@ -202,7 +202,7 @@ const InvoiceCard = ({ invoice, onViewDetails, onPrintReceipt }) => {
         {invoice.status === 'Paid' && (
           <button
             onClick={() => onPrintReceipt(invoice)}
-            className="px-3 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors flex items-center justify-center gap-1"
+            className="px-3 py-2 bg-green-600 text-white text-sm font-medium hover:bg-green-700 flex items-center justify-center gap-1"
           >
             <Printer className="w-4 h-4" />
           </button>
@@ -240,7 +240,7 @@ const TransactionItem = ({ transaction }) => {
 
   return (
     <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
-      <div className="p-2 bg-green-50 rounded-lg">
+      <div className="p-2 bg-green-100">
         {getPaymentIcon(transaction.payment_mode)}
       </div>
       <div className="flex-1">
@@ -248,7 +248,7 @@ const TransactionItem = ({ transaction }) => {
           <p className="text-sm font-medium text-gray-900">
             {formatCurrency(transaction.amount)}
           </p>
-          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700">
             Completed
           </span>
         </div>
@@ -352,14 +352,14 @@ const InvoiceDetailsModal = ({ isOpen, onClose, invoice }) => {
           <div class="info-row"><strong>Academic Year:</strong> ${invoice.academic_year}</div>
         </div>
         <table class="table">
-          <thead><tr><th>Description</th><th style="text-align:right">Amount (KES)</th></tr></thead>
+          <thead><tr><th>Description</th><th style="text-align:right">Amount (KES)</th> </thead>
           <tbody>
             ${invoice.items.map(item => `
-              <tr><td>${item.description}</td><td style="text-align:right">${parseFloat(item.net_amount).toLocaleString()}</td></tr>
+              <tr><td>${item.description}</td><td style="text-align:right">${parseFloat(item.net_amount).toLocaleString()}</td> </tr>
             `).join('')}
-            <tr style="font-weight:bold"><td>TOTAL</td><td style="text-align:right">${parseFloat(invoice.total_amount).toLocaleString()}</td></tr>
-            <tr><td>Amount Paid</td><td style="text-align:right">${parseFloat(invoice.amount_paid).toLocaleString()}</td></tr>
-            <tr><td>Balance</td><td style="text-align:right">${parseFloat(invoice.balance_amount).toLocaleString()}</td></tr>
+            <tr style="font-weight:bold"><tr><td>TOTAL</td><td style="text-align:right">${parseFloat(invoice.total_amount).toLocaleString()}</td> </tr>
+            <tr><td>Amount Paid</td><td style="text-align:right">${parseFloat(invoice.amount_paid).toLocaleString()}</td> </tr>
+            <tr><td>Balance</td><td style="text-align:right">${parseFloat(invoice.balance_amount).toLocaleString()}</td> </tr>
           </tbody>
         </table>
         <div class="footer">
@@ -374,7 +374,7 @@ const InvoiceDetailsModal = ({ isOpen, onClose, invoice }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900">Invoice Details</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
@@ -414,7 +414,7 @@ const InvoiceDetailsModal = ({ isOpen, onClose, invoice }) => {
                 <span className="font-medium text-red-600">{formatCurrency(invoice.late_fee_amount)}</span>
               </div>
             )}
-            <div className="flex justify-between py-3 bg-gray-50 rounded-lg px-3 -mx-3">
+            <div className="flex justify-between py-3 bg-gray-50 px-3 -mx-3">
               <span className="font-semibold text-gray-900">Total Amount</span>
               <span className="font-bold text-gray-900">{formatCurrency(invoice.total_amount)}</span>
             </div>
@@ -447,7 +447,7 @@ const InvoiceDetailsModal = ({ isOpen, onClose, invoice }) => {
           <div className="flex gap-2 mt-4">
             <button
               onClick={handlePrint}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2"
             >
               <Printer className="w-4 h-4" />
               Print Invoice
@@ -455,7 +455,7 @@ const InvoiceDetailsModal = ({ isOpen, onClose, invoice }) => {
           </div>
 
           {invoice.balance_amount > 0 && (
-            <div className="bg-yellow-50 rounded-lg p-3 mt-4">
+            <div className="bg-yellow-50 p-3 mt-4">
               <div className="flex items-start gap-2">
                 <Info className="w-4 h-4 text-yellow-600 mt-0.5" />
                 <p className="text-xs text-yellow-800">
@@ -495,9 +495,9 @@ const FeeStatementModal = ({ isOpen, onClose, feeSummary, transactions, studentP
           .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
           .school { font-size: 24px; font-weight: bold; }
           .title { font-size: 20px; margin-top: 10px; }
-          .student-info { background: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+          .student-info { background: #f5f5f5; padding: 15px; margin-bottom: 20px; }
           .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-          .card { background: #f5f5f5; padding: 15px; text-align: center; border-radius: 5px; }
+          .card { background: #f5f5f5; padding: 15px; text-align: center; }
           .card-amount { font-size: 20px; font-weight: bold; }
           .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
           .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -528,7 +528,7 @@ const FeeStatementModal = ({ isOpen, onClose, feeSummary, transactions, studentP
         </div>
         <h3>Payment History</h3>
         <table class="table">
-          <thead><tr><th>Date</th><th>Receipt No</th><th>Payment Mode</th><th style="text-align:right">Amount</th><th>Reference</th></tr></thead>
+          <thead><tr><th>Date</th><th>Receipt No</th><th>Payment Mode</th><th style="text-align:right">Amount</th><th>Reference</th> </thead>
           <tbody>
             ${transactions.map(t => `
               <tr>
@@ -537,7 +537,7 @@ const FeeStatementModal = ({ isOpen, onClose, feeSummary, transactions, studentP
                 <td>${t.payment_mode}</td>
                 <td style="text-align:right">${formatCurrency(t.amount)}</td>
                 <td>${t.payment_reference || '-'}</td>
-              </tr>
+               </tr>
             `).join('')}
           </tbody>
         </table>
@@ -553,7 +553,7 @@ const FeeStatementModal = ({ isOpen, onClose, feeSummary, transactions, studentP
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900">Fee Statement</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
@@ -568,20 +568,20 @@ const FeeStatementModal = ({ isOpen, onClose, feeSummary, transactions, studentP
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="bg-blue-50 rounded-lg p-3 text-center">
-              <p className="text-xs text-blue-600">Total Fees</p>
+            <div className="bg-blue-100 p-3 text-center">
+              <p className="text-xs text-blue-700">Total Fees</p>
               <p className="text-lg font-bold text-blue-900">{formatCurrency(feeSummary?.total_fees || 0)}</p>
             </div>
-            <div className="bg-green-50 rounded-lg p-3 text-center">
-              <p className="text-xs text-green-600">Total Paid</p>
+            <div className="bg-green-100 p-3 text-center">
+              <p className="text-xs text-green-700">Total Paid</p>
               <p className="text-lg font-bold text-green-900">{formatCurrency(feeSummary?.total_paid || 0)}</p>
             </div>
-            <div className="bg-orange-50 rounded-lg p-3 text-center">
-              <p className="text-xs text-orange-600">Balance</p>
+            <div className="bg-orange-100 p-3 text-center">
+              <p className="text-xs text-orange-700">Balance</p>
               <p className="text-lg font-bold text-orange-900">{formatCurrency(feeSummary?.balance || 0)}</p>
             </div>
-            <div className="bg-red-50 rounded-lg p-3 text-center">
-              <p className="text-xs text-red-600">Overdue</p>
+            <div className="bg-red-100 p-3 text-center">
+              <p className="text-xs text-red-700">Overdue</p>
               <p className="text-lg font-bold text-red-900">{formatCurrency(feeSummary?.overdue_amount || 0)}</p>
             </div>
           </div>
@@ -609,7 +609,7 @@ const FeeStatementModal = ({ isOpen, onClose, feeSummary, transactions, studentP
           <div className="flex gap-2 mt-4">
             <button
               onClick={handlePrint}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2"
             >
               <Printer className="w-4 h-4" />
               Print Statement
@@ -647,7 +647,7 @@ const StudentFeeManagement = () => {
   const [activeTab, setActiveTab] = useState('invoices');
 
   // Colors for charts
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+  const COLORS = ['#10a73b','#ec1310', '#F59E0B', '#EF4444'];
 
   // Helper Functions
   const showToast = (message, type = 'info') => {
@@ -835,7 +835,7 @@ const StudentFeeManagement = () => {
               ${invoice.items.map(item => `
                 <tr><td>${item.description}</td><td style="text-align:right">${parseFloat(item.net_amount).toLocaleString()}</td> </tr>
               `).join('')}
-              <tr style="font-weight:bold"><td>TOTAL</td><td style="text-align:right">${parseFloat(invoice.total_amount).toLocaleString()}</td></tr>
+              <tr style="font-weight:bold"><tr><td>TOTAL</td><td style="text-align:right">${parseFloat(invoice.total_amount).toLocaleString()}</td> </tr>
               <tr><td>Amount Paid</td><td style="text-align:right">${parseFloat(invoice.amount_paid).toLocaleString()}</td></tr>
               <tr><td>Balance</td><td style="text-align:right">${parseFloat(invoice.balance_amount).toLocaleString()}</td></tr>
             </tbody>
@@ -865,9 +865,9 @@ const StudentFeeManagement = () => {
           .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
           .school { font-size: 24px; font-weight: bold; }
           .title { font-size: 20px; margin-top: 10px; }
-          .student-info { background: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+          .student-info { background: #f5f5f5; padding: 15px; margin-bottom: 20px; }
           .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-          .card { background: #f5f5f5; padding: 15px; text-align: center; border-radius: 5px; }
+          .card { background: #f5f5f5; padding: 15px; text-align: center; }
           .card-amount { font-size: 20px; font-weight: bold; }
           .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
           .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -897,7 +897,7 @@ const StudentFeeManagement = () => {
         </div>
         <h3>Payment History</h3>
         <table class="table">
-          <thead> <tr><th>Date</th><th>Receipt No</th><th>Payment Mode</th><th style="text-align:right">Amount</th><th>Reference</th></tr> </thead>
+          <thead><tr><th>Date</th><th>Receipt No</th><th>Payment Mode</th><th style="text-align:right">Amount</th><th>Reference</th> </thead>
           <tbody>
             ${transactions.map(t => `
               <tr>
@@ -943,7 +943,7 @@ const StudentFeeManagement = () => {
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold">Authentication Required</h2>
           <p className="text-gray-600 mt-2 text-sm">Please login to access fee management</p>
-          <a href="/login" className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Go to Login</a>
+          <a href="/login" className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white text-sm">Go to Login</a>
         </div>
       </div>
     );
@@ -988,17 +988,17 @@ const StudentFeeManagement = () => {
       <div className="w-full px-3 md:px-6 py-4 md:py-6">
         <div className="h-2 md:hidden"></div>
         
-        {/* Header */}
-        <div className="mb-6">
+        {/* Header - Green Background */}
+        <div className="mb-6 bg-green-700 p-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">Fee Management</h1>
-              <p className="text-sm text-gray-500 mt-1">View your fee details, invoices, and payment history</p>
+              <h1 className="text-xl md:text-2xl font-bold text-white">Fee Management</h1>
+              <p className="text-sm text-green-100 mt-1">View your fee details, invoices, and payment history</p>
             </div>
             <div className="flex gap-2">
               <button 
                 onClick={handlePrintStatement}
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1 text-sm"
+                className="px-3 py-2 bg-white text-green-700 hover:bg-gray-100 flex items-center gap-1 text-sm font-medium"
               >
                 <Printer className="w-4 h-4" />
                 <span className="hidden sm:inline">Print Statement</span>
@@ -1006,7 +1006,7 @@ const StudentFeeManagement = () => {
               </button>
               <button 
                 onClick={refreshData}
-                className="px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm"
+                className="px-3 py-2 bg-white text-gray-700 hover:bg-gray-100 flex items-center gap-1 text-sm font-medium"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span className="hidden sm:inline">Refresh</span>
@@ -1049,9 +1049,9 @@ const StudentFeeManagement = () => {
               />
             </div>
 
-            {/* Charts Section */}
+            {/* Charts Section - Untouched */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <div className="bg-white shadow-sm border border-gray-800 p-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Fee Breakdown</h3>
                 {feeBreakdown.length > 0 ? (
                   <ResponsiveContainer width="100%" height={250}>
@@ -1063,7 +1063,7 @@ const StudentFeeManagement = () => {
                         labelLine={false}
                         label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
                         outerRadius={80}
-                        fill="#8884d8"
+                        fill="#d89584"
                         dataKey="value"
                       >
                         {feeBreakdown.map((entry, index) => (
@@ -1082,7 +1082,7 @@ const StudentFeeManagement = () => {
                 )}
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <div className="bg-white shadow-sm border border-gray-800 p-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Payment History Trend</h3>
                 {paymentTrend.length > 0 && paymentTrend.some(p => p.amount > 0) ? (
                   <ResponsiveContainer width="100%" height={250}>
@@ -1091,7 +1091,7 @@ const StudentFeeManagement = () => {
                       <XAxis dataKey="month" />
                       <YAxis tickFormatter={(value) => `KES ${(value / 1000).toFixed(0)}K`} />
                       <Tooltip formatter={(value) => formatCurrency(value)} />
-                      <Area type="monotone" dataKey="amount" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.2} />
+                      <Area type="monotone" dataKey="amount" stroke="#67f31c73" fill="#44a013b4" fillOpacity={0.5} />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
@@ -1104,7 +1104,7 @@ const StudentFeeManagement = () => {
             </div>
 
             {/* Tabs */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+            <div className="bg-white shadow-sm border border-gray-600 overflow-hidden mb-6">
               <div className="flex border-b border-gray-200 overflow-x-auto">
                 <button
                   onClick={() => setActiveTab('invoices')}
@@ -1200,12 +1200,12 @@ const StudentFeeManagement = () => {
             </div>
 
             {/* Important Notice */}
-            <div className="bg-blue-50 rounded-xl p-4 mb-6">
+            <div className="bg-blue-100 p-4 mb-6">
               <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+                <Info className="w-5 h-5 text-blue-700 mt-0.5" />
                 <div>
                   <h4 className="text-sm font-semibold text-blue-900">Important Information</h4>
-                  <p className="text-xs text-blue-700 mt-1">
+                  <p className="text-xs text-blue-800 mt-1">
                     For any queries regarding fee payments, receipts, or statements, please contact the accounts office during working hours.
                   </p>
                 </div>

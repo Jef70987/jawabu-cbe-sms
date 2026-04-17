@@ -35,8 +35,8 @@ const Toast = ({ message, type, onClose }) => {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed top-6 right-6 z-50 animate-slide-in">
-      <div className={`${styles[type]} text-white rounded-lg shadow-lg p-4 min-w-[280px] max-w-md`}>
+    <div className="fixed top-6 right-6 z-50">
+      <div className={`${styles[type]} text-white shadow-lg p-4 min-w-[280px] max-w-md`}>
         <div className="flex items-start gap-3">
           <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
           <div className="flex-1">
@@ -58,10 +58,10 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
   
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+      <div className="bg-white shadow-lg max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+            <div className="w-10 h-10 bg-red-100 flex items-center justify-center">
               <AlertCircle className="w-5 h-5 text-red-600" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900">Session Expired</h3>
@@ -69,7 +69,7 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
           <p className="text-gray-600 mb-6">Your session has expired. Please log in again to continue.</p>
           <button 
             onClick={onLogout}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+            className="w-full px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2"
           >
             <LogOut size={18} />
             Log In Again
@@ -80,7 +80,7 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
   );
 };
 
-// Editable Field Component - Only for allowed editable fields
+// Editable Field Component
 const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'text', required = false, editable = true }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value || '');
@@ -137,7 +137,7 @@ const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'te
                 <textarea
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   rows={3}
                   autoFocus
                 />
@@ -146,7 +146,7 @@ const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'te
                   type={type}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   autoFocus
                 />
               )}
@@ -155,14 +155,14 @@ const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'te
                 <button 
                   onClick={handleSave} 
                   disabled={isSaving}
-                  className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-1"
+                  className="px-3 py-1 bg-green-600 text-white text-sm hover:bg-green-700 disabled:opacity-50 flex items-center gap-1"
                 >
                   {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   Save
                 </button>
                 <button 
                   onClick={handleCancel}
-                  className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300 transition-colors"
+                  className="px-3 py-1 bg-gray-200 text-gray-700 text-sm hover:bg-gray-300"
                 >
                   Cancel
                 </button>
@@ -185,22 +185,13 @@ const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'te
   );
 };
 
-// Info Card Component
+// Info Card Component - No border-left, consistent borders
 const InfoCard = ({ title, icon: Icon, children, color = 'blue' }) => {
-  const colorClasses = {
-    blue: 'border-l-4 border-l-blue-500',
-    green: 'border-l-4 border-l-green-500',
-    purple: 'border-l-4 border-l-purple-500',
-    orange: 'border-l-4 border-l-orange-500',
-    pink: 'border-l-4 border-l-pink-500',
-    teal: 'border-l-4 border-l-teal-500'
-  };
-
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${colorClasses[color]} overflow-hidden`}>
-      <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/30">
+    <div className={`bg-white border border-gray-300 overflow-hidden`}>
+      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center gap-2">
-          <Icon className={`w-5 h-5 text-${color}-500`} />
+          <Icon className={`w-5 h-5 text-${color}-600`} />
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
         </div>
       </div>
@@ -214,14 +205,14 @@ const InfoCard = ({ title, icon: Icon, children, color = 'blue' }) => {
 // Stat Badge Component
 const StatBadge = ({ label, value, icon: Icon, color }) => {
   const colorClasses = {
-    blue: 'bg-blue-50 text-blue-700 border-blue-200',
-    green: 'bg-green-50 text-green-700 border-green-200',
-    purple: 'bg-purple-50 text-purple-700 border-purple-200',
-    orange: 'bg-orange-50 text-orange-700 border-orange-200'
+    blue: 'bg-blue-100 text-blue-700 border-blue-200',
+    green: 'bg-green-100 text-green-700 border-green-200',
+    purple: 'bg-purple-100 text-purple-700 border-purple-200',
+    orange: 'bg-orange-100 text-orange-700 border-orange-200'
   };
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${colorClasses[color]}`}>
+    <div className={`flex items-center gap-3 px-4 py-3 border ${colorClasses[color]}`}>
       <Icon className="w-5 h-5" />
       <div>
         <p className="text-xs font-medium text-gray-500">{label}</p>
@@ -273,7 +264,7 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+      <div className="bg-white shadow-lg max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -293,7 +284,7 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
                   type={showCurrent ? 'text' : 'password'}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   required
                 />
                 <button
@@ -313,7 +304,7 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
                   type={showNew ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   required
                 />
                 <button
@@ -332,13 +323,13 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 required
               />
             </div>
             
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
+              <div className="bg-red-50 text-red-600 p-3 text-sm border border-red-200">
                 {error}
               </div>
             )}
@@ -347,14 +338,14 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 size={18} className="animate-spin" />}
                 Update Password
@@ -413,7 +404,6 @@ export default function StudentProfile() {
 
     setLoading(true);
     try {
-      // Fetch student profile
       const profileResponse = await fetch(`${API_BASE_URL}/api/student/profile/`, {
         headers: getAuthHeaders()
       });
@@ -431,7 +421,6 @@ export default function StudentProfile() {
         }
       }
 
-      // Fetch user account info
       const userResponse = await fetch(`${API_BASE_URL}/api/auth/user/`, {
         headers: getAuthHeaders()
       });
@@ -565,16 +554,16 @@ export default function StudentProfile() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-red-100 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
           <p className="text-gray-600 mb-6">Please log in to view your profile</p>
           <a 
             href="/login" 
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white hover:bg-blue-700"
           >
             Go to Login
             <ChevronRight size={18} />
@@ -586,9 +575,9 @@ export default function StudentProfile() {
 
   if (user?.role !== 'student') {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-yellow-100 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-yellow-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
@@ -600,7 +589,7 @@ export default function StudentProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Loading profile information...</p>
@@ -610,23 +599,7 @@ export default function StudentProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <style>{`
-        @keyframes slide-in {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out;
-        }
-      `}</style>
-
+    <div className="min-h-screen bg-gray-50">
       <SessionExpiredModal isOpen={showSessionExpired} onLogout={handleLogout} />
       {toasts.map(t => (
         <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts(prev => prev.filter(t2 => t2.id !== t.id))} />
@@ -638,7 +611,7 @@ export default function StudentProfile() {
         onChangePassword={handleChangePassword}
       />
 
-      {/* Full Width Layout - No max-width constraint */}
+      {/* Full Width Layout */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
@@ -646,12 +619,12 @@ export default function StudentProfile() {
           <p className="text-gray-600 mt-1">View and manage your personal information</p>
         </div>
 
-        {/* Profile Header - Full Width */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-8 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-12">
+        {/* Profile Header - Green Background */}
+        <div className="bg-green-700 border border-green-800 mb-8 overflow-hidden">
+          <div className="px-8 py-12">
             <div className="flex flex-col md:flex-row items-center gap-8">
               <div className="relative">
-                <div className="w-32 h-32 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                <div className="w-32 h-32 bg-white/20 flex items-center justify-center overflow-hidden border-4 border-white">
                   {student?.photo_url ? (
                     <img 
                       src={student.photo_url} 
@@ -667,7 +640,7 @@ export default function StudentProfile() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingImage}
-                  className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  className="absolute bottom-0 right-0 bg-white p-2 shadow-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   {uploadingImage ? (
                     <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
@@ -685,19 +658,19 @@ export default function StudentProfile() {
               </div>
               <div className="text-center md:text-left text-white flex-1">
                 <h2 className="text-2xl md:text-3xl font-bold">{student?.full_name}</h2>
-                <p className="text-blue-100 mt-1">Admission Number: {student?.admission_no}</p>
+                <p className="text-green-100 mt-1">Admission Number: {student?.admission_no}</p>
                 <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
-                  <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full">
+                  <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5">
                     <GraduationCap size={16} />
                     <span className="text-sm">Class {student?.current_class_name || 'Not Assigned'}</span>
                   </div>
                   {student?.stream && (
-                    <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full">
+                    <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5">
                       <Users size={16} />
                       <span className="text-sm">Stream {student.stream}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full">
+                  <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5">
                     <Award size={16} />
                     <span className="text-sm">Roll No: {student?.roll_number || 'N/A'}</span>
                   </div>
@@ -706,7 +679,7 @@ export default function StudentProfile() {
               <div>
                 <button
                   onClick={() => setShowPasswordModal(true)}
-                  className="px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 font-medium"
+                  className="px-4 py-2 bg-white text-green-700 hover:bg-gray-100 flex items-center gap-2 font-medium border border-gray-200"
                 >
                   <Lock size={16} />
                   Change Password
@@ -716,11 +689,10 @@ export default function StudentProfile() {
           </div>
         </div>
 
-        {/* Profile Content Grid - Full Width 3 Columns */}
+        {/* Profile Content Grid - 3 Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Column 1 - Personal & Contact */}
           <div className="space-y-8">
-            {/* Personal Information */}
             <InfoCard title="Personal Information" icon={User} color="blue">
               <EditableField
                 label="First Name"
@@ -793,7 +765,6 @@ export default function StudentProfile() {
               />
             </InfoCard>
 
-            {/* Contact Information - Editable */}
             <InfoCard title="Contact Information" icon={Mail} color="green">
               <EditableField
                 label="Phone Number"
@@ -844,7 +815,6 @@ export default function StudentProfile() {
 
           {/* Column 2 - Guardian & Medical */}
           <div className="space-y-8">
-            {/* Guardian Information - Not Editable */}
             <InfoCard title="Guardian Information" icon={Users} color="purple">
               <div className="py-3 border-b border-gray-100">
                 <div className="flex items-start gap-3">
@@ -893,7 +863,6 @@ export default function StudentProfile() {
               </div>
             </InfoCard>
 
-            {/* Medical Information - Editable */}
             <InfoCard title="Medical Information" icon={Heart} color="pink">
               <EditableField
                 label="Medical Conditions"
@@ -944,7 +913,6 @@ export default function StudentProfile() {
 
           {/* Column 3 - Parent & Account Information */}
           <div className="space-y-8">
-            {/* Father's Information - Not Editable */}
             <InfoCard title="Father's Information" icon={User} color="teal">
               <div className="py-3 border-b border-gray-100">
                 <div className="flex items-start gap-3">
@@ -984,7 +952,6 @@ export default function StudentProfile() {
               </div>
             </InfoCard>
 
-            {/* Mother's Information - Not Editable */}
             <InfoCard title="Mother's Information" icon={User} color="orange">
               <div className="py-3 border-b border-gray-100">
                 <div className="flex items-start gap-3">
@@ -1024,7 +991,6 @@ export default function StudentProfile() {
               </div>
             </InfoCard>
 
-            {/* Account Information - From User Table, Not Editable */}
             <InfoCard title="Account Information" icon={Shield} color="blue">
               <div className="py-3 border-b border-gray-100">
                 <div className="flex items-start gap-3">
@@ -1044,7 +1010,7 @@ export default function StudentProfile() {
                   </div>
                 </div>
               </div>
-              <div className="py-3 border-b border-gray-100">
+              <div className="py-3">
                 <div className="flex items-start gap-3">
                   <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
@@ -1055,7 +1021,6 @@ export default function StudentProfile() {
               </div>
             </InfoCard>
 
-            {/* Academic Status */}
             <InfoCard title="Academic Status" icon={BookOpen} color="green">
               <div className="grid grid-cols-2 gap-4">
                 <StatBadge 

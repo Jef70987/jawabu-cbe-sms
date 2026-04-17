@@ -17,7 +17,7 @@ import {
   UserCheck,
   Clock
 } from 'lucide-react';
-
+import LogoutIcon from '@mui/icons-material/Logout';
 export const PrincipalSidebarData = [
   {
     title: "Dashboard",
@@ -31,20 +31,20 @@ export const PrincipalSidebarData = [
     icon: <PieChart size={20} />,
     role: "principal"
   },
-  {
-    title: "Staff Management",
-    path: "/PrincipalPortal/staff",
-    icon: <Users size={20} />,
-    role: "principal",
-    submenu: [
-      { title: "All Staff", path: "/PrincipalPortal/staff/all" },
-      { title: "Faculty", path: "/PrincipalPortal/staff/faculty" },
-      { title: "Administrative", path: "/PrincipalPortal/staff/admin" },
-      { title: "Departments", path: "/PrincipalPortal/staff/departments" },
-      { title: "Performance", path: "/PrincipalPortal/staff/performance" },
-      { title: "Attendance", path: "/PrincipalPortal/staff/attendance" }
-    ]
-  },
+  // {
+  //   title: "Staff Management",
+  //   path: "/PrincipalPortal/staff",
+  //   icon: <Users size={20} />,
+  //   role: "principal",
+  //   submenu: [
+  //     { title: "All Staff", path: "/PrincipalPortal/staff/all" },
+  //     { title: "Faculty", path: "/PrincipalPortal/staff/faculty" },
+  //     { title: "Administrative", path: "/PrincipalPortal/staff/admin" },
+  //     { title: "Departments", path: "/PrincipalPortal/staff/departments" },
+  //     { title: "Performance", path: "/PrincipalPortal/staff/performance" },
+  //     { title: "Attendance", path: "/PrincipalPortal/staff/attendance" }
+  //   ]
+  // },
   {
     title: "Students",
     path: "/PrincipalPortal/students",
@@ -56,7 +56,7 @@ export const PrincipalSidebarData = [
       { title: "Performance", path: "/PrincipalPortal/students/performance" },
       { title: "Attendance", path: "/PrincipalPortal/students/attendance" },
       { title: "Graduation", path: "/PrincipalPortal/students/graduation" },
-      { title: "Achievements", path: "/PrincipalPortal/students/achievements" }
+      // { title: "Achievements", path: "/PrincipalPortal/students/achievements" }
     ]
   },
   {
@@ -99,44 +99,44 @@ export const PrincipalSidebarData = [
       { title: "Appeals", path: "/PrincipalPortal/discipline/appeals" }
     ]
   },
-  {
-    title: "Reports",
-    path: "/PrincipalPortal/reports",
-    icon: <BarChart3 size={20} />,
-    role: "principal",
-    submenu: [
-      { title: "Academic Reports", path: "/PrincipalPortal/reports/academic" },
-      { title: "Financial Reports", path: "/PrincipalPortal/reports/financial" },
-      { title: "Staff Reports", path: "/PrincipalPortal/reports/staff" },
-      { title: "Student Reports", path: "/PrincipalPortal/reports/students" },
-      { title: "Annual Reports", path: "/PrincipalPortal/reports/annual" },
-      { title: "Custom Reports", path: "/PrincipalPortal/reports/custom" }
-    ]
-  },
-  {
-    title: "Analytics",
-    path: "/PrincipalPortal/analytics",
-    icon: <TrendingUp size={20} />,
-    role: "principal",
-    submenu: [
-      { title: "Performance Trends", path: "/PrincipalPortal/analytics/trends" },
-      { title: "Comparative Analysis", path: "/PrincipalPortal/analytics/comparative" },
-      { title: "Predictive Analytics", path: "/PrincipalPortal/analytics/predictive" },
-      { title: "Data Visualization", path: "/PrincipalPortal/analytics/visualization" }
-    ]
-  },
-  {
-    title: "Calendar",
-    path: "/PrincipalPortal/calendar",
-    icon: <Calendar size={20} />,
-    role: "principal",
-    submenu: [
-      { title: "Academic Calendar", path: "/PrincipalPortal/calendar/academic" },
-      { title: "Events", path: "/PrincipalPortal/calendar/events" },
-      { title: "Meetings", path: "/PrincipalPortal/calendar/meetings" },
-      { title: "Holidays", path: "/PrincipalPortal/calendar/holidays" }
-    ]
-  },
+  // {
+  //   title: "Reports",
+  //   path: "/PrincipalPortal/reports",
+  //   icon: <BarChart3 size={20} />,
+  //   role: "principal",
+  //   submenu: [
+  //     { title: "Academic Reports", path: "/PrincipalPortal/reports/academic" },
+  //     { title: "Financial Reports", path: "/PrincipalPortal/reports/financial" },
+  //     { title: "Staff Reports", path: "/PrincipalPortal/reports/staff" },
+  //     { title: "Student Reports", path: "/PrincipalPortal/reports/students" },
+  //     { title: "Annual Reports", path: "/PrincipalPortal/reports/annual" },
+  //     { title: "Custom Reports", path: "/PrincipalPortal/reports/custom" }
+  //   ]
+  // },
+  // {
+  //   title: "Analytics",
+  //   path: "/PrincipalPortal/analytics",
+  //   icon: <TrendingUp size={20} />,
+  //   role: "principal",
+  //   submenu: [
+  //     { title: "Performance Trends", path: "/PrincipalPortal/analytics/trends" },
+  //     { title: "Comparative Analysis", path: "/PrincipalPortal/analytics/comparative" },
+  //     { title: "Predictive Analytics", path: "/PrincipalPortal/analytics/predictive" },
+  //     { title: "Data Visualization", path: "/PrincipalPortal/analytics/visualization" }
+  //   ]
+  // },
+  // {
+  //   title: "Calendar",
+  //   path: "/PrincipalPortal/calendar",
+  //   icon: <Calendar size={20} />,
+  //   role: "principal",
+  //   submenu: [
+  //     { title: "Academic Calendar", path: "/PrincipalPortal/calendar/academic" },
+  //     { title: "Events", path: "/PrincipalPortal/calendar/events" },
+  //     { title: "Meetings", path: "/PrincipalPortal/calendar/meetings" },
+  //     { title: "Holidays", path: "/PrincipalPortal/calendar/holidays" }
+  //   ]
+  // },
   {
     title: "Notifications",
     path: "/PrincipalPortal/notifications",
@@ -151,10 +151,15 @@ export const PrincipalSidebarData = [
     role: "principal",
     submenu: [
       { title: "Profile", path: "/PrincipalPortal/settings/profile" },
-      { title: "School Info", path: "/PrincipalPortal/settings/school" },
-      { title: "Preferences", path: "/PrincipalPortal/settings/preferences" },
-      { title: "Security", path: "/PrincipalPortal/settings/security" },
-      { title: "System", path: "/PrincipalPortal/settings/system" }
+      // { title: "School Info", path: "/PrincipalPortal/settings/school" },
+      // { title: "Preferences", path: "/PrincipalPortal/settings/preferences" },
+      // { title: "Security", path: "/PrincipalPortal/settings/security" },
+      // { title: "System", path: "/PrincipalPortal/settings/system" }
     ]
-  }
+  },
+  {
+    title: "LogOut",
+    icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
+    link: "/Logout"
+  },
 ];

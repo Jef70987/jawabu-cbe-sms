@@ -80,8 +80,8 @@ const Login = () => {
           className="absolute inset-0 w-full h-full object-cover"
         />
         
-        {/* Deep Blue Overlay for readability */}
-        <div className="absolute inset-0 bg-blue-900/80"></div>
+        {/* Deep Green Overlay for readability */}
+        <div className="absolute inset-0 bg-green-900/80"></div>
         
         {/* Decorative Pattern */}
         <div className="absolute inset-0 opacity-10" style={{
@@ -90,7 +90,7 @@ const Login = () => {
         }}></div>
 
         {/* Curved border effect - hidden on mobile */}
-        <div className="hidden lg:block absolute right-0 top-0 h-full w-82 bg-red-800" 
+        <div className="hidden lg:block absolute right-0 top-0 h-full w-82 bg-red-700" 
              style={{ 
                clipPath: 'polygon(100% 0, 0% 100%, 100% 100%)',
                opacity: '0.95'
@@ -156,7 +156,7 @@ const Login = () => {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-8">
         <div className="max-w-md w-full">
           {/* Login Card */}
-          <div className="bg-gray-50 rounded-2xl shadow-2xl p-7 border border-blue-600">
+          <div className="bg-gray-50 rounded-2xl shadow-2xl p-7 border border-green-600">
             {/* Logo and Title */}
             <div className="text-center mb-6">
               <div className="mx-auto h-20 w-20 mb-4">
@@ -166,7 +166,7 @@ const Login = () => {
                   className="w-full h-full object-cover rounded-lg"
                 />
               </div>
-              <h2 className="text-xl font-bold text-blue-800">{schoolName}</h2>
+              <h2 className="text-xl font-bold text-green-800">{schoolName}</h2>
               <p className="text-xs text-red-500 mt-1 font-semibold">STRIVING FOR EXCELLENCE</p>
             </div>
 
@@ -232,13 +232,14 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-green-600 text-white py-2.5 px-4 rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-200 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Signing in..." : "Sign in"}
               </button>
 
               <div className="flex items-center justify-end">
-                <button onClick={handleResetPassword} className="text-sm text-blue-600 hover:text-blue-700">
+                {/* <button onClick={handleResetPassword} className="text-sm text-green-600 hover:text-green-700"> */}
+                 <button onClick={''} className="text-sm text-green-600 hover:text-green-700">
                   Forgot password?
                 </button>
               </div>

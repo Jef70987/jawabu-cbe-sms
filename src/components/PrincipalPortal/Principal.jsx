@@ -12,6 +12,7 @@ import PrincipalFinance from "./PrincipalFinance";
 import PrincipalReports from "./PrincipalReports";
 import PrincipalSettings from "./PrincipalSettings";
 import Login from "../Authentication/Login";
+import Logout from "../Authentication/Logout";
 
 // Discipline related (oversight)
 import PrincipalDiscipline from "./PrincipalDiscipline";
@@ -45,13 +46,13 @@ const Principal = () => {
                     <Route path="/overview" element={<PrincipalOverview />} />
                     
                     {/* Staff Management Routes */}
-                    <Route path="/staff" element={<PrincipalStaff />} />
+                    {/* <Route path="/staff" element={<PrincipalStaff />} />
                     <Route path="/staff/all" element={<PrincipalStaff />} />
                     <Route path="/staff/faculty" element={<PrincipalStaff />} />
                     <Route path="/staff/admin" element={<PrincipalStaff />} />
                     <Route path="/staff/departments" element={<PrincipalStaff />} />
                     <Route path="/staff/performance" element={<PrincipalStaff />} />
-                    <Route path="/staff/attendance" element={<PrincipalStaff />} />
+                    <Route path="/staff/attendance" element={<PrincipalStaff />} /> */}
                     
                     {/* Student Management Routes */}
                     <Route path="/students" element={<PrincipalStudents />} />
@@ -60,7 +61,7 @@ const Principal = () => {
                     <Route path="/students/performance" element={<PrincipalStudents />} />
                     <Route path="/students/attendance" element={<PrincipalStudents />} />
                     <Route path="/students/graduation" element={<PrincipalStudents />} />
-                    <Route path="/students/achievements" element={<PrincipalStudents />} />
+                    {/* <Route path="/students/achievements" element={<PrincipalStudents />} /> */}
                     
                     {/* Academic Routes */}
                     <Route path="/academic" element={<PrincipalAcademic />} />
@@ -88,42 +89,42 @@ const Principal = () => {
                     <Route path="/discipline/appeals" element={<PrincipalDiscipline />} />
                     
                     {/* Reports Routes */}
-                    <Route path="/reports" element={<PrincipalReports />} />
+                    {/* <Route path="/reports" element={<PrincipalReports />} />
                     <Route path="/reports/academic" element={<PrincipalReports />} />
                     <Route path="/reports/financial" element={<PrincipalReports />} />
                     <Route path="/reports/staff" element={<PrincipalReports />} />
                     <Route path="/reports/students" element={<PrincipalReports />} />
                     <Route path="/reports/annual" element={<PrincipalReports />} />
-                    <Route path="/reports/custom" element={<PrincipalReports />} />
+                    <Route path="/reports/custom" element={<PrincipalReports />} /> */}
                     
                     {/* Analytics Routes */}
-                    <Route path="/analytics" element={<PrincipalAnalytics />} />
+                    {/* <Route path="/analytics" element={<PrincipalAnalytics />} />
                     <Route path="/analytics/trends" element={<PrincipalAnalytics />} />
                     <Route path="/analytics/comparative" element={<PrincipalAnalytics />} />
                     <Route path="/analytics/predictive" element={<PrincipalAnalytics />} />
-                    <Route path="/analytics/visualization" element={<PrincipalAnalytics />} />
+                    <Route path="/analytics/visualization" element={<PrincipalAnalytics />} /> */}
                     
                     {/* Calendar Routes */}
-                    <Route path="/calendar" element={<PrincipalCalendar />} />
+                    {/* <Route path="/calendar" element={<PrincipalCalendar />} />
                     <Route path="/calendar/academic" element={<PrincipalCalendar />} />
                     <Route path="/calendar/events" element={<PrincipalCalendar />} />
                     <Route path="/calendar/meetings" element={<PrincipalCalendar />} />
                     <Route path="/calendar/holidays" element={<PrincipalCalendar />} />
-                    
+                     */}
                     {/* Notifications */}
                     <Route path="/notifications" element={<PrincipalNotifications />} />
                     
                     {/* Settings Routes */}
                     <Route path="/settings" element={<PrincipalSettings />} />
                     <Route path="/settings/profile" element={<PrincipalSettings />} />
-                    <Route path="/settings/school" element={<PrincipalSettings />} />
+                    {/* <Route path="/settings/school" element={<PrincipalSettings />} />
                     <Route path="/settings/preferences" element={<PrincipalSettings />} />
                     <Route path="/settings/security" element={<PrincipalSettings />} />
-                    <Route path="/settings/system" element={<PrincipalSettings />} />
+                    <Route path="/settings/system" element={<PrincipalSettings />} /> */}
                     
                     {/* Authentication */}
                     <Route path="/login" element={<Login />} />
-                    
+                    <Route path="/Logout" element={<Logout/>}/>
                     {/* Catch all - redirect to dashboard */}
                     <Route path="*" element={<PrincipalDashboard />} />
                 </Routes>

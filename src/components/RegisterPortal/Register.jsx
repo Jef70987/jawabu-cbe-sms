@@ -8,8 +8,8 @@ import Logout from "../Authentication/Logout";
 import ClassManagement from "./ClassMngmnt";
 import StudentManagement from "./StudentMngmnt";
 import AcademicManagement from "./Academic";
-import ExamAndReportManagement from "./ExamMngmnt";
-
+import ExamManagement from "./ExamMngmnt";
+import ResultsReporting from "./ReportCard";
 const Register  = () => {
     return(
         <div style={{ display: "flex", height: "100vh", overflow: "hidden",gap:"2px" }}>
@@ -34,7 +34,8 @@ const Register  = () => {
                     <Route path="/StudentManagement" element={<StudentManagement/>}/>
                     <Route path="/Class" element={<ClassManagement/>}/>
                     <Route path="/Academic" element={<AcademicManagement/>}/>
-                    <Route path="/ExamAndReportManagement" element={<ExamAndReportManagement/>}/>
+                    <Route path="/ResultsReporting" element={<ResultsReporting/>}/>
+                    <Route path="/ExamManagement" element={<ExamManagement/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     
                     <Route path="*" element={<Logout/>}/>

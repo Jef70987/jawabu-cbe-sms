@@ -7,6 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { BellDotIcon, CameraIcon,HomeIcon, LineChartIcon, PenBoxIcon } from 'lucide-react';
 
 const TeacherSidebarData = [
   
@@ -15,6 +16,16 @@ const TeacherSidebarData = [
     icon: <DashboardIcon />,
     link: "/TeacherPortal/Dashboard"
   },
+   {
+    title: "Analytics",
+    icon: <LineChartIcon />,
+    link: "/TeacherPortal/Analytics"
+  },
+  {
+    title: "Class Profile",
+    icon: <HomeIcon />,
+    link: "/TeacherPortal/ClassProfile"
+  },
   {
     title: "Competency Matrix",
     icon: <ReceiptIcon />,
@@ -22,12 +33,12 @@ const TeacherSidebarData = [
   },
   {
     title: "Mark Entry",
-    icon: <MonetizationOnIcon />,
+    icon: <PenBoxIcon />,
     link: "/TeacherPortal/MarkEntry"
   },
   {
     title: "Portfolio",
-    icon: <DescriptionIcon />,
+    icon: <CameraIcon />,
     link: "/TeacherPortal/Portfolio"
   },
   {
@@ -36,25 +47,11 @@ const TeacherSidebarData = [
     link: "/TeacherPortal/AssessmentManager"
   },
   {
-    title: "Termly Summary",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/TermlySummary"
+    title: "Notifications",
+    icon: <BellDotIcon />,
+    link: "/TeacherPortal/Notifications"
   },
-  {
-    title: "Analytics",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/Analytics"
-  },
-  {
-    title: "Report Card",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/ReportCard"
-  },
-  {
-    title: "KNEC Export",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/KnecExport"
-  },
+  
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,

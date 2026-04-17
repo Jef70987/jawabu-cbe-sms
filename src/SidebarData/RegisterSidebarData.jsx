@@ -13,6 +13,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
+import { PaperclipIcon } from 'lucide-react';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { BookIcon } from 'lucide-react';
 
@@ -29,9 +30,14 @@ const RegisterSidebarData = [
     link: "/RegisterPortal/academic"
   },
   {
-    title: "Exam & Report Mngmnt",
-    icon: <BarChartIcon />,
-    link: "/RegisterPortal/ExamAndReportManagement"
+    title: "Exam Mngmnt",
+    icon: <PaperclipIcon />,
+    link: "/RegisterPortal/ExamManagement"
+  },
+  {
+    title: "Results_Reporting",
+    icon: <ReceiptIcon />,
+    link: "/RegisterPortal/ResultsReporting"
   },
   {
     title: "Admission",
