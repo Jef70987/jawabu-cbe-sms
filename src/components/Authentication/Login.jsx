@@ -72,7 +72,7 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col lg:flex-row">
       {/* Left Side - CBE Curriculum Information with Green Theme */}
-      <div className="w-full lg:w-1/2 relative overflow-hidden min-h-[50vh] lg:min-h-screen">
+      <div className="w-full lg:w-1/2 relative overflow-hidden min-h-[60vh] lg:min-h-screen">
         {/* Background Image */}
         <img 
           src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2340&q=80" 
@@ -102,7 +102,7 @@ const Login = () => {
           {/* Header Section */}
           <div className="mb-12">
             <h1 className="text-3xl lg:text-4xl font-extrabold mb-4 tracking-tight leading-tight">
-              JOINT ADVANCED WEB ANALYTICS AND BEHAVIORAL UNIT
+              NURTURING COMPETENCE, CHARACTER, AND CREATIVITY
             </h1>
             <p className="text-lg lg:text-2xl font-light text-green-300">
               Competency-Based Education
