@@ -574,7 +574,7 @@ function Dashboard() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Upcoming Deadlines</h3>
               <div className="space-y-3">
-                {deadlines.map(deadline => (
+                {/* {deadlines.map(deadline => (
                   <div key={deadline.id} className="flex items-center justify-between">
                     <span className="text-sm text-gray-700">{deadline.title}</span>
                     <span className={`text-sm font-medium px-2 py-1 rounded ${
@@ -585,7 +585,7 @@ function Dashboard() {
                       {deadline.daysLeft} days left
                     </span>
                   </div>
-                ))}
+                ))} */}
               </div>
             </div>
           </div>
