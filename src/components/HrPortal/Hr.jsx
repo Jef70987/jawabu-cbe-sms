@@ -1,14 +1,13 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom"
 import HrSidebar from "../../sidebars/HrSidebar";
-import HrDashboard from "./Dashboard";
+import HRDashboard from "./Dashboard";
 
 import HelpSupport from "./HelpSupport";
 import Settings from "./Settings";
 import Login from "../Authentication/Login";
 import Payroll from "./PayrollMngmt";
 import Recruitment from "./Recruitment";
-import StaffMngAdmin from "./Admin";
 import StaffManagement from "./StaffMngnt";
 import DepartmentManagement from "./DepartmentMng";
 
@@ -29,9 +28,9 @@ const Hr = () => {
                 minHeight: "100vh"
             }}>
                 <Routes>
-                    <Route path="/" element={<StaffManagement/>}/>
+                    <Route path="/" element={<HRDashboard/>}/>
                     <Route path="/Login" element={<Login/>}/>
-                    <Route path="/HrDashboard" element={<HrDashboard/>}/>
+                    <Route path="/HrDashboard" element={<HRDashboard/>}/>
                     <Route path="/Department" element={<DepartmentManagement/>}/>
                     <Route path="/Payroll" element={<Payroll/>}/>
                     <Route path="/Recruitment" element={<Recruitment/>}/>

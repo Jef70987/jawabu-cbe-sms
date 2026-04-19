@@ -11,11 +11,11 @@ import PeopleIcon from '@mui/icons-material/People';
 import { HouseIcon } from 'lucide-react';
 
 const HrData = [
-    // {
-    //     title: "Dashboard",
-    //     icon: <DashboardIcon />,
-    //     link: "/HrPortal/HrDashboard"
-    // },
+    {
+        title: "Dashboard",
+        icon: <DashboardIcon />,
+        link: "/HrPortal/HrDashboard"
+    },
     {
         title: "StaffMngnt",
         icon: <PeopleIcon />,
