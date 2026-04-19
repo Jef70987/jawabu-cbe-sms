@@ -4,13 +4,16 @@ import TeacherSidebar from "../../sidebars/TeacherSidebar";
 import Logout from "../Authentication/Logout";
 import Login from "../Authentication/Login";
 import TeacherDashboard from "./TeacherDashboard";
+import ClassProfile from "./ClassProfile";
+import Attendance from "./Attendance";
+import TeacherCurriculum from "./curriculum";
+import AssessmentManager from "./Assesment";
+import JssEntryMarks from "./JssEntry";
 import CompetencyMatrix from "./CompetencyMatrix";
-import Analytics from "./Analytics";
-import ClassProfile from "./Class";
-import AssessmentBuilder from "./AssesmentMng";
-import MarkEntryGrid from "./MarkEntry";
-import EvidenceVault from "./Portfolio";
+import DigitalPortfolio from "./EvidenceUploader";
 import NotificationCenter from "./NotificationCenter";
+import Exams from "./Exam";
+
 const Teacher = () => {
     return(
         <div style={{ display: "flex", height: "100vh", overflow: "hidden",gap:"2px" }}>
@@ -30,12 +33,14 @@ const Teacher = () => {
                 <Routes>
                     <Route path="/" element={<TeacherDashboard/>}/>
                     <Route path="/Login" element={<Login/>}/>
-                    <Route path="/MarkEntry" element={<MarkEntryGrid/>}/>
-                    <Route path="/Portfolio" element={<EvidenceVault/>}/>
-                    <Route path="/AssessmentManager" element={<AssessmentBuilder/>}/>
                     <Route path="/ClassProfile" element={<ClassProfile/>}/>
+                    <Route path="/Attendance" element={<Attendance/>}/>
+                    <Route path="/AssessmentManager" element={<AssessmentManager/>}/>
+                    <Route path="/MarkEntry" element={<JssEntryMarks/>}/>
                     <Route path="/CompetencyMatrix" element={<CompetencyMatrix/>}/>
-                    <Route path="/Analytics" element={<Analytics/>}/>
+                    <Route path="/Curriculum" element={<TeacherCurriculum/>}/>
+                    <Route path="/Portfolio" element={<DigitalPortfolio/>}/>
+                    <Route path="/Exams" element={<Exams/>}/>
                     <Route path="/Notifications" element={<NotificationCenter/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     <Route path="*" element={<TeacherDashboard/>}/>

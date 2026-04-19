@@ -3,7 +3,6 @@ import { Routes, Route } from "react-router-dom"
 import HrSidebar from "../../sidebars/HrSidebar";
 import HrDashboard from "./Dashboard";
 
-import Report from "./Report";
 import HelpSupport from "./HelpSupport";
 import Settings from "./Settings";
 import Login from "../Authentication/Login";
@@ -11,6 +10,7 @@ import Payroll from "./PayrollMngmt";
 import Recruitment from "./Recruitment";
 import StaffMngAdmin from "./Admin";
 import StaffManagement from "./StaffMngnt";
+import DepartmentManagement from "./DepartmentMng";
 
 const Hr = () => {
     return(
@@ -29,14 +29,13 @@ const Hr = () => {
                 minHeight: "100vh"
             }}>
                 <Routes>
-                    <Route path="/" element={<HrDashboard/>}/>
+                    <Route path="/" element={<StaffManagement/>}/>
                     <Route path="/Login" element={<Login/>}/>
                     <Route path="/HrDashboard" element={<HrDashboard/>}/>
+                    <Route path="/Department" element={<DepartmentManagement/>}/>
                     <Route path="/Payroll" element={<Payroll/>}/>
                     <Route path="/Recruitment" element={<Recruitment/>}/>
-                    <Route path="/Staffmngnt" element={<StaffManagement/>}/>
-            
-                    <Route path="/Report" element={<StaffMngAdmin/>}/>
+                    <Route path="/StaffMngnt" element={<StaffManagement/>}/>
                     <Route path="/HelpSupport" element={<HelpSupport/>}/>
                     <Route path="/Settings" element={<Settings/>}/>
                 </Routes>

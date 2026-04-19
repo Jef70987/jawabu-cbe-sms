@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DeputyPrincipalSidebarData } from '../SidebarData/DeputyPrincipalSidebarData';
+import DeputyPrincipalSidebarData from '../SidebarData/DeputyPrincipalSidebarData';
 import { useAuth } from '../components/Authentication/AuthContext';
 
 function DeputyPrincipalSidebar({ children }) {
@@ -61,12 +61,12 @@ function DeputyPrincipalSidebar({ children }) {
               </div>
               <div className="flex flex-col leading-tight">
                 <h1 className="text-white font-bold text-sm leading-tight">JAWABU</h1>
-                <h2 className="text-white text-[10px] font-semibold leading-tight">Deputy Principal Portal</h2>
+                <h2 className="text-white text-[10px] font-semibold leading-tight">D.Principal Portal</h2>
               </div>
             </button>
             <div className="text-right">
               <p className="text-white text-xs font-semibold">{user?.username || 'User'}</p>
-              <p className="text-green-200 text-[10px] font-medium">{user?.role || 'Deputy Principal'}</p>
+              <p className="text-green-200 text-[10px] font-medium">{user?.role || 'D.Principal'}</p>
             </div>
           </div>
         </div>
@@ -80,10 +80,10 @@ function DeputyPrincipalSidebar({ children }) {
               {DeputyPrincipalSidebarData.slice(0, 15).map((val, key) => (
                 <button
                   key={key}
-                  onClick={() => handleNavigation(val.path)}
+                  onClick={() => handleNavigation(val.link)}
                   className={`
                     flex flex-col items-center justify-center px-2 py-1 rounded-lg transition-all duration-300 min-w-[60px]
-                    ${window.location.pathname === val.path 
+                    ${window.location.pathname === val.link 
                       ? 'text-white bg-green-600/50' 
                       : 'text-green-100 hover:text-white hover:bg-green-600/30'
                     }
@@ -171,8 +171,8 @@ function DeputyPrincipalSidebar({ children }) {
               {!isCollapsed && (
                 <div className="flex flex-col">
                   <h1 className="text-white font-bold text-lg leading-tight">JAWABU</h1>
-                  <h2 className="text-white text-xs font-semibold">DEPUTY PRINCIPAL PORTAL</h2>
-                  <p className="text-sm font-extrabold text-white truncate">{user?.username || 'User'} | {user?.role || 'Deputy Principal'}</p>
+                  <h2 className="text-white text-xs font-semibold">BURSAR PORTAL</h2>
+                  <p className="text-sm font-extrabold text-white truncate">{user?.username || 'User'} | {user?.role || 'Bursar'}</p>
                 </div>
               )}
             </div>
@@ -201,21 +201,6 @@ function DeputyPrincipalSidebar({ children }) {
           </div>
         </div>
 
-        {/* Profile Section - Only show when expanded */}
-        {!isCollapsed && (
-          <div className="relative z-10 mx-3 mt-3 p-3 rounded-xl bg-gradient-to-r from-green-600 to-green-700 border border-green-500/50 shadow-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-white to-green-100 rounded-full flex items-center justify-center text-green-700 font-extrabold text-lg shadow-lg flex-shrink-0">
-                {user?.first_name?.charAt(0) || 'DP'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-extrabold text-white truncate">{user?.first_name} {user?.last_name}</p>
-                <p className="text-xs font-bold text-green-200 truncate">Deputy Principal</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Navigation Items */}
         <nav className="relative z-10 flex-1 overflow-y-auto py-6 px-3">
           <ul className="space-y-2">
@@ -225,14 +210,14 @@ function DeputyPrincipalSidebar({ children }) {
                   className={`
                     flex items-center w-full p-3 rounded-xl cursor-pointer transition-all duration-300 group
                     relative overflow-hidden text-white hover:bg-green-700/50
-                    ${window.location.pathname === val.path ? 'bg-green-600' : ''}
+                    ${window.location.pathname === val.link ? 'bg-green-600' : ''}
                     ${isCollapsed ? 'justify-center' : 'justify-start'}
                   `}
                   onClick={() => {
-                    if (val.submenu) {
+                    if (val.subNav) {
                       handleDropdown(key);
                     } else {
-                      handleNavigation(val.path);
+                      handleNavigation(val.link);
                     }
                   }}
                 >
@@ -243,25 +228,10 @@ function DeputyPrincipalSidebar({ children }) {
                   </div>
 
                   {!isCollapsed && (
-                    <div className="ml-3 flex-1 flex items-center justify-between">
-                      <span className="font-bold whitespace-nowrap">{val.title}</span>
-                      {val.badge && (
-                        <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full ml-2">
-                          {val.badge}
-                        </span>
-                      )}
-                    </div>
+                    <span className="ml-3 font-bold whitespace-nowrap">{val.title}</span>
                   )}
 
-                  {/* Badge when collapsed */}
-                  {isCollapsed && val.badge && (
-                    <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
-                      {val.badge}
-                    </span>
-                  )}
-
-                  {/* Dropdown Arrow */}
-                  {!isCollapsed && val.submenu && (
+                  {!isCollapsed && val.subNav && (
                     <svg 
                       className={`w-4 h-4 ml-auto transition-all duration-300 ${openDropdown === key ? 'rotate-180' : ''}`}
                       fill="none" 
@@ -273,22 +243,22 @@ function DeputyPrincipalSidebar({ children }) {
                   )}
                 </div>
 
-                {/* Sub Navigation */}
-                {!isCollapsed && val.submenu && openDropdown === key && (
+                {!isCollapsed && val.subNav && openDropdown === key && (
                   <ul className="ml-8 mt-2 space-y-1 animate-slideDown">
-                    {val.submenu.map((subVal, subKey) => (
+                    {val.subNav.map((subVal, subKey) => (
                       <li key={subKey}>
                         <div
                           className={`
                             flex items-center p-2.5 rounded-lg cursor-pointer transition-all duration-300
                             text-white/80 hover:text-white hover:bg-green-700/50
-                            ${window.location.pathname === subVal.path ? 'bg-green-600/80' : ''}
+                            ${window.location.pathname === subVal.link ? 'bg-green-600/80' : ''}
                           `}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleNavigation(subVal.path);
+                            handleNavigation(subVal.link);
                           }}
                         >
+                          <div className="text-sm">{subVal.icon}</div>
                           <span className="ml-2 text-sm font-semibold">{subVal.title}</span>
                         </div>
                       </li>

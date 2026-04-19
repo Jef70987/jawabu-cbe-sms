@@ -1,60 +1,98 @@
 import React from 'react';
+// Material UI Icons
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
-import ReceiptIcon from '@mui/icons-material/Receipt';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
-import HelpIcon from '@mui/icons-material/Help';
+import PeopleIcon from '@mui/icons-material/People';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { BellDotIcon, CameraIcon,HomeIcon, LineChartIcon, PenBoxIcon } from 'lucide-react';
+import DescriptionIcon from '@mui/icons-material/Description';
+
+// Lucide Icons
+import { 
+  BellDotIcon, 
+  BookOpenIcon, 
+  CameraIcon, 
+  HomeIcon, 
+  LineChartIcon, 
+  PenBoxIcon, 
+  TimerIcon, 
+  ClipboardCheckIcon,
+  LayoutGridIcon
+} from 'lucide-react';
 
 const TeacherSidebarData = [
-  
+  /* --- SECTION: GENERAL --- */
   {
     title: "Dashboard",
     icon: <DashboardIcon />,
     link: "/TeacherPortal/Dashboard"
   },
-   {
-    title: "Analytics",
-    icon: <LineChartIcon />,
-    link: "/TeacherPortal/Analytics"
+  {
+    title: "Timetable",
+    icon: <TimerIcon />,
+    link: "/TeacherPortal/Timetable"
   },
   {
     title: "Class Profile",
     icon: <HomeIcon />,
     link: "/TeacherPortal/ClassProfile"
   },
+
+  /* --- SECTION: DAILY OPERATIONS --- */
   {
-    title: "Competency Matrix",
-    icon: <ReceiptIcon />,
-    link: "/TeacherPortal/CompetencyMatrix"
+    title: "Attendance",
+    icon: <ClipboardCheckIcon />, // Changed to CheckIcon for "taking roll"
+    link: "/TeacherPortal/Attendance"
   },
   {
-    title: "Mark Entry",
-    icon: <PenBoxIcon />,
-    link: "/TeacherPortal/MarkEntry"
+    title: "Curriculum",
+    icon: <BookOpenIcon />,
+    link: "/TeacherPortal/Curriculum"
   },
+
+  /* --- SECTION: CBA & GRADING (The Hub) --- */
   {
-    title: "Portfolio",
-    icon: <CameraIcon />,
-    link: "/TeacherPortal/Portfolio"
-  },
-  {
-    title: "Assessment",
+    title: "Assessment Manager", // 4-Point Scale (PP1-G6)
     icon: <DescriptionIcon />,
     link: "/TeacherPortal/AssessmentManager"
   },
   {
-    title: "Notifications",
-    icon: <BellDotIcon />,
-    link: "/TeacherPortal/Notifications"
+    title: "JSS Mark Entry", // 8-Point Scale (G7-G9)
+    icon: <PenBoxIcon />,
+    link: "/TeacherPortal/MarkEntry"
   },
+  {
+    title: "Competency Matrix",
+    icon: <LayoutGridIcon />, // Visualizes student skill gaps
+    link: "/TeacherPortal/CompetencyMatrix"
+  },
+  {
+    title: "Digital Portfolio",
+    icon: <CameraIcon />, // For uploading student evidence
+    link: "/TeacherPortal/Portfolio"
+  },
+
+  /* --- SECTION: RESULTS & UPDATES --- */
+  {
+    title: "Exams",
+    icon: <DescriptionIcon />,
+    link: "/TeacherPortal/Exams"
+  },
+  // {
+  //   title: "Analytics",
+  //   icon: <LineChartIcon />,
+  //   link: "/TeacherPortal/Analytics"
+  // },
   
+
+  /* --- SECTION: ACCOUNT --- */
+  // {
+  //   title: "Settings",
+  //   icon: <SettingsIcon />,
+  //   link: "/TeacherPortal/Settings"
+  // },
   {
     title: "LogOut",
-    icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
+    icon: <LogoutIcon sx={{ color: '#ef4444', fontSize: 28 }} />,
     link: "/Logout"
   },
 ];

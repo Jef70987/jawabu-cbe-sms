@@ -8,18 +8,25 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PeopleIcon from '@mui/icons-material/People';
+import { HouseIcon } from 'lucide-react';
 
 const HrData = [
-    {
-        title: "Dashboard",
-        icon: <DashboardIcon />,
-        link: "/HrPortal/HrDashboard"
-    },
+    // {
+    //     title: "Dashboard",
+    //     icon: <DashboardIcon />,
+    //     link: "/HrPortal/HrDashboard"
+    // },
     {
         title: "StaffMngnt",
         icon: <PeopleIcon />,
         link: "/HrPortal/Staffmngnt"
     },
+    {
+        title: "Department Mng",
+        icon: <HouseIcon />,
+        link: "/HrPortal/Department"
+    },
+     
      
     // {
     //     title: "Payroll",

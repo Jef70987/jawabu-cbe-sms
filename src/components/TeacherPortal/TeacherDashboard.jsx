@@ -7,7 +7,18 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../Authentication/AuthContext';
 import { Link } from 'react-router-dom';
-
+import { NotificationBell } from '../CommonService/NotificationBell';
+import { useNavigate } from 'react-router-dom';
+export const TeacherLayout = ({ children }) => {
+  return (
+    <div>
+      <nav>
+        <NotificationBell portal="teacher" className="h-4 w-4 inline mr-2 font-bold text-red-500" /> 
+      </nav>
+      {children}
+    </div>
+  );
+};
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const Notification = ({ type, message, onClose }) => {
@@ -43,6 +54,7 @@ const Notification = ({ type, message, onClose }) => {
 };
 
 function TeacherDashboard() {
+  const navigate = useNavigate();
   const { user, getAuthHeaders, isAuthenticated } = useAuth();
   const [dashboardData, setDashboardData] = useState({
     timetable: [],
@@ -179,8 +191,10 @@ function TeacherDashboard() {
               <p className="text-blue-100 mt-1">Welcome back, {user?.first_name || 'Teacher'} {user?.last_name || ''}</p>
             </div>
             <div className="flex gap-3">
-              <button className="px-4 py-2 bg-white text-blue-700 text-sm font-medium border border-gray-300 hover:bg-gray-50">
-                <Bell className="h-4 w-4 inline mr-2" />
+               <button 
+                onClick={() => navigate('/TeacherPortal/Notifications')}
+                className="px-4 py-2 bg-white text-red-700 text-sm font-bold border border-gray-300 hover:bg-gray-50"
+              >
                 Notifications
               </button>
               <button onClick={fetchDashboardData} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700">
