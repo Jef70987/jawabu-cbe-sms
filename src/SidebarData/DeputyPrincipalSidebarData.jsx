@@ -12,7 +12,7 @@ const DeputyPrincipalSidebarData = [
     {
         title: "Dashboard",
         icon: <DashboardIcon />,
-        link: "/DeputyPortal/BursarDashboard"
+        link: "/DeputyPortal/Dashboard"
     },
     
     {
