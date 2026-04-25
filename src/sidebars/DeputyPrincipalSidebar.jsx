@@ -171,8 +171,8 @@ function DeputyPrincipalSidebar({ children }) {
               {!isCollapsed && (
                 <div className="flex flex-col">
                   <h1 className="text-white font-bold text-lg leading-tight">JAWABU</h1>
-                  <h2 className="text-white text-xs font-semibold">BURSAR PORTAL</h2>
-                  <p className="text-sm font-extrabold text-white truncate">{user?.username || 'User'} | {user?.role || 'Bursar'}</p>
+                  <h2 className="text-white text-xs font-semibold">D.PRINCIPAL</h2>
+                  <p className="text-sm font-extrabold text-white truncate">{user?.username || 'User'} | {user?.role || 'Deputy Principal'}</p>
                 </div>
               )}
             </div>
