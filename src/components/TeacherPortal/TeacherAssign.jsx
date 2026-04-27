@@ -9,8 +9,7 @@ import {
   Grid, List, Target, Award, GraduationCap,
   School, Calendar, Clock, MapPin, Mail, Phone,
   ChevronDown, ChevronUp, UserPlus, UserMinus, User,
-  Layers, GitBranch, Database, Zap, Flame, Trophy,
-  Flask, Microscope, Calculator, Book, Languages, Music, Palette, 
+  Layers, GitBranch, Database, Zap, Flame, Trophy, Microscope, Calculator, Book, Languages, Music, Palette, 
   Briefcase, Heart, Globe, Code, Leaf, Utensils
 } from 'lucide-react';
 import { useAuth } from '../Authentication/AuthContext';
