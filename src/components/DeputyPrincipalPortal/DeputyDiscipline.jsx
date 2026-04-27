@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
@@ -133,7 +134,7 @@ const Discipline = () => {
       params.append('page', pagination.page);
       params.append('page_size', pagination.pageSize);
       
-      const data = await apiRequest(`/api/discipline/cases/?${params}`);
+      const data = await apiRequest(`/api/deputyadmin/discipline/cases/?${params}`);
       if (data.success) {
         setCases(data.data || []);
         setPagination(prev => ({
@@ -149,16 +150,7 @@ const Discipline = () => {
 
   const fetchConductRecords = useCallback(async () => {
     try {
-      const data = await apiRequest('/api/discipline/conduct/');
-      if (data.success) setConductRecords(data.data || []);
-    } catch (err) {
-      console.error('Error fetching conduct records:', err);
-    }
-  }, []);
-
-  const fetchInterventions = useCallback(async () => {
-    try {
-      const data = await apiRequest('/api/discipline/interventions/');
+      const data = await apiRequest('/api/deputyadmin/nterventions/');
       if (data.success) setInterventions(data.data || []);
     } catch (err) {
       console.error('Error fetching interventions:', err);
@@ -167,7 +159,7 @@ const Discipline = () => {
 
   const fetchSessions = useCallback(async () => {
     try {
-      const data = await apiRequest('/api/discipline/sessions/');
+      const data = await apiRequest('/api/deputyadmin/discipline/sessions/');
       if (data.success) setSessions(data.data || []);
     } catch (err) {
       console.error('Error fetching sessions:', err);
@@ -176,7 +168,7 @@ const Discipline = () => {
 
   const fetchSuspensions = useCallback(async () => {
     try {
-      const data = await apiRequest('/api/discipline/suspensions/');
+      const data = await apiRequest('/api/deputyadmin/discipline/suspensions/');
       if (data.success) setSuspensions(data.data || []);
     } catch (err) {
       console.error('Error fetching suspensions:', err);
@@ -185,7 +177,7 @@ const Discipline = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const data = await apiRequest('/api/discipline/stats/');
+      const data = await apiRequest('/api/deputyadmin/discipline/stats/');
       if (data.success) setStats(data.data);
     } catch (err) {
       console.error('Error fetching stats:', err);
@@ -195,7 +187,8 @@ const Discipline = () => {
   const refreshAllData = async () => {
     setRefreshing(true);
     await Promise.all([
-      fetchCases(), fetchConductRecords(), fetchInterventions(),
+      // fetchCases(), fetchConductRecords(), fetchInterventions(),
+      fetchCases(), fetchConductRecords(),
       fetchSessions(), fetchSuspensions(), fetchStats()
     ]);
     setRefreshing(false);
@@ -235,7 +228,7 @@ const Discipline = () => {
     }
     setLoading(true);
     try {
-      const data = await apiRequest('/api/discipline/sessions/create/', {
+      const data = await apiRequest('/api/deputyadmin/discipline/sessions/create/', {
         method: 'POST',
         body: JSON.stringify(sessionForm)
       });
@@ -260,7 +253,7 @@ const Discipline = () => {
     }
     setLoading(true);
     try {
-      const data = await apiRequest('/api/discipline/interventions/create/', {
+      const data = await apiRequest('/api/deputyadmin/discipline/interventions/create/', {
         method: 'POST',
         body: JSON.stringify(interventionForm)
       });
@@ -268,7 +261,7 @@ const Discipline = () => {
         showToast('Intervention program created', 'success');
         setShowInterventionModal(false);
         setInterventionForm({ program_name: '', program_type: 'Behavioral', description: '', duration_weeks: 4, facilitator: '', start_date: '' });
-        fetchInterventions();
+        // fetchInterventions();
         fetchStats();
       }
     } catch (err) {
@@ -282,7 +275,7 @@ const Discipline = () => {
   const handleDeleteCase = async () => {
     setLoading(true);
     try {
-      const data = await apiRequest(`/api/discipline/cases/${deleteConfirm.id}/delete/`, { method: 'DELETE' });
+      const data = await apiRequest(`/api/deputyadmin/discipline/cases/${deleteConfirm.id}/delete/`, { method: 'DELETE' });
       if (data.success) {
         showToast('Case deleted', 'success');
         fetchCases();
@@ -299,7 +292,7 @@ const Discipline = () => {
   const handleResolveCase = async (caseId) => {
     setLoading(true);
     try {
-      const data = await apiRequest(`/api/discipline/cases/${caseId}/resolve/`, { method: 'PUT' });
+      const data = await apiRequest(`/api/deputyadmin/discipline/cases/${caseId}/resolve/`, { method: 'PUT' });
       if (data.success) {
         showToast('Case resolved', 'success');
         fetchCases();

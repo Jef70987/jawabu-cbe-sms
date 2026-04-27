@@ -26,11 +26,7 @@ const TeacherSidebarData = [
     icon: <DashboardIcon />,
     link: "/TeacherPortal/Dashboard"
   },
-  {
-    title: "Timetable",
-    icon: <TimerIcon />,
-    link: "/TeacherPortal/Timetable"
-  },
+  
   {
     title: "Class Profile",
     icon: <HomeIcon />,
@@ -48,7 +44,11 @@ const TeacherSidebarData = [
     icon: <BookOpenIcon />,
     link: "/TeacherPortal/Curriculum"
   },
-
+  {
+    title: "teacher assign",
+    icon: <PenBoxIcon />,
+    link: "/TeacherPortal/Assignments"
+  },
   /* --- SECTION: CBA & GRADING (The Hub) --- */
   {
     title: "Assessment Manager", // 4-Point Scale (PP1-G6)
@@ -69,6 +69,11 @@ const TeacherSidebarData = [
     title: "Digital Portfolio",
     icon: <CameraIcon />, // For uploading student evidence
     link: "/TeacherPortal/Portfolio"
+  },
+  {
+    title: "Timetable",
+    icon: <TimerIcon />,
+    link: "/TeacherPortal/Timetable"
   },
 
   /* --- SECTION: RESULTS & UPDATES --- */

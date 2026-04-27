@@ -433,11 +433,11 @@ function Dashboard() {
             trend={stats.totalStudents > 0 ? `${Math.round((stats.femaleStudents / stats.totalStudents) * 100)}% of total` : '0%'} 
           />
           <StatCard 
-            title="Need Class" 
-            value={stats.studentsNeedingClass} 
+            title="Total Class Streams" 
+            value={classes.length} 
             icon="exclamation-circle" 
             color="border-purple-500" 
-            trend="Require assignment" 
+            trend="Total streams available" 
           />
         </div>
 

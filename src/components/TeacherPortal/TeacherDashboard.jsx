@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Clock, Users, CheckSquare, FileText, TrendingUp, 
@@ -7,18 +8,18 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../Authentication/AuthContext';
 import { Link } from 'react-router-dom';
-import { NotificationBell } from '../CommonService/NotificationBell';
+// import { NotificationBell } from '../CommonService/NotificationBell';
 import { useNavigate } from 'react-router-dom';
-export const TeacherLayout = ({ children }) => {
-  return (
-    <div>
-      <nav>
-        <NotificationBell portal="teacher" className="h-4 w-4 inline mr-2 font-bold text-red-500" /> 
-      </nav>
-      {children}
-    </div>
-  );
-};
+// export const TeacherLayout = ({ children }) => {
+//   return (
+//     <div>
+//       <nav>
+//         <NotificationBell portal="teacher" className="h-4 w-4 inline mr-2 font-bold text-red-500" /> 
+//       </nav>
+//       {children}
+//     </div>
+//   );
+// };
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const Notification = ({ type, message, onClose }) => {

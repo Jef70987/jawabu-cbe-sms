@@ -104,7 +104,7 @@ export const AuthProvider = ({ children }) => {
           message: data.message
         };
       }
-      console.log('Login response data:', data);
+      
       // Case 3: Login failed
       if (!response.ok) {
         throw new Error(data.error || data.detail || 'Invalid credentials');
@@ -222,6 +222,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('session_id');
     setUser(null);
     setOtpData(null);
+
   };
 
   const refreshToken = async () => {

@@ -1,5 +1,6 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Calendar, Clock, Users, CheckSquare, FileText, TrendingUp,
   AlertCircle, CheckCircle, X, Loader2, Bell, BookOpen,
@@ -48,7 +49,7 @@ const Toast = ({ type, message, onClose, duration = 4000 }) => {
   if (!visible) return null;
 
   return (
-    <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${getStyles()} animate-slide-in-right`}>
+    <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 shadow-lg ${getStyles()} animate-slide-in-right`}>
       {getIcon()}
       <p className="text-sm font-medium">{message}</p>
       <button onClick={() => { setVisible(false); setTimeout(() => onClose?.(), 300); }} className="ml-2 text-white/80 hover:text-white">
@@ -62,7 +63,7 @@ const ButtonSpinner = () => <Loader2 className="h-4 w-4 animate-spin inline-bloc
 
 const GlobalSpinner = () => (
   <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg p-6 flex flex-col items-center shadow-xl">
+    <div className="bg-white p-6 flex flex-col items-center shadow-xl">
       <Loader2 className="h-10 w-10 text-green-700 animate-spin mb-3" />
       <p className="text-gray-700 font-medium">Loading data...</p>
     </div>
@@ -71,21 +72,22 @@ const GlobalSpinner = () => (
 
 // Quick toggle component for individual student
 const AttendanceToggle = ({ status, onToggle, disabled }) => {
+  const isPresent = status === 'present';
   return (
     <button
       onClick={onToggle}
       disabled={disabled}
-      className={`relative w-16 h-8 rounded-full transition-all duration-200 ease-in-out focus:outline-none ${
-        status === 'present' ? 'bg-green-500' : 'bg-red-500'
+      className={`relative w-16 h-8 transition-all duration-200 ease-in-out focus:outline-none ${
+        isPresent ? 'bg-green-500' : 'bg-red-500'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
     >
       <span
-        className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-200 ease-in-out ${
-          status === 'present' ? 'transform translate-x-8' : 'transform translate-x-0'
+        className={`absolute top-1 left-1 w-6 h-6 bg-white shadow-md transition-transform duration-200 ease-in-out ${
+          isPresent ? 'translate-x-8' : 'translate-x-0'
         }`}
       />
-      <span className={`absolute text-xs font-bold text-white ${status === 'present' ? 'left-2' : 'right-2'} top-2`}>
-        {status === 'present' ? 'P' : 'A'}
+      <span className={`absolute text-xs font-bold text-white ${isPresent ? 'left-2' : 'right-2'} top-2`}>
+        {isPresent ? 'P' : 'A'}
       </span>
     </button>
   );
@@ -96,19 +98,19 @@ const BulkActionBar = ({ selectedCount, onMarkAllPresent, onMarkAllAbsent, onCle
   if (selectedCount === 0) return null;
   
   return (
-    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 bg-gray-900 text-white rounded-lg shadow-xl px-6 py-3 flex items-center gap-4 animate-slide-up">
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 bg-gray-900 text-white shadow-xl px-6 py-3 flex items-center gap-4 animate-slide-up">
       <span className="text-sm font-medium">{selectedCount} student(s) selected</span>
       <div className="w-px h-6 bg-gray-600"></div>
-      <button onClick={onMarkAllPresent} className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm font-medium flex items-center gap-1">
+      <button onClick={onMarkAllPresent} className="px-3 py-1 bg-green-600 hover:bg-green-700 text-sm font-medium flex items-center gap-1">
         <CheckCircle className="h-4 w-4" /> Mark Present
       </button>
-      <button onClick={onMarkAllAbsent} className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm font-medium flex items-center gap-1">
+      <button onClick={onMarkAllAbsent} className="px-3 py-1 bg-red-600 hover:bg-red-700 text-sm font-medium flex items-center gap-1">
         <X className="h-4 w-4" /> Mark Absent
       </button>
-      <button onClick={onClear} className="px-3 py-1 bg-gray-600 hover:bg-gray-700 rounded text-sm font-medium">
+      <button onClick={onClear} className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-sm font-medium">
         Clear
       </button>
-      <button onClick={onSave} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium flex items-center gap-1">
+      <button onClick={onSave} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-sm font-medium flex items-center gap-1">
         <Save className="h-4 w-4" /> Save Selected
       </button>
     </div>
@@ -130,7 +132,7 @@ function Attendance() {
   const [loading, setLoading] = useState({ classes: true, students: true, subjects: true, saving: false });
   const [toasts, setToasts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState('grid'); // grid or list
+  const [viewMode, setViewMode] = useState('grid');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedPeriod, setSelectedPeriod] = useState('morning');
   const [selectedStudents, setSelectedStudents] = useState(new Set());
@@ -141,6 +143,9 @@ function Attendance() {
   const [currentPage, setCurrentPage] = useState(1);
   const studentsPerPage = 20;
 
+  // Refs for aborting requests
+  const abortControllers = useRef({});
+
   const addToast = (type, message) => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, type, message }]);
@@ -150,12 +155,39 @@ function Attendance() {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
+  // Fetch with abort
+  const fetchWithAbort = useCallback(async (url, options, key) => {
+    if (abortControllers.current[key]) {
+      abortControllers.current[key].abort();
+    }
+    
+    const controller = new AbortController();
+    abortControllers.current[key] = controller;
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      return await response.json();
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        throw error;
+      }
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated) {
       addToast('error', 'Please login to access attendance');
       return;
     }
     fetchInitialData();
+    
+    return () => {
+      Object.values(abortControllers.current).forEach(controller => controller.abort());
+    };
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -182,54 +214,42 @@ function Attendance() {
 
   const fetchTeacherClasses = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/teacher/subject-classes/`, {
-        headers: getAuthHeaders()
-      });
-      const data = await response.json();
-      if (data.success) {
+      const data = await fetchWithAbort(
+        `${API_BASE_URL}/api/teacher/attendance/subject-classes/`,
+        { headers: getAuthHeaders() },
+        'classes'
+      );
+      if (data && data.success) {
         setClasses(data.data);
         if (data.data.length > 0) {
           setSelectedClass(data.data[0]);
           await fetchClassStudents(data.data[0].id);
+        } else {
+          addToast('warning', 'No classes assigned to you');
         }
-      } else {
-        // Mock data for demo
-        const mockClasses = [
-          { id: 1, class_name: 'Grade 7A', class_code: 'G7A', stream: 'A', students_count: 42, subject: 'Mathematics', period: '08:00-09:00', room: 'Room 101' },
-          { id: 2, class_name: 'Grade 7B', class_code: 'G7B', stream: 'B', students_count: 40, subject: 'Mathematics', period: '09:00-10:00', room: 'Room 101' },
-          { id: 3, class_name: 'Grade 7C', class_code: 'G7C', stream: 'C', students_count: 38, subject: 'Mathematics', period: '14:00-15:00', room: 'Room 102' },
-          { id: 4, class_name: 'Grade 8A', class_code: 'G8A', stream: 'A', students_count: 44, subject: 'Mathematics', period: '10:00-11:00', room: 'Room 103' }
-        ];
-        setClasses(mockClasses);
-        setSelectedClass(mockClasses[0]);
-        await fetchClassStudents(mockClasses[0].id);
+      } else if (data && !data.success) {
+        addToast('error', data.message || 'Failed to load classes');
       }
     } catch (error) {
       console.error('Error fetching classes:', error);
-      addToast('error', 'Failed to load classes');
+      addToast('error', 'Network error loading classes');
     }
   };
 
   const fetchTeacherSubjects = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/teacher/my-subjects/`, {
-        headers: getAuthHeaders()
-      });
-      const data = await response.json();
-      if (data.success) {
+      const data = await fetchWithAbort(
+        `${API_BASE_URL}/api/teacher/attendance/my-subjects/`,
+        { headers: getAuthHeaders() },
+        'subjects'
+      );
+      if (data && data.success) {
         setSubjects(data.data);
         if (data.data.length > 0) {
           setSelectedSubject(data.data[0]);
         }
-      } else {
-        // Mock subjects
-        const mockSubjects = [
-          { id: 1, name: 'Mathematics', code: 'MAT', description: 'Core Mathematics' },
-          { id: 2, name: 'English', code: 'ENG', description: 'English Language' },
-          { id: 3, name: 'Kiswahili', code: 'KIS', description: 'Kiswahili Language' }
-        ];
-        setSubjects(mockSubjects);
-        setSelectedSubject(mockSubjects[0]);
+      } else if (data && !data.success) {
+        addToast('error', data.message || 'Failed to load subjects');
       }
     } catch (error) {
       console.error('Error fetching subjects:', error);
@@ -239,41 +259,37 @@ function Attendance() {
   const fetchClassStudents = async (classId) => {
     setLoading(prev => ({ ...prev, students: true }));
     try {
-      const response = await fetch(`${API_BASE_URL}/api/teacher/class-students/${classId}/`, {
-        headers: getAuthHeaders()
-      });
-      const data = await response.json();
-      if (data.success) {
+      const data = await fetchWithAbort(
+        `${API_BASE_URL}/api/teacher/attendance/class-students/${classId}/`,
+        { headers: getAuthHeaders() },
+        'students'
+      );
+      if (data && data.success) {
         setStudents(data.data);
         setStats(prev => ({ ...prev, total: data.data.length }));
-      } else {
-        // Mock students - 45 students for demo
-        const mockStudents = Array.from({ length: 45 }, (_, i) => ({
-          id: i + 1,
-          admission_no: `JSS7${String(i + 1).padStart(3, '0')}`,
-          first_name: ['James', 'Mary', 'Peter', 'Grace', 'John', 'Jane', 'Michael', 'Sarah', 'David', 'Esther'][i % 10],
-          last_name: ['Mwangi', 'Wanjiku', 'Omondi', 'Njeri', 'Kipchoge', 'Akinyi', 'Otieno', 'Chebet', 'Kamau', 'Wambui'][i % 10],
-          gender: i % 2 === 0 ? 'M' : 'F',
-          attendance_rate: Math.floor(Math.random() * 30) + 65
-        }));
-        setStudents(mockStudents);
-        setStats(prev => ({ ...prev, total: mockStudents.length }));
+      } else if (data && !data.success) {
+        addToast('error', data.message || 'Failed to load students');
+        setStudents([]);
       }
     } catch (error) {
       console.error('Error fetching students:', error);
-      addToast('error', 'Failed to load students');
+      addToast('error', 'Network error loading students');
+      setStudents([]);
     } finally {
       setLoading(prev => ({ ...prev, students: false }));
     }
   };
 
   const fetchAttendanceRecords = async () => {
+    if (!selectedClass?.id || !selectedSubject?.id) return;
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/api/teacher/attendance/records/?class_id=${selectedClass?.id}&subject_id=${selectedSubject?.id}&date=${selectedDate}&period=${selectedPeriod}`, {
-        headers: getAuthHeaders()
-      });
-      const data = await response.json();
-      if (data.success && data.data) {
+      const data = await fetchWithAbort(
+        `${API_BASE_URL}/api/teacher/attendance/records/?class_id=${selectedClass.id}&subject_id=${selectedSubject.id}&date=${selectedDate}&period=${selectedPeriod}`,
+        { headers: getAuthHeaders() },
+        'attendance'
+      );
+      if (data && data.success && data.data) {
         const records = {};
         data.data.forEach(record => {
           records[record.student_id] = record.status;
@@ -281,7 +297,7 @@ function Attendance() {
         setAttendanceRecords(records);
         updateStats(records);
       } else {
-        // Initialize all students as unmarked
+        // Initialize all students as unmarked if no records
         const initialRecords = {};
         students.forEach(student => {
           initialRecords[student.id] = 'unmarked';
@@ -295,23 +311,16 @@ function Attendance() {
   };
 
   const fetchAttendanceHistory = async () => {
+    if (!selectedClass?.id || !selectedSubject?.id) return;
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/api/teacher/attendance/history/?class_id=${selectedClass?.id}&subject_id=${selectedSubject?.id}`, {
-        headers: getAuthHeaders()
-      });
-      const data = await response.json();
-      if (data.success) {
+      const data = await fetchWithAbort(
+        `${API_BASE_URL}/api/teacher/attendance/history/?class_id=${selectedClass.id}&subject_id=${selectedSubject.id}`,
+        { headers: getAuthHeaders() },
+        'history'
+      );
+      if (data && data.success) {
         setAttendanceHistory(data.data);
-      } else {
-        // Mock history
-        const mockHistory = [
-          { date: '2024-03-15', present: 38, absent: 6, percentage: 86 },
-          { date: '2024-03-14', present: 40, absent: 4, percentage: 91 },
-          { date: '2024-03-13', present: 35, absent: 9, percentage: 80 },
-          { date: '2024-03-12', present: 42, absent: 2, percentage: 95 },
-          { date: '2024-03-11', present: 39, absent: 5, percentage: 89 }
-        ];
-        setAttendanceHistory(mockHistory);
       }
     } catch (error) {
       console.error('Error fetching history:', error);
@@ -363,14 +372,19 @@ function Attendance() {
       const recordsToSave = Object.entries(attendanceRecords)
         .filter(([_, status]) => status !== 'unmarked')
         .map(([studentId, status]) => ({
-          student_id: parseInt(studentId),
+          student_id: studentId,
           class_id: selectedClass.id,
           subject_id: selectedSubject.id,
           date: selectedDate,
           period: selectedPeriod,
-          status: status,
-          teacher_id: user?.id
+          status: status
         }));
+
+      if (recordsToSave.length === 0) {
+        addToast('warning', 'No attendance records to save');
+        setLoading(prev => ({ ...prev, saving: false }));
+        return;
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/teacher/attendance/bulk-save/`, {
         method: 'POST',
@@ -381,12 +395,13 @@ function Attendance() {
       if (data.success) {
         addToast('success', `Attendance saved for ${recordsToSave.length} student(s)`);
         await fetchAttendanceHistory();
+        await fetchAttendanceRecords();
       } else {
-        addToast('error', data.error || 'Failed to save attendance');
+        addToast('error', data.message || 'Failed to save attendance');
       }
     } catch (error) {
       console.error('Error saving attendance:', error);
-      addToast('error', 'Error saving attendance');
+      addToast('error', 'Network error saving attendance');
     } finally {
       setLoading(prev => ({ ...prev, saving: false }));
     }
@@ -413,15 +428,15 @@ function Attendance() {
   };
 
   const handleClassChange = async (classId) => {
-    const newClass = classes.find(c => c.id === parseInt(classId));
+    const newClass = classes.find(c => c.id === classId);
     setSelectedClass(newClass);
     setSelectedStudents(new Set());
     setCurrentPage(1);
     await fetchClassStudents(newClass.id);
-    await fetchAttendanceRecords();
   };
 
   const filteredStudents = useMemo(() => {
+    if (!searchTerm) return students;
     return students.filter(student => 
       `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.admission_no?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -452,7 +467,7 @@ function Attendance() {
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
           <p className="text-gray-600 mb-4">Please login to access attendance</p>
-          <a href="/login" className="px-6 py-3 bg-blue-600 text-white font-medium border border-blue-700 inline-block hover:bg-blue-700">
+          <a href="/login" className="px-6 py-3 bg-blue-600 text-white font-medium inline-block hover:bg-blue-700">
             Go to Login
           </a>
         </div>
@@ -469,34 +484,35 @@ function Attendance() {
       {(loading.saving) && <GlobalSpinner />}
 
       {/* Header */}
-      <div className="bg-green-700 p-6">
-        <div className="mx-auto">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Attendance Register</h1>
-              <p className="text-green-100 mt-1">Quick and easy attendance marking for your classes</p>
-            </div>
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setShowHistory(!showHistory)} 
-                className="px-4 py-2 bg-white text-blue-700 text-sm font-medium border border-gray-300 hover:bg-gray-50"
-              >
-                <Calendar className="h-4 w-4 inline mr-2" />
-                {showHistory ? 'Hide History' : 'View History'}
-              </button>
-              <button onClick={() => { fetchAttendanceRecords(); fetchAttendanceHistory(); }} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700">
-                <RefreshCw className="h-4 w-4 inline mr-2" />
-                Refresh
-              </button>
-            </div>
+      <div className="bg-green-700 p-6 w-full">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Attendance Register</h1>
+            <p className="text-green-100 mt-1">Quick and easy attendance marking for your classes</p>
+          </div>
+          <div className="flex gap-3">
+            <button 
+              onClick={() => setShowHistory(!showHistory)} 
+              className="px-4 py-2 bg-white text-blue-700 text-sm font-medium border border-gray-300 hover:bg-gray-50"
+            >
+              <Calendar className="h-4 w-4 inline mr-2" />
+              {showHistory ? 'Hide History' : 'View History'}
+            </button>
+            <button 
+              onClick={() => { fetchAttendanceRecords(); fetchAttendanceHistory(); }} 
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+            >
+              <RefreshCw className="h-4 w-4 inline mr-2" />
+              Refresh
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto p-6">
+      <div className="p-6 w-full">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white border border-gray-300 p-4">
+          <div className="bg-white border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Students</p>
@@ -505,7 +521,7 @@ function Attendance() {
               <Users className="h-8 w-8 text-gray-400" />
             </div>
           </div>
-          <div className="bg-white border border-gray-300 p-4">
+          <div className="bg-white border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Present</p>
@@ -514,7 +530,7 @@ function Attendance() {
               <UserCheckIcon className="h-8 w-8 text-green-500" />
             </div>
           </div>
-          <div className="bg-white border border-gray-300 p-4">
+          <div className="bg-white border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Absent</p>
@@ -523,7 +539,7 @@ function Attendance() {
               <UserX className="h-8 w-8 text-red-500" />
             </div>
           </div>
-          <div className="bg-white border border-gray-300 p-4">
+          <div className="bg-white border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Attendance Rate</p>
@@ -532,7 +548,7 @@ function Attendance() {
               <TrendingUp className="h-8 w-8 text-blue-500" />
             </div>
           </div>
-          <div className="bg-white border border-gray-300 p-4">
+          <div className="bg-white border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Unmarked</p>
@@ -546,7 +562,7 @@ function Attendance() {
         </div>
 
         {/* Filters Bar */}
-        <div className="bg-white border border-gray-300 p-4 mb-6">
+        <div className="bg-white border border-gray-200 p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div className="md:col-span-2">
               <label className="block text-sm font-bold text-gray-700 mb-1">Select Class</label>
@@ -559,7 +575,7 @@ function Attendance() {
                 <option value="">Select Class</option>
                 {classes.map(cls => (
                   <option key={cls.id} value={cls.id}>
-                    {cls.class_name} - {cls.subject} ({cls.period})
+                    {cls.class_name} - {cls.subject_name} ({cls.period || 'No period'})
                   </option>
                 ))}
               </select>
@@ -568,8 +584,9 @@ function Attendance() {
               <label className="block text-sm font-bold text-gray-700 mb-1">Subject</label>
               <select 
                 value={selectedSubject?.id || ''} 
-                onChange={(e) => setSelectedSubject(subjects.find(s => s.id === parseInt(e.target.value)))}
+                onChange={(e) => setSelectedSubject(subjects.find(s => s.id === e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 text-sm bg-white"
+                disabled={subjects.length === 0}
               >
                 {subjects.map(sub => (
                   <option key={sub.id} value={sub.id}>{sub.name}</option>
@@ -619,9 +636,9 @@ function Attendance() {
         </div>
 
         {/* Attendance History Panel */}
-        {showHistory && (
-          <div className="bg-white border border-gray-300 mb-6">
-            <div className="border-b border-gray-300 px-4 py-3 bg-gray-100">
+        {showHistory && attendanceHistory.length > 0 && (
+          <div className="bg-white border border-gray-200 mb-6">
+            <div className="border-b border-gray-200 px-4 py-3 bg-gray-50">
               <h2 className="font-bold text-gray-900">Attendance History - {selectedClass?.class_name} ({selectedSubject?.name})</h2>
             </div>
             <div className="overflow-x-auto p-4">
@@ -650,7 +667,10 @@ function Attendance() {
                         </div>
                       </td>
                       <td className="py-2 px-3 text-center">
-                        <span className={`px-2 py-1 text-xs font-medium ${record.percentage >= 90 ? 'bg-green-100 text-green-800' : record.percentage >= 75 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                        <span className={`px-2 py-1 text-xs font-medium ${
+                          record.percentage >= 90 ? 'bg-green-100 text-green-800' : 
+                          record.percentage >= 75 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                        }`}>
                           {record.percentage >= 90 ? 'Excellent' : record.percentage >= 75 ? 'Good' : 'Needs Improvement'}
                         </span>
                       </td>
@@ -659,6 +679,12 @@ function Attendance() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {showHistory && attendanceHistory.length === 0 && !loading.students && (
+          <div className="bg-white border border-gray-200 mb-6 p-8 text-center">
+            <p className="text-gray-500">No attendance history available</p>
           </div>
         )}
 
@@ -683,7 +709,7 @@ function Attendance() {
               onClick={() => handleSelectAll()} 
               className="px-3 py-1 text-sm bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200"
             >
-              {selectedStudents.size === filteredStudents.length ? 'Deselect All' : 'Select All'}
+              {selectedStudents.size === filteredStudents.length && filteredStudents.length > 0 ? 'Deselect All' : 'Select All'}
             </button>
             <button 
               onClick={() => handleBulkMark('present')} 
@@ -710,9 +736,14 @@ function Attendance() {
 
         {/* Students Grid/List View */}
         {loading.students ? (
-          <div className="bg-white border border-gray-300 p-12 text-center">
+          <div className="bg-white border border-gray-200 p-12 text-center">
             <Loader2 className="h-12 w-12 text-green-700 animate-spin mx-auto" />
             <p className="mt-4 text-gray-600">Loading students...</p>
+          </div>
+        ) : students.length === 0 ? (
+          <div className="bg-white border border-gray-200 p-12 text-center">
+            <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-3" />
+            <p className="text-gray-600">No students found in this class</p>
           </div>
         ) : (
           <>
@@ -725,13 +756,13 @@ function Attendance() {
                     <div 
                       key={student.id} 
                       className={`bg-white border transition-all cursor-pointer hover:shadow-lg ${
-                        isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-300'
+                        isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
                       } ${status === 'present' ? 'bg-green-50' : status === 'absent' ? 'bg-red-50' : 'bg-white'}`}
                       onClick={() => handleStudentSelect(student.id)}
                     >
                       <div className="p-4">
                         <div className="flex justify-between items-start mb-2">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                          <div className="w-10 h-10 bg-gray-200 flex items-center justify-center">
                             <span className="text-gray-600 font-bold text-lg">
                               {student.first_name?.charAt(0)}{student.last_name?.charAt(0)}
                             </span>
@@ -746,7 +777,7 @@ function Attendance() {
                           <p className="font-bold text-gray-900 text-sm">{student.first_name} {student.last_name}</p>
                           <p className="text-xs text-gray-500">{student.admission_no}</p>
                           <div className="mt-2 flex items-center gap-2">
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                            <span className={`text-xs px-1.5 py-0.5 ${
                               (student.attendance_rate || 0) >= 90 ? 'bg-green-100 text-green-800' :
                               (student.attendance_rate || 0) >= 75 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                             }`}>
@@ -760,7 +791,7 @@ function Attendance() {
                 })}
               </div>
             ) : (
-              <div className="bg-white border border-gray-300">
+              <div className="bg-white border border-gray-200">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50">
@@ -853,7 +884,7 @@ function Attendance() {
             )}
 
             {/* Summary Footer */}
-            <div className="mt-4 p-3 bg-gray-100 border border-gray-300 text-sm text-gray-600 flex justify-between items-center">
+            <div className="mt-4 p-3 bg-gray-100 border border-gray-200 text-sm text-gray-600 flex justify-between items-center">
               <span>Showing {paginatedStudents.length} of {filteredStudents.length} students</span>
               <span className="font-medium">
                 Present: {stats.present} | Absent: {stats.absent} | Unmarked: {Object.values(attendanceRecords).filter(s => s === 'unmarked').length}
