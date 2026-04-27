@@ -2,81 +2,207 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
 import {
-  MessageCircle,
-  Send,
-  X,
-  Minimize2,
-  Maximize2,
-  Bot,
-  User,
-  Loader2,
-  AlertCircle,
-  Clock,
-  Calendar,
-  TrendingUp,
-  Award,
-  BookOpen,
-  GraduationCap,
-  FileText,
-  BarChart3,
-  Target,
-  Lightbulb,
-  TrendingDown,
-  CheckCircle,
-  ArrowRight,
-  Brain,
-  Activity,
-  Shield,
-  AlertTriangle,
-  LineChart,
-  PieChart,
-  Users,
-  Star
+  MessageCircle, Send, X, Bot, User, Loader2,
+  Clock, Calendar, TrendingUp, Award, GraduationCap,
+  FileText, Target, Lightbulb, Brain, Activity,
+  Shield, AlertTriangle, LineChart, PieChart,
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// CBC Competency Levels (8-level scale)
+// ─── Constants ────────────────────────────────────────────────────────────────
 const COMPETENCY_LEVELS = [
-  { code: 'EE1', label: 'Exceptional', range: '90-100%', color: 'bg-emerald-600', textColor: 'text-emerald-600' },
-  { code: 'EE2', label: 'Very Good', range: '75-89%', color: 'bg-emerald-500', textColor: 'text-emerald-500' },
-  { code: 'ME1', label: 'Good', range: '58-74%', color: 'bg-blue-500', textColor: 'text-blue-500' },
-  { code: 'ME2', label: 'Fair', range: '41-57%', color: 'bg-blue-400', textColor: 'text-blue-400' },
-  { code: 'AE1', label: 'Needs Improvement', range: '31-40%', color: 'bg-amber-500', textColor: 'text-amber-500' },
-  { code: 'AE2', label: 'Below Average', range: '21-30%', color: 'bg-amber-400', textColor: 'text-amber-400' },
-  { code: 'BE1', label: 'Well Below', range: '11-20%', color: 'bg-red-500', textColor: 'text-red-500' },
-  { code: 'BE2', label: 'Minimal', range: '0-10%', color: 'bg-red-600', textColor: 'text-red-600' }
+  { code: 'EE1', label: 'Exceptional',        range: '90-100%', color: 'bg-emerald-600' },
+  { code: 'EE2', label: 'Very Good',           range: '75-89%',  color: 'bg-emerald-500' },
+  { code: 'ME1', label: 'Good',                range: '58-74%',  color: 'bg-blue-500'    },
+  { code: 'ME2', label: 'Fair',                range: '41-57%',  color: 'bg-blue-400'    },
+  { code: 'AE1', label: 'Needs Improvement',   range: '31-40%',  color: 'bg-amber-500'   },
+  { code: 'AE2', label: 'Below Average',       range: '21-30%',  color: 'bg-amber-400'   },
+  { code: 'BE1', label: 'Well Below',          range: '11-20%',  color: 'bg-red-500'     },
+  { code: 'BE2', label: 'Minimal',             range: '0-10%',   color: 'bg-red-600'     },
 ];
 
-// Quick suggestion buttons for chat
 const QUICK_SUGGESTIONS = [
   { text: 'My competency summary', icon: TrendingUp, query: 'Show me my competency mastery summary' },
-  { text: 'Fee balance', icon: FileText, query: 'What is my current fee balance?' },
-  { text: 'Upcoming assessments', icon: Calendar, query: 'When are my upcoming assessments?' },
-  { text: 'Career pathway', icon: Target, query: 'Recommend career pathways based on my competencies' },
-  { text: 'Areas to improve', icon: Lightbulb, query: 'Which competency areas need improvement?' },
-  { text: 'Attendance record', icon: Clock, query: 'Show my attendance record' }
+  { text: 'Fee balance',           icon: FileText,   query: 'What is my current fee balance?'        },
+  { text: 'Upcoming assessments',  icon: Calendar,   query: 'When are my upcoming assessments?'      },
+  { text: 'Career pathway',        icon: Target,     query: 'Recommend career pathways based on my competencies' },
+  { text: 'Areas to improve',      icon: Lightbulb,  query: 'Which competency areas need improvement?' },
+  { text: 'Attendance record',     icon: Clock,      query: 'Show my attendance record'               },
 ];
 
-// Chat Message Component - memoized to prevent unnecessary re-renders
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const getCompetencyLevel = (pct) => {
+  if (pct >= 90) return COMPETENCY_LEVELS[0];
+  if (pct >= 75) return COMPETENCY_LEVELS[1];
+  if (pct >= 58) return COMPETENCY_LEVELS[2];
+  if (pct >= 41) return COMPETENCY_LEVELS[3];
+  if (pct >= 31) return COMPETENCY_LEVELS[4];
+  if (pct >= 21) return COMPETENCY_LEVELS[5];
+  if (pct >= 11) return COMPETENCY_LEVELS[6];
+  return COMPETENCY_LEVELS[7];
+};
+
+const barColor = (pct) =>
+  pct >= 75 ? 'bg-green-600' : pct >= 58 ? 'bg-blue-500' : pct >= 41 ? 'bg-amber-500' : 'bg-red-500';
+
+const getTimestamp = () =>
+  new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+// ─── Bot message formatter (bold, italic, lists, paragraphs) ─────────────────
+const formatBotMessage = (text) => {
+  if (!text) return null;
+  const escapeHtml = (str) => str.replace(/[&<>]/g, (m) => {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
+  let escaped = escapeHtml(text);
+  escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  const lines = escaped.split('\n');
+  const result = [];
+  let inList = false;
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    if (line.trim().startsWith('- ')) {
+      if (!inList) {
+        result.push('<ul class="list-disc pl-5 my-2 space-y-1">');
+        inList = true;
+      }
+      const content = line.trim().substring(2);
+      result.push(`<li>${content}</li>`);
+    } else {
+      if (inList) {
+        result.push('</ul>');
+        inList = false;
+      }
+      if (line.trim() === '') {
+        result.push('<br />');
+      } else {
+        result.push(`<p class="mb-2">${line}</p>`);
+      }
+    }
+  }
+  if (inList) result.push('</ul>');
+  return <div dangerouslySetInnerHTML={{ __html: result.join('') }} />;
+};
+
+// ─── Chat input — defined OUTSIDE Chatbot so it never remounts on re-render ──
+const ChatInput = ({ value, onChange, onKeyDown, placeholder, disabled, inputRef }) => (
+  <input
+    ref={inputRef}
+    type="text"
+    value={value}
+    onChange={onChange}
+    onKeyDown={onKeyDown}
+    placeholder={placeholder}
+    disabled={disabled}
+    className="flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm rounded-xl bg-white"
+  />
+);
+
+// ─── Small UI components ──────────────────────────────────────────────────────
+const CompetencyBadge = ({ percentage }) => {
+  const level = getCompetencyLevel(percentage);
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`w-2 h-2 rounded-full ${level.color}`} />
+      <span className="text-xs font-medium text-gray-600">{level.code}</span>
+      <span className="text-xs text-gray-400">{level.label}</span>
+    </div>
+  );
+};
+
+const CBCLegend = () => (
+  <div className="grid grid-cols-4 gap-2">
+    {COMPETENCY_LEVELS.map((l) => (
+      <div key={l.code} className="flex items-center gap-1">
+        <div className={`w-2 h-2 rounded-full ${l.color}`} />
+        <span className="text-xs text-gray-500">{l.code}</span>
+      </div>
+    ))}
+  </div>
+);
+
+const RiskCard = ({ title, value, riskLevel, icon: Icon, description }) => {
+  const MAP = {
+    low:    { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', label: 'Low Risk'    },
+    medium: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', label: 'Medium Risk' },
+    high:   { bg: 'bg-red-50',   border: 'border-red-200',   text: 'text-red-700',   label: 'High Risk'   },
+  };
+  const c = MAP[riskLevel] || MAP.low;
+  return (
+    <div className={`p-4 border ${c.border} ${c.bg} rounded-xl`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Icon className={`w-4 h-4 ${c.text}`} />
+          <span className="text-xs font-medium text-gray-500">{title}</span>
+        </div>
+        <span className={`text-xs font-semibold ${c.text}`}>{c.label}</span>
+      </div>
+      <p className="text-2xl font-bold text-gray-800">{value}</p>
+      <p className="text-xs text-gray-500 mt-1">{description}</p>
+    </div>
+  );
+};
+
+const PerformanceTrend = ({ data = [] }) => (
+  <div className="space-y-3">
+    {data.length === 0 && <p className="text-xs text-gray-400">No trend data available yet.</p>}
+    {data.map((item, idx) => (
+      <div key={idx} className="space-y-1">
+        <div className="flex justify-between text-xs">
+          <span className="text-gray-600">{item.term}</span>
+          <span className="font-medium text-gray-800">{item.value}%</span>
+        </div>
+        <div className="h-2 bg-gray-200 rounded-full">
+          <div className={`h-2 rounded-full ${barColor(item.value)}`} style={{ width: `${item.value}%` }} />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const CompetencyMastery = ({ competencies = [] }) => (
+  <div className="space-y-4">
+    {competencies.length === 0 && <p className="text-xs text-gray-400">No competency data available yet.</p>}
+    {competencies.map((comp, idx) => (
+      <div key={idx} className="space-y-1">
+        <div className="flex justify-between text-xs">
+          <span className="text-gray-700 font-medium">{comp.name}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-600">{comp.mastery}%</span>
+            <CompetencyBadge percentage={comp.mastery} />
+          </div>
+        </div>
+        <div className="h-2 bg-gray-200 rounded-full">
+          <div className={`h-2 rounded-full ${barColor(comp.mastery)}`} style={{ width: `${comp.mastery}%` }} />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+// ─── Chat message component (formatted bot responses) ────────────────────────
 const ChatMessage = React.memo(({ message, isUser, timestamp }) => {
+  const content = isUser ? (
+    <p className="text-sm whitespace-pre-wrap break-words">{message}</p>
+  ) : (
+    formatBotMessage(message)
+  );
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
       <div className={`flex max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
         <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center ${isUser ? 'ml-2' : 'mr-2'}`}>
-          {isUser ? (
-            <div className="w-8 h-8 bg-blue-600 flex items-center justify-center rounded-xl">
-              <User className="w-4 h-4 text-white" />
-            </div>
-          ) : (
-            <div className="w-8 h-8 bg-green-700 flex items-center justify-center rounded-xl">
-              <Bot className="w-4 h-4 text-white" />
-            </div>
-          )}
+          <div className={`w-8 h-8 flex items-center justify-center rounded-xl ${isUser ? 'bg-blue-600' : 'bg-green-700'}`}>
+            {isUser ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
+          </div>
         </div>
         <div className={`flex-1 ${isUser ? 'items-end' : 'items-start'}`}>
-          <div className={`px-4 py-2 rounded-xl ${isUser ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'} border border-gray-200`}>
-            <p className="text-sm whitespace-pre-wrap break-words">{message}</p>
+          <div className={`px-4 py-2 rounded-xl border border-gray-200 ${isUser ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
+            {content}
           </div>
           <p className="text-xs text-gray-400 mt-1 px-1">{timestamp}</p>
         </div>
@@ -85,365 +211,264 @@ const ChatMessage = React.memo(({ message, isUser, timestamp }) => {
   );
 });
 
-// Typing Indicator
-const TypingIndicator = React.memo(() => {
-  return (
-    <div className="flex justify-start mb-4">
-      <div className="flex max-w-[85%] flex-row">
-        <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center mr-2">
-          <div className="w-8 h-8 bg-green-700 flex items-center justify-center rounded-xl">
-            <Bot className="w-4 h-4 text-white" />
-          </div>
+const TypingIndicator = React.memo(() => (
+  <div className="flex justify-start mb-4">
+    <div className="flex max-w-[85%] flex-row">
+      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center mr-2">
+        <div className="w-8 h-8 bg-green-700 flex items-center justify-center rounded-xl">
+          <Bot className="w-4 h-4 text-white" />
         </div>
-        <div className="px-4 py-3 bg-gray-100 rounded-xl border border-gray-200">
-          <div className="flex gap-1">
-            <div className="w-2 h-2 bg-gray-500 animate-bounce rounded-full" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-2 bg-gray-500 animate-bounce rounded-full" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 bg-gray-500 animate-bounce rounded-full" style={{ animationDelay: '300ms' }}></div>
-          </div>
+      </div>
+      <div className="px-4 py-3 bg-gray-100 rounded-xl border border-gray-200">
+        <div className="flex gap-1">
+          {[0, 150, 300].map((delay) => (
+            <div key={delay} className="w-2 h-2 bg-gray-500 animate-bounce rounded-full" style={{ animationDelay: `${delay}ms` }} />
+          ))}
         </div>
       </div>
     </div>
-  );
-});
+  </div>
+));
 
-// Competency Level Badge
-const CompetencyBadge = ({ percentage }) => {
-  const getLevel = () => {
-    if (percentage >= 90) return COMPETENCY_LEVELS[0];
-    if (percentage >= 75) return COMPETENCY_LEVELS[1];
-    if (percentage >= 58) return COMPETENCY_LEVELS[2];
-    if (percentage >= 41) return COMPETENCY_LEVELS[3];
-    if (percentage >= 31) return COMPETENCY_LEVELS[4];
-    if (percentage >= 21) return COMPETENCY_LEVELS[5];
-    if (percentage >= 11) return COMPETENCY_LEVELS[6];
-    return COMPETENCY_LEVELS[7];
-  };
-  
-  const levelData = getLevel();
-  
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`w-2 h-2 ${levelData.color}`}></div>
-      <span className="text-xs font-medium text-gray-600">{levelData.code}</span>
-      <span className="text-xs text-gray-400">{levelData.label}</span>
-    </div>
-  );
-};
-
-// Risk Card Component
-const RiskCard = ({ title, value, riskLevel, icon: Icon, description }) => {
-  const riskColors = {
-    low: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', label: 'Low Risk' },
-    medium: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', label: 'Medium Risk' },
-    high: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', label: 'High Risk' }
-  };
-  
-  const colors = riskColors[riskLevel] || riskColors.low;
-  
-  return (
-    <div className={`p-4 border ${colors.border} ${colors.bg} rounded-xl`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Icon className={`w-4 h-4 ${colors.text}`} />
-          <span className="text-xs font-medium text-gray-500">{title}</span>
-        </div>
-        <span className={`text-xs font-semibold ${colors.text}`}>{colors.label}</span>
+// ─── Chat panel — defined OUTSIDE Chatbot so it never remounts on re-render ──
+const ChatPanel = ({
+  isMobileView,
+  onClose,
+  messages,
+  isTyping,
+  isSending,
+  inputValue,
+  handleInputChange,
+  handleKeyPress,
+  handleSend,
+  handleSuggestionClick,
+  analyticsError,
+  messagesEndRef,
+  inputRef,
+}) => (
+  <div className={`flex flex-col bg-white border border-gray-200 shadow-xl ${isMobileView ? 'fixed inset-0 z-50' : 'h-full rounded-xl'}`}>
+    <div className={`flex items-center ${isMobileView ? 'justify-between' : ''} gap-3 p-4 bg-green-700 border-b border-green-800 ${!isMobileView ? 'rounded-t-xl' : ''}`}>
+      <div className="w-10 h-10 bg-white flex items-center justify-center rounded-xl flex-shrink-0">
+        <Bot className="w-5 h-5 text-green-700" />
       </div>
-      <p className="text-2xl font-bold text-gray-800">{value}</p>
-      <p className="text-xs text-gray-500 mt-1">{description}</p>
+      <div className="flex-1">
+        <h3 className="text-base font-semibold text-white">Jawabu an Accademic Assistant</h3>
+        <p className="text-xs text-green-100">AI-Powered | Competency-Based Curriculum Support</p>
+      </div>
+      {isMobileView && (
+        <button onClick={onClose} className="text-white/70 hover:text-white ml-2">
+          <X className="w-5 h-5" />
+        </button>
+      )}
     </div>
-  );
-};
 
-// Performance Trend Chart
-const PerformanceTrend = ({ data }) => {
-  return (
-    <div className="space-y-3">
-      {data.map((item, idx) => (
-        <div key={idx} className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-600">{item.term}</span>
-            <span className="font-medium text-gray-800">{item.value}%</span>
+    <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+      {messages.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-full text-center">
+          <div className="w-20 h-20 bg-green-100 flex items-center justify-center rounded-xl mb-4">
+            <Brain className="w-10 h-10 text-green-700" />
           </div>
-          <div className="h-2 bg-gray-200 rounded-full">
-            <div 
-              className={`h-2 rounded-full ${item.value >= 75 ? 'bg-green-600' : item.value >= 58 ? 'bg-blue-500' : item.value >= 41 ? 'bg-amber-500' : 'bg-red-500'}`}
-              style={{ width: `${item.value}%` }}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// Competency Mastery Chart
-const CompetencyMastery = ({ competencies }) => {
-  return (
-    <div className="space-y-4">
-      {competencies.map((comp, idx) => (
-        <div key={idx} className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-700 font-medium">{comp.name}</span>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-600">{comp.mastery}%</span>
-              <CompetencyBadge percentage={comp.mastery} />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Hi, I'm your CBC Academic Assistant</h3>
+          <p className="text-gray-600 mb-6 text-sm max-w-md">
+            I can help you understand your competency mastery, recommend career pathways,
+            analyse performance risks, and provide personalised learning recommendations.
+          </p>
+          {analyticsError && (
+            <p className="text-xs text-amber-600 mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Analytics could not be loaded — the AI will answer from general knowledge.
+            </p>
+          )}
+          <div className="w-full">
+            <p className="text-xs font-medium text-gray-500 mb-3 text-left">QUICK QUESTIONS</p>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_SUGGESTIONS.map((s, idx) => (
+                <button key={idx} onClick={() => handleSuggestionClick(s.query)}
+                  className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-sm rounded-xl">
+                  <s.icon className="w-3 h-3 text-blue-600" />
+                  <span className="text-gray-700">{s.text}</span>
+                </button>
+              ))}
             </div>
           </div>
-          <div className="h-2 bg-gray-200 rounded-full">
-            <div 
-              className={`h-2 rounded-full ${comp.mastery >= 75 ? 'bg-green-600' : comp.mastery >= 58 ? 'bg-blue-500' : comp.mastery >= 41 ? 'bg-amber-500' : 'bg-red-500'}`}
-              style={{ width: `${comp.mastery}%` }}
-            />
-          </div>
         </div>
-      ))}
+      ) : (
+        <>
+          {messages.map((msg) => (
+            <ChatMessage key={msg.id} message={msg.text} isUser={msg.isUser} timestamp={msg.timestamp} />
+          ))}
+          {isTyping && <TypingIndicator />}
+          <div ref={messagesEndRef} />
+        </>
+      )}
     </div>
-  );
-};
 
-// CBC Level Legend
-const CBCLegend = () => {
-  return (
-    <div className="grid grid-cols-4 gap-2">
-      {COMPETENCY_LEVELS.map((level, idx) => (
-        <div key={idx} className="flex items-center gap-1">
-          <div className={`w-2 h-2 ${level.color}`}></div>
-          <span className="text-xs text-gray-500">{level.code}</span>
+    {messages.length > 0 && !isTyping && (
+      <div className="px-4 py-2 border-t border-gray-200 bg-white overflow-x-auto">
+        <div className="flex gap-2">
+          {QUICK_SUGGESTIONS.slice(0, 4).map((s, idx) => (
+            <button key={idx} onClick={() => handleSuggestionClick(s.query)}
+              className="flex items-center gap-1 px-2 py-1 bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-colors text-xs whitespace-nowrap rounded-lg">
+              <s.icon className="w-3 h-3 text-blue-600" />
+              <span className="text-gray-700">{s.text}</span>
+            </button>
+          ))}
         </div>
-      ))}
-    </div>
-  );
-};
+      </div>
+    )}
 
+    <div className="p-4 border-t border-gray-200 bg-white rounded-b-xl">
+      <div className="flex gap-2">
+        <ChatInput
+          inputRef={inputRef}
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyPress}
+          placeholder="Ask about your competencies, career pathways, or risks..."
+          disabled={isSending}
+        />
+        <button
+          onClick={handleSend}
+          disabled={!inputValue.trim() || isSending}
+          className="px-4 py-2 bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-xl flex-shrink-0"
+        >
+          {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </button>
+      </div>
+      <p className="text-xs text-gray-400 mt-2 text-center">AI Assistant for CBC Competency-Based Curriculum</p>
+    </div>
+  </div>
+);
+
+// ─── Main Chatbot component ───────────────────────────────────────────────────
 const Chatbot = () => {
   const { user, getAuthHeaders, isAuthenticated } = useAuth();
+
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [studentProfile, setStudentProfile] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  
+  const [isMobile, setIsMobile] = useState(false);
+
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState(null);
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const sendMessageRef = useRef(null);
 
-  // CBC Analytics Data
-  const [analyticsData] = useState({
-    overall_competency: 72,
-    competency_level: 'ME1',
-    performance_trend: [
-      { term: 'Term 1 2024', value: 68 },
-      { term: 'Term 2 2024', value: 72 },
-      { term: 'Term 3 2024', value: 75 },
-      { term: 'Term 1 2025', value: 78 }
-    ],
-    competencies: [
-      { name: 'Communication', mastery: 85 },
-      { name: 'Critical Thinking', mastery: 78 },
-      { name: 'Creativity', mastery: 82 },
-      { name: 'Collaboration', mastery: 70 },
-      { name: 'Digital Literacy', mastery: 88 },
-      { name: 'Numeracy', mastery: 65 },
-      { name: 'Scientific Reasoning', mastery: 68 },
-      { name: 'Social Responsibility', mastery: 75 }
-    ],
-    risks: {
-      failure_risk: { level: 'low', value: '15%', description: 'Probability of not meeting competency standards' },
-      dropout_risk: { level: 'low', value: '8%', description: 'Likelihood of discontinuing studies' },
-      intervention_needed: { level: 'medium', value: '3', description: 'Competency areas requiring attention' }
-    },
-    career_pathways: [
-      { name: 'STEM & Engineering', match: 85, competencies: ['Numeracy', 'Scientific Reasoning', 'Critical Thinking'] },
-      { name: 'ICT & Computer Science', match: 92, competencies: ['Digital Literacy', 'Critical Thinking', 'Creativity'] },
-      { name: 'Business & Finance', match: 70, competencies: ['Numeracy', 'Communication', 'Collaboration'] }
-    ]
-  });
-
-  // Check if mobile
+  // Responsive detection
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    const check = () => setIsMobile(window.innerWidth < 1024);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Fetch student profile
+  // Fetch analytics
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'student') {
-      fetchStudentProfile();
-    } else {
-      setIsLoading(false);
-    }
-  }, [isAuthenticated, user]);
+    if (!isAuthenticated) { setAnalyticsLoading(false); return; }
+    fetchAnalytics();
+  }, [isAuthenticated]);
 
-  const fetchStudentProfile = async () => {
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/student/profile/`, {
-        headers: getAuthHeaders()
+      const res = await fetch(`${API_BASE_URL}/api/student/chatbot/analytics/`, {
+        headers: getAuthHeaders(),
       });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setStudentProfile(data.data);
-        }
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const json = await res.json();
+      if (json.success) {
+        setAnalyticsData(json.data);
+      } else {
+        setAnalyticsError(json.error || 'Failed to load analytics.');
       }
     } catch (err) {
-      console.error('Error fetching profile:', err);
+      setAnalyticsError(err.message || 'Failed to connect to server.');
     } finally {
-      setIsLoading(false);
+      setAnalyticsLoading(false);
     }
   };
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input when chat opens on mobile
   useEffect(() => {
-    if (isMobileChatOpen) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 300);
-    }
+    if (isMobileChatOpen) setTimeout(() => inputRef.current?.focus(), 300);
   }, [isMobileChatOpen]);
 
-  const getTimestamp = () => {
-    const now = new Date();
-    return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  // Define sendMessage as useCallback to prevent recreation
+  // Send message function
   const sendMessage = useCallback(async (message) => {
     if (!message.trim() || isSending) return;
-
     setIsSending(true);
 
-    const userMessage = {
-      id: Date.now(),
-      text: message,
-      isUser: true,
-      timestamp: getTimestamp()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => [...prev, {
+      id: Date.now(), text: message, isUser: true, timestamp: getTimestamp()
+    }]);
     setInputValue('');
     setIsTyping(true);
 
     try {
-      const context = studentProfile ? {
-        student_name: `${studentProfile.first_name} ${studentProfile.last_name}`,
-        student_class: studentProfile.current_class_name,
-        admission_no: studentProfile.admission_no,
-        student_role: user?.role
+      const context = analyticsData ? {
+        student_name:  analyticsData.student_name  || `${user?.first_name || ''} ${user?.last_name || ''}`.trim(),
+        student_class: analyticsData.student_class || '',
+        admission_no:  analyticsData.admission_no  || '',
+        student_role:  user?.role || 'student',
       } : {};
 
-      const response = await fetch(`${API_BASE_URL}/api/chatbot/message/`, {
+      const res = await fetch(`${API_BASE_URL}/api/student/chatbot/message/`, {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: message,
-          context: context,
+          message,
+          context,
           conversation_history: messages.slice(-10).map(m => ({
-            role: m.isUser ? 'user' : 'assistant',
-            content: m.text
-          }))
-        })
+            role:    m.isUser ? 'user' : 'assistant',
+            content: m.text,
+          })),
+        }),
       });
 
-      let botResponseText = '';
+      const data = await res.json();
+      const botText = res.ok
+        ? (data.response || 'Thank you for your message. How else can I help you?')
+        : (data.error   || 'Something went wrong. Please try again.');
 
-      if (response.ok) {
-        const data = await response.json();
-        botResponseText = data.response || data.message || 'Thank you for your message. How else can I assist you today?';
-      } else {
-        botResponseText = getFallbackResponse(message, studentProfile);
-      }
-
-      const botMessage = {
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1, text: botText, isUser: false, timestamp: getTimestamp()
+      }]);
+    } catch {
+      setMessages(prev => [...prev, {
         id: Date.now() + 1,
-        text: botResponseText,
+        text: 'I am having trouble connecting. Please check your connection and try again.',
         isUser: false,
-        timestamp: getTimestamp()
-      };
-      setMessages(prev => [...prev, botMessage]);
-
-    } catch (err) {
-      console.error('Error sending message:', err);
-      const errorMessage = {
-        id: Date.now() + 1,
-        text: 'I am having trouble connecting to the server. Please check your connection and try again.',
-        isUser: false,
-        timestamp: getTimestamp()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+        timestamp: getTimestamp(),
+      }]);
     } finally {
       setIsTyping(false);
       setIsSending(false);
     }
-  }, [studentProfile, user, getAuthHeaders, messages, isSending]);
+  }, [analyticsData, user, getAuthHeaders, messages, isSending]);
 
-  const getFallbackResponse = (message, profile) => {
-    const lowerMsg = message.toLowerCase();
-    const studentName = profile?.first_name || 'Student';
-
-    if (lowerMsg.includes('competency') || lowerMsg.includes('performance')) {
-      return `Based on your CBC competency assessment, your overall mastery level is ${analyticsData.overall_competency}% which corresponds to level ME1 (Good). Your strongest competency is Digital Literacy at 88% mastery. Areas for improvement include Numeracy at 65% and Scientific Reasoning at 68%. Would you like specific recommendations for these areas?`;
-    }
-    else if (lowerMsg.includes('fee') || lowerMsg.includes('balance')) {
-      return `Your current fee balance is KES 25,500. The deadline for payment is 30th of this month. Would you like to see a detailed fee statement?`;
-    }
-    else if (lowerMsg.includes('assessment') || lowerMsg.includes('exam')) {
-      return `Your upcoming competency assessments are scheduled for 15th May 2024. These will evaluate project-based learning, practical demonstrations, and portfolio submissions as per CBC requirements.`;
-    }
-    else if (lowerMsg.includes('career') || lowerMsg.includes('pathway')) {
-      return `Based on your competency profile, your best-matched career pathway is ICT & Computer Science with a 92% match. Your strengths in Digital Literacy (88%), Critical Thinking (78%), and Creativity (82%) align well with this field. Would you like more details about this pathway?`;
-    }
-    else if (lowerMsg.includes('attendance')) {
-      return `Your current attendance rate is 92%. You have missed 3 days this term. Regular attendance is important for continuous competency development.`;
-    }
-    else if (lowerMsg.includes('risk') || lowerMsg.includes('failure')) {
-      return `Your academic risk assessment shows a ${analyticsData.risks.failure_risk.value} failure risk (Low) and ${analyticsData.risks.dropout_risk.value} dropout risk (Low). ${analyticsData.risks.intervention_needed.value} competency areas require intervention. Keep up the good work!`;
-    }
-    else {
-      return `Thank you for your question, ${studentName}. I'm here to help with CBC competency tracking, career pathway guidance, assessment schedules, fee inquiries, and risk analysis. What specific information would you like?`;
-    }
-  };
-
-  const handleSuggestionClick = useCallback((query) => {
-    sendMessage(query);
-  }, [sendMessage]);
-
+  const handleSuggestionClick = useCallback((query) => sendMessage(query), [sendMessage]);
   const handleSend = useCallback(() => {
-    if (inputValue.trim() && !isSending) {
-      sendMessage(inputValue);
-    }
+    if (inputValue.trim() && !isSending) sendMessage(inputValue);
   }, [inputValue, isSending, sendMessage]);
-
   const handleKeyPress = useCallback((e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !isSending) {
+    if (e.key === 'Enter' && !isSending) {
       e.preventDefault();
       handleSend();
     }
   }, [handleSend, isSending]);
+  const handleInputChange = useCallback((e) => setInputValue(e.target.value), []);
 
-  const handleInputChange = useCallback((e) => {
-    setInputValue(e.target.value);
-  }, []);
+  const studentName = analyticsData?.student_name || user?.first_name || 'Student';
 
-  const studentName = studentProfile?.first_name || user?.first_name || 'Student';
-
-  if (isLoading) {
+  if (analyticsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -454,388 +479,252 @@ const Chatbot = () => {
     );
   }
 
-  // Chat Panel Component - defined inside to access state
-  const ChatPanel = ({ isMobileView, onClose }) => (
-    <div className={`flex flex-col bg-white border border-gray-200 rounded-xl shadow-lg ${isMobileView ? 'fixed inset-0 z-50' : 'h-full'}`}>
-      {/* Chat Header */}
-      {isMobileView ? (
-        <div className="flex items-center justify-between p-4 bg-green-700 border-b border-green-800 rounded-t-xl">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white flex items-center justify-center rounded-xl">
-              <Bot className="w-4 h-4 text-green-700" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white">CBC Academic Assistant</h3>
-              <p className="text-xs text-green-100">AI-Powered | Competency-Based</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 p-4 bg-green-700 border-b border-green-800 rounded-t-xl">
-          <div className="w-10 h-10 bg-white flex items-center justify-center rounded-xl">
-            <Bot className="w-5 h-5 text-green-700" />
-          </div>
-          <div>
-            <h3 className="text-base font-semibold text-white">CBC Academic Assistant</h3>
-            <p className="text-xs text-green-100">AI-Powered | Competency-Based Curriculum Support</p>
-          </div>
-        </div>
-      )}
+  const overall = analyticsData?.overall_competency ?? 0;
+  const trend = analyticsData?.performance_trend ?? [];
+  const competencies = analyticsData?.competencies ?? [];
+  const risks = analyticsData?.risks ?? {};
+  const pathways = analyticsData?.career_pathways ?? [];
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-20 h-20 bg-green-100 flex items-center justify-center rounded-xl mb-4">
-              <Brain className="w-10 h-10 text-green-700" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Hi, I'm your CBC Academic Assistant
-            </h3>
-            <p className="text-gray-600 mb-6 text-sm max-w-md">
-              I can help you understand your competency mastery, recommend career pathways, 
-              analyze performance risks, and provide personalized learning recommendations.
-            </p>
-            <div className="w-full">
-              <p className="text-xs font-medium text-gray-500 mb-3 text-left">QUICK QUESTIONS</p>
-              <div className="flex flex-wrap gap-2">
-                {QUICK_SUGGESTIONS.map((suggestion, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSuggestionClick(suggestion.query)}
-                    className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-sm rounded-xl"
-                  >
-                    <suggestion.icon className="w-3 h-3 text-blue-600" />
-                    <span className="text-gray-700">{suggestion.text}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {messages.map((msg) => (
-              <ChatMessage
-                key={msg.id}
-                message={msg.text}
-                isUser={msg.isUser}
-                timestamp={msg.timestamp}
-              />
-            ))}
-            {isTyping && <TypingIndicator />}
-            <div ref={messagesEndRef} />
-          </>
-        )}
-      </div>
+  // Shared chat panel props
+  const chatPanelProps = {
+    messages,
+    isTyping,
+    isSending,
+    inputValue,
+    handleInputChange,
+    handleKeyPress,
+    handleSend,
+    handleSuggestionClick,
+    analyticsError,
+    messagesEndRef,
+    inputRef,
+  };
 
-      {/* Quick Suggestions Bar */}
-      {messages.length > 0 && !isTyping && (
-        <div className="px-4 py-2 border-t border-gray-200 bg-white overflow-x-auto">
-          <div className="flex gap-2">
-            {QUICK_SUGGESTIONS.slice(0, 4).map((suggestion, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSuggestionClick(suggestion.query)}
-                className="flex items-center gap-1 px-2 py-1 bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-colors text-xs whitespace-nowrap rounded-lg"
-              >
-                <suggestion.icon className="w-3 h-3 text-blue-600" />
-                <span className="text-gray-700">{suggestion.text}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Input Area */}
-      <div className="p-4 border-t border-gray-200 bg-white rounded-b-xl">
-        <div className="flex gap-2">
-          <textarea
-            ref={inputRef}
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyPress}
-            placeholder="Ask about your competencies, career pathways, or risks..."
-            className="flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-green-500 resize-none text-sm rounded-xl"
-            rows="1"
-            style={{ minHeight: '40px', maxHeight: '80px' }}
-            disabled={isSending}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isSending}
-            className="px-4 py-2 bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-xl"
-          >
-            {isTyping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 mt-2 text-center">
-          AI Assistant for CBC Competency-Based Curriculum
-        </p>
-      </div>
-    </div>
-  );
-
-  // Desktop Layout
+  // Desktop layout
   if (!isMobile) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="flex h-screen gap-6 p-6">
-          {/* Left Side - CBC Analytics Dashboard */}
-          <div className="flex-1 overflow-y-auto space-y-6">
+        <div className="flex h-screen gap-6 p-6 overflow-hidden">
+          <div className="flex-1 overflow-y-auto space-y-6 pr-2">
             {/* Header */}
-            <div className="bg-green-700 border border-green-800 rounded-xl">
-              <div className="px-6 py-5">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white flex items-center justify-center rounded-xl">
-                    <GraduationCap className="w-6 h-6 text-green-700" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-bold text-white">CBC Competency Analytics Dashboard</h1>
-                    <p className="text-green-100 text-sm">Welcome back, {studentName} | Competency-Based Curriculum</p>
-                  </div>
+            <div className="bg-green-700 border border-green-800 rounded-xl px-6 py-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white flex items-center justify-center rounded-xl">
+                  <GraduationCap className="w-6 h-6 text-green-700" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white">CBC Competency Analytics Dashboard</h1>
+                  <p className="text-green-100 text-sm">Welcome back, {studentName} | Competency-Based Curriculum</p>
                 </div>
               </div>
             </div>
 
-            {/* Overall Competency Card */}
+            {analyticsError && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+                Analytics data could not be loaded: {analyticsError}
+                <button onClick={fetchAnalytics} className="ml-3 underline text-amber-800 font-medium">Retry</button>
+              </div>
+            )}
+
+            {/* Overall Competency */}
             <div className="bg-white border border-gray-200 rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Award className="w-5 h-5 text-green-700" />
                   <h2 className="text-lg font-semibold text-gray-800">Overall Competency Mastery</h2>
                 </div>
-                <CompetencyBadge percentage={analyticsData.overall_competency} />
+                <CompetencyBadge percentage={overall} />
               </div>
               <div className="flex items-end gap-4">
                 <div className="flex-1">
                   <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-3 bg-green-600 rounded-full"
-                      style={{ width: `${analyticsData.overall_competency}%` }}
-                    />
+                    <div className="h-3 bg-green-600 rounded-full transition-all duration-700" style={{ width: `${overall}%` }} />
                   </div>
                 </div>
-                <span className="text-3xl font-bold text-gray-800">{analyticsData.overall_competency}%</span>
+                <span className="text-3xl font-bold text-gray-800">{overall}%</span>
               </div>
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <CBCLegend />
               </div>
             </div>
 
-            {/* Risk Analysis Row */}
+            {/* Risk Cards */}
             <div className="grid grid-cols-3 gap-4">
-              <RiskCard 
-                title="Failure Risk" 
-                value={analyticsData.risks.failure_risk.value}
-                riskLevel={analyticsData.risks.failure_risk.level}
-                icon={AlertTriangle}
-                description={analyticsData.risks.failure_risk.description}
-              />
-              <RiskCard 
-                title="Dropout Risk" 
-                value={analyticsData.risks.dropout_risk.value}
-                riskLevel={analyticsData.risks.dropout_risk.level}
-                icon={Shield}
-                description={analyticsData.risks.dropout_risk.description}
-              />
-              <RiskCard 
-                title="Interventions Needed" 
-                value={analyticsData.risks.intervention_needed.value}
-                riskLevel={analyticsData.risks.intervention_needed.level}
-                icon={Activity}
-                description={analyticsData.risks.intervention_needed.description}
-              />
+              {risks.failure_risk && (
+                <RiskCard title="Failure Risk" value={risks.failure_risk.value} riskLevel={risks.failure_risk.level} icon={AlertTriangle} description={risks.failure_risk.description} />
+              )}
+              {risks.dropout_risk && (
+                <RiskCard title="Dropout Risk" value={risks.dropout_risk.value} riskLevel={risks.dropout_risk.level} icon={Shield} description={risks.dropout_risk.description} />
+              )}
+              {risks.intervention_needed && (
+                <RiskCard title="Interventions Needed" value={risks.intervention_needed.value} riskLevel={risks.intervention_needed.level} icon={Activity} description={risks.intervention_needed.description} />
+              )}
+              {!risks.failure_risk && !risks.dropout_risk && !risks.intervention_needed && (
+                <p className="col-span-3 text-xs text-gray-400">Risk data not available yet.</p>
+              )}
             </div>
 
-            {/* Two Column Layout */}
+            {/* Trend + Pathways */}
             <div className="grid grid-cols-2 gap-6">
-              {/* Performance Trend */}
               <div className="bg-white border border-gray-200 rounded-xl p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <LineChart className="w-4 h-4 text-blue-600" />
                   <h3 className="font-semibold text-gray-800">Competency Performance Trend</h3>
                 </div>
-                <PerformanceTrend data={analyticsData.performance_trend} />
+                <PerformanceTrend data={trend} />
               </div>
-
-              {/* Career Pathway Match */}
               <div className="bg-white border border-gray-200 rounded-xl p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Target className="w-4 h-4 text-purple-600" />
                   <h3 className="font-semibold text-gray-800">Recommended Career Pathways</h3>
                 </div>
+                {pathways.length === 0 && <p className="text-xs text-gray-400">No pathway data available yet.</p>}
                 <div className="space-y-4">
-                  {analyticsData.career_pathways.map((pathway, idx) => (
+                  {pathways.map((p, idx) => (
                     <div key={idx} className="space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span className="font-medium text-gray-800">{pathway.name}</span>
-                        <span className="text-green-700 font-semibold">{pathway.match}% Match</span>
+                        <span className="font-medium text-gray-800">{p.name}</span>
+                        <span className="text-green-700 font-semibold">{p.match}% Match</span>
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full">
-                        <div className="h-2 bg-green-600 rounded-full" style={{ width: `${pathway.match}%` }} />
+                        <div className="h-2 bg-green-600 rounded-full" style={{ width: `${p.match}%` }} />
                       </div>
-                      <p className="text-xs text-gray-500">Based on: {pathway.competencies.join(', ')}</p>
+                      <p className="text-xs text-gray-500">Based on: {(p.competencies || []).join(', ')}</p>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Competency Mastery Details */}
+            {/* Competency Mastery */}
             <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-4">
                 <PieChart className="w-4 h-4 text-amber-600" />
                 <h3 className="font-semibold text-gray-800">Competency Area Mastery</h3>
               </div>
-              <CompetencyMastery competencies={analyticsData.competencies} />
+              <CompetencyMastery competencies={competencies} />
             </div>
           </div>
 
-          {/* Right Side - Chat Panel (Always Visible) */}
-          <div className="w-[420px] flex-shrink-0">
-            <ChatPanel isMobileView={false} onClose={() => {}} />
+          {/* Chat Panel Desktop */}
+          <div className="w-[380px] flex-shrink-0">
+            <ChatPanel isMobileView={false} onClose={() => {}} {...chatPanelProps} />
           </div>
         </div>
       </div>
     );
   }
 
-  // Mobile Layout
+  // Mobile layout
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile Chat Button */}
+    <div className="min-h-screen bg-gray-50 pb-20">
       {!isMobileChatOpen && (
-        <button
-          onClick={() => setIsMobileChatOpen(true)}
-          className="fixed bottom-6 right-6 z-50 bg-green-700 hover:bg-green-800 text-white p-4 shadow-lg transition-colors rounded-xl lg:hidden"
-        >
+        <button onClick={() => setIsMobileChatOpen(true)}
+          className="fixed bottom-6 right-6 z-50 bg-green-700 hover:bg-green-800 text-white p-4 shadow-lg transition-colors rounded-xl lg:hidden">
           <MessageCircle className="w-6 h-6" />
         </button>
       )}
 
-      {/* Mobile Chat Overlay */}
       {isMobileChatOpen && (
         <div className="fixed inset-0 z-50 bg-gray-50">
-          <ChatPanel isMobileView={true} onClose={() => setIsMobileChatOpen(false)} />
+          <ChatPanel isMobileView={true} onClose={() => setIsMobileChatOpen(false)} {...chatPanelProps} />
         </div>
       )}
 
-      {/* Mobile Analytics Content */}
-      <div className="p-4 pb-24 space-y-4">
-        {/* Header */}
-        <div className="bg-green-700 border border-green-800 rounded-xl">
-          <div className="px-4 py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white flex items-center justify-center rounded-xl">
-                <GraduationCap className="w-5 h-5 text-green-700" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-white">CBC Analytics</h1>
-                <p className="text-green-100 text-xs">Welcome, {studentName}</p>
-              </div>
+      <div className="p-4 space-y-4">
+        <div className="bg-green-700 border border-green-800 rounded-xl px-4 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white flex items-center justify-center rounded-xl">
+              <GraduationCap className="w-5 h-5 text-green-700" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white">CBC Analytics</h1>
+              <p className="text-green-100 text-xs">Welcome, {studentName}</p>
             </div>
           </div>
         </div>
 
-        {/* Overall Competency */}
+        {analyticsError && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+            {analyticsError}
+            <button onClick={fetchAnalytics} className="ml-2 underline font-medium">Retry</button>
+          </div>
+        )}
+
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Award className="w-4 h-4 text-green-700" />
               <h3 className="font-semibold text-gray-800 text-sm">Overall Competency</h3>
             </div>
-            <CompetencyBadge percentage={analyticsData.overall_competency} />
+            <CompetencyBadge percentage={overall} />
           </div>
           <div className="flex items-center gap-3">
             <div className="flex-1">
               <div className="h-2 bg-gray-200 rounded-full">
-                <div className="h-2 bg-green-600 rounded-full" style={{ width: `${analyticsData.overall_competency}%` }} />
+                <div className="h-2 bg-green-600 rounded-full" style={{ width: `${overall}%` }} />
               </div>
             </div>
-            <span className="text-xl font-bold text-gray-800">{analyticsData.overall_competency}%</span>
+            <span className="text-xl font-bold text-gray-800">{overall}%</span>
           </div>
         </div>
 
-        {/* Risk Cards - Stacked on Mobile */}
         <div className="space-y-3">
-          <RiskCard 
-            title="Failure Risk" 
-            value={analyticsData.risks.failure_risk.value}
-            riskLevel={analyticsData.risks.failure_risk.level}
-            icon={AlertTriangle}
-            description={analyticsData.risks.failure_risk.description}
-          />
-          <RiskCard 
-            title="Dropout Risk" 
-            value={analyticsData.risks.dropout_risk.value}
-            riskLevel={analyticsData.risks.dropout_risk.level}
-            icon={Shield}
-            description={analyticsData.risks.dropout_risk.description}
-          />
-          <RiskCard 
-            title="Interventions Needed" 
-            value={analyticsData.risks.intervention_needed.value}
-            riskLevel={analyticsData.risks.intervention_needed.level}
-            icon={Activity}
-            description={analyticsData.risks.intervention_needed.description}
-          />
+          {risks.failure_risk && <RiskCard title="Failure Risk" value={risks.failure_risk.value} riskLevel={risks.failure_risk.level} icon={AlertTriangle} description={risks.failure_risk.description} />}
+          {risks.dropout_risk && <RiskCard title="Dropout Risk" value={risks.dropout_risk.value} riskLevel={risks.dropout_risk.level} icon={Shield} description={risks.dropout_risk.description} />}
+          {risks.intervention_needed && <RiskCard title="Interventions" value={risks.intervention_needed.value} riskLevel={risks.intervention_needed.level} icon={Activity} description={risks.intervention_needed.description} />}
         </div>
 
-        {/* Performance Trend */}
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <LineChart className="w-4 h-4 text-blue-600" />
             <h3 className="font-semibold text-gray-800 text-sm">Performance Trend</h3>
           </div>
-          <PerformanceTrend data={analyticsData.performance_trend} />
+          <PerformanceTrend data={trend} />
         </div>
 
-        {/* Career Pathways */}
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Target className="w-4 h-4 text-purple-600" />
             <h3 className="font-semibold text-gray-800 text-sm">Career Pathways</h3>
           </div>
           <div className="space-y-3">
-            {analyticsData.career_pathways.map((pathway, idx) => (
+            {pathways.length === 0 && <p className="text-xs text-gray-400">No pathway data yet.</p>}
+            {pathways.map((p, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex justify-between text-xs">
-                  <span className="font-medium text-gray-800">{pathway.name}</span>
-                  <span className="text-green-700">{pathway.match}%</span>
+                  <span className="font-medium text-gray-800">{p.name}</span>
+                  <span className="text-green-700">{p.match}%</span>
                 </div>
                 <div className="h-1.5 bg-gray-200 rounded-full">
-                  <div className="h-1.5 bg-green-600 rounded-full" style={{ width: `${pathway.match}%` }} />
+                  <div className="h-1.5 bg-green-600 rounded-full" style={{ width: `${p.match}%` }} />
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Competency Areas */}
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <PieChart className="w-4 h-4 text-amber-600" />
             <h3 className="font-semibold text-gray-800 text-sm">Competency Areas</h3>
           </div>
           <div className="space-y-3">
-            {analyticsData.competencies.slice(0, 6).map((comp, idx) => (
+            {competencies.slice(0, 6).map((comp, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-700">{comp.name}</span>
                   <span className="text-gray-600">{comp.mastery}%</span>
                 </div>
                 <div className="h-1.5 bg-gray-200 rounded-full">
-                  <div className={`h-1.5 rounded-full ${comp.mastery >= 75 ? 'bg-green-600' : comp.mastery >= 58 ? 'bg-blue-500' : 'bg-amber-500'}`} style={{ width: `${comp.mastery}%` }} />
+                  <div className={`h-1.5 rounded-full ${barColor(comp.mastery)}`} style={{ width: `${comp.mastery}%` }} />
                 </div>
               </div>
             ))}
+            {competencies.length === 0 && <p className="text-xs text-gray-400">No competency data yet.</p>}
           </div>
         </div>
 
-        {/* Chat Prompt */}
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -847,10 +736,8 @@ const Chatbot = () => {
                 <p className="text-xs text-gray-600">Ask about competencies, careers, or risks</p>
               </div>
             </div>
-            <button
-              onClick={() => setIsMobileChatOpen(true)}
-              className="px-4 py-2 bg-green-700 text-white text-sm hover:bg-green-800 flex items-center gap-2 rounded-xl"
-            >
+            <button onClick={() => setIsMobileChatOpen(true)}
+              className="px-4 py-2 bg-green-700 text-white text-sm hover:bg-green-800 flex items-center gap-2 rounded-xl">
               <MessageCircle className="w-4 h-4" />
               Chat
             </button>
