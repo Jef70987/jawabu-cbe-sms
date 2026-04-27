@@ -6,6 +6,8 @@ import Discipline from "./DeputyDiscipline";
 import DeputyStudentAffairs from "./DeputyStudentAffairs";
 import Login from "../Authentication/Login";
 import Logout from "../Authentication/Logout";
+import TeacherAssignment from "./TeacherAssign";
+
 
 const DeputyPrincipal = () => {
     return (
@@ -14,8 +16,9 @@ const DeputyPrincipal = () => {
             <div style={{ flexShrink: 0 }}>
                 <DeputyPrincipalSidebar />
             </div>
-            
+
             {/* Main Content Area */}
+
             <div style={{ 
                 flex: 1, 
                 overflowY: "auto",
@@ -28,9 +31,12 @@ const DeputyPrincipal = () => {
                     <Route path="/dashboard" element={<DeputyPrincipalDashboard />} />
                     <Route path="/discipline" element={<Discipline />} />
                     <Route path="/student-affairs/" element={<DeputyStudentAffairs />} />
+                    <Route path="/Assignments" element={<TeacherAssignment/>}/>
                     <Route path="/login" element={<Login />} />
                     <Route path="/Logout" element={<Logout/>}/>
+
                     <Route path="*" element={<DeputyPrincipalDashboard />} />
+
                 </Routes>
             </div>
         </div>

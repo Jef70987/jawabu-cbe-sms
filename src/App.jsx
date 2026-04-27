@@ -1,6 +1,5 @@
 import React from "react";
 import { HashRouter as Router , Routes ,Route } from "react-router-dom";
-import { NotificationProvider } from './Context/NotificationContext';
 import Bursar from "./components/BursarPortal/Bursar";
 import Login from "./components/Authentication/Login";
 import Logout from "./components/Authentication/Logout";
@@ -17,7 +16,6 @@ import ForgotPassword from "./components/Authentication/Reset";
 function App() {
     return(
         <AuthProvider>
-            <NotificationProvider>
                 <Router>
                     <Routes>
                         <Route path="/" element={<Login/>}/>
@@ -71,7 +69,6 @@ function App() {
                         <Route path="*" element={<Logout/>}/>
                     </Routes>
                 </Router>
-            </NotificationProvider>
         </AuthProvider>
     );
 }

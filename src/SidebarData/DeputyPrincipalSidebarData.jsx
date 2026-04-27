@@ -7,6 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { PenBoxIcon } from 'lucide-react';
 
 const DeputyPrincipalSidebarData = [
     {
@@ -26,10 +27,16 @@ const DeputyPrincipalSidebarData = [
         link: "/DeputyPortal/Attendance"
     },
     {
+        title: "Assign Teacher",
+        icon: <PenBoxIcon />,
+        link: "/DeputyPortal/Assignments"
+    },
+    {
         title: "LogOut",
         icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
         link: "/Logout"
     },
+    
 ];
 
 export default DeputyPrincipalSidebarData;
