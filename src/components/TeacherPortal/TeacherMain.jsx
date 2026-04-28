@@ -14,6 +14,7 @@ import DigitalPortfolio from "./EvidenceUploader";
 import NotificationCenter from "./NotificationCenter";
 import Exams from "./Exam";
 import TeacherAssignment from "./TeacherAssign";
+import Messages from "../CommonService/StaffMessaging";
 
 const Teacher = () => {
     return(
@@ -43,6 +44,7 @@ const Teacher = () => {
                     <Route path="/Portfolio" element={<DigitalPortfolio/>}/>
                     <Route path="/Exams" element={<Exams/>}/>
                     <Route path="/Assignments" element={<TeacherAssignment/>}/>
+                    <Route path="/Messages" element={<Messages/>}/>
                     <Route path="/Notifications" element={<NotificationCenter/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     <Route path="*" element={<TeacherDashboard/>}/>

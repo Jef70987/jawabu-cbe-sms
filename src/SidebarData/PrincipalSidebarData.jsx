@@ -15,7 +15,8 @@ import {
   PieChart,
   TrendingUp,
   UserCheck,
-  Clock
+  Clock,
+  MessageCircle
 } from 'lucide-react';
 import LogoutIcon from '@mui/icons-material/Logout';
 export const PrincipalSidebarData = [
@@ -156,6 +157,12 @@ export const PrincipalSidebarData = [
       // { title: "Security", path: "/PrincipalPortal/settings/security" },
       // { title: "System", path: "/PrincipalPortal/settings/system" }
     ]
+  },
+  {
+    title: "Messages",
+    path: "/PrincipalPortal/messages",
+    icon: <MessageCircle size={20} />,
+    role: "principal",
   },
   {
     title: "LogOut",

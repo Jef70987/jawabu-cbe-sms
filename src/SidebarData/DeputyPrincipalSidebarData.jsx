@@ -7,6 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { MessageCircle } from 'lucide-react';
 
 const DeputyPrincipalSidebarData = [
     {
@@ -24,6 +25,11 @@ const DeputyPrincipalSidebarData = [
         title: "Attendance",
         icon: <MonetizationOnIcon />,
         link: "/DeputyPortal/Attendance"
+    },
+    {
+        title: "Messages",
+        icon: <MessageCircle />,
+        link: "/DeputyPortal/Messages"
     },
     {
         title: "LogOut",

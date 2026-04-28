@@ -10,6 +10,7 @@ import Payroll from "./PayrollMngmt";
 import Recruitment from "./Recruitment";
 import StaffManagement from "./StaffMngnt";
 import DepartmentManagement from "./DepartmentMng";
+import Messages from "../CommonService/StaffMessaging";
 
 const Hr = () => {
     return(
@@ -36,6 +37,7 @@ const Hr = () => {
                     <Route path="/Recruitment" element={<Recruitment/>}/>
                     <Route path="/StaffMngnt" element={<StaffManagement/>}/>
                     <Route path="/HelpSupport" element={<HelpSupport/>}/>
+                    <Route path="/Messages" element={<Messages/>}/>
                     <Route path="/Settings" element={<Settings/>}/>
                 </Routes>
             </div>

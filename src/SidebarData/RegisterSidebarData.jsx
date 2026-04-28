@@ -15,7 +15,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import { PaperclipIcon } from 'lucide-react';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { BookIcon } from 'lucide-react';
+import { BookIcon,MessageCircle } from 'lucide-react';
 
 const RegisterSidebarData = [
   
@@ -55,10 +55,16 @@ const RegisterSidebarData = [
     link: "/RegisterPortal/class"
   },
   {
+    title:"Messages",
+    icon:<MessageCircle/>,
+    link:"/RegisterPortal/Messages"
+  },
+  {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
     link: "/Logout"
   },
+  
   
 ];
 

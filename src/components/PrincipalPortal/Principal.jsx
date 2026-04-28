@@ -22,6 +22,7 @@ import PrincipalSuspensions from "./PrincipalSuspensions";
 import PrincipalAnalytics from "./PrincipalAnalytics";
 import PrincipalCalendar from "./PrincipalCalendar";
 import PrincipalNotifications from "./PrincipalNotifications";
+import PrincipalMessages from "../CommonService/StaffMessaging";
 
 const Principal = () => {
     return (
@@ -121,6 +122,8 @@ const Principal = () => {
                     <Route path="/settings/preferences" element={<PrincipalSettings />} />
                     <Route path="/settings/security" element={<PrincipalSettings />} />
                     <Route path="/settings/system" element={<PrincipalSettings />} /> */}
+
+                    <Route path="/messages" element={<PrincipalMessages />} />
                     
                     {/* Authentication */}
                     <Route path="/login" element={<Login />} />

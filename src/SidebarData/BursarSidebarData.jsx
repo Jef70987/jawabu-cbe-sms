@@ -7,6 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { MessageCircle } from 'lucide-react';
 
 const BursarData = [
     {
@@ -35,6 +36,11 @@ const BursarData = [
         icon: <DescriptionIcon />,
         link: "/BursarPortal/Report"
     },
+    {
+        title:"Messages",
+        icon:<MessageCircle/>,
+        link:"/BursarPortal/Messages"
+    },
     // {
     //     title: "Settings",
     //     icon: <SettingsIcon />,
@@ -50,6 +56,7 @@ const BursarData = [
         icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
         link: "/Logout"
     },
+ 
 ];
 
 export default BursarData;

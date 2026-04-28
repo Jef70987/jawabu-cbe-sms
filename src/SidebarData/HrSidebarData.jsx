@@ -8,7 +8,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PeopleIcon from '@mui/icons-material/People';
-import { HouseIcon } from 'lucide-react';
+import { HouseIcon, MessageCircle } from 'lucide-react';
 
 const HrData = [
     {
@@ -25,6 +25,11 @@ const HrData = [
         title: "Department Mng",
         icon: <HouseIcon />,
         link: "/HrPortal/Department"
+    },
+    {
+        title: "Message",
+        icon: <MessageCircle />,
+        link: "/HrPortal/Messages"
     },
      
      

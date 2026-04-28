@@ -10,6 +10,7 @@ import StudentManagement from "./StudentMngmnt";
 import AcademicManagement from "./Academic";
 import ExamManagement from "./ExamMngmnt";
 import ResultsReporting from "./ReportCard";
+import StaffMessaging from "../CommonService/StaffMessaging";
 const Register  = () => {
     return(
         <div style={{ display: "flex", height: "100vh", overflow: "hidden",gap:"2px" }}>
@@ -36,6 +37,7 @@ const Register  = () => {
                     <Route path="/Academic" element={<AcademicManagement/>}/>
                     <Route path="/ResultsReporting" element={<ResultsReporting/>}/>
                     <Route path="/ExamManagement" element={<ExamManagement/>}/>
+                    <Route path="/Messages" element={<StaffMessaging/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     
                     <Route path="*" element={<Logout/>}/>
