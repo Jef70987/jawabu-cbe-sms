@@ -13,6 +13,7 @@ import CompetencyMatrix from "./CompetencyMatrix";
 import DigitalPortfolio from "./EvidenceUploader";
 import Exams from "./Exam";
 import Messages from "../CommonService/StaffMessaging";
+import TeacherAssignment from "../DeputyPrincipalPortal/TeacherAssign";
 
 const Teacher = () => {
     return(
@@ -43,7 +44,6 @@ const Teacher = () => {
                     <Route path="/Exams" element={<Exams/>}/>
                     <Route path="/Assignments" element={<TeacherAssignment/>}/>
                     <Route path="/Messages" element={<Messages/>}/>
-                    <Route path="/Notifications" element={<NotificationCenter/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     <Route path="*" element={<TeacherDashboard/>}/>
                 </Routes>
