@@ -21,13 +21,11 @@ import {
 } from 'lucide-react';
 
 const TeacherSidebarData = [
-  /* --- SECTION: GENERAL --- */
   {
     title: "Dashboard",
     icon: <DashboardIcon />,
     link: "/TeacherPortal/Dashboard"
   },
-  
   {
     title: "Class Profile",
     icon: <HomeIcon />,
@@ -44,11 +42,6 @@ const TeacherSidebarData = [
     title: "Curriculum",
     icon: <BookOpenIcon />,
     link: "/TeacherPortal/Curriculum"
-  },
-  {
-    title: "teacher assign",
-    icon: <PenBoxIcon />,
-    link: "/TeacherPortal/Assignments"
   },
   /* --- SECTION: CBA & GRADING (The Hub) --- */
   {

@@ -11,9 +11,7 @@ import AssessmentManager from "./Assesment";
 import JssEntryMarks from "./JssEntry";
 import CompetencyMatrix from "./CompetencyMatrix";
 import DigitalPortfolio from "./EvidenceUploader";
-import NotificationCenter from "./NotificationCenter";
 import Exams from "./Exam";
-import TeacherAssignment from "./TeacherAssign";
 import Messages from "../CommonService/StaffMessaging";
 
 const Teacher = () => {

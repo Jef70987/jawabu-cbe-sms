@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../Authentication/AuthContext';
 import { Link } from 'react-router-dom';
-// import { NotificationBell } from '../CommonService/NotificationBell';
 import { useNavigate } from 'react-router-dom';
 // export const TeacherLayout = ({ children }) => {
 //   return (
