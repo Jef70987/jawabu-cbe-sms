@@ -338,8 +338,7 @@ const InvoiceDetailsModal = ({ isOpen, onClose, invoice }) => {
       </head>
       <body>
         <div class="header">
-          <div class="school">PREMIER SCHOOL</div>
-          <div>P.O. Box 12345 - 00100, Nairobi, Kenya</div>
+          <div class="school">JAWABU SCHOOL</div>
           <div class="title">INVOICE</div>
         </div>
         <div><strong>Invoice No:</strong> ${invoice.invoice_no}</div>

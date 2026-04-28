@@ -15,7 +15,6 @@ import { useAuth } from '../Authentication/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// Toast Notification component
 const Toast = ({ type, message, onClose, duration = 4000 }) => {
   const [visible, setVisible] = useState(true);
 
@@ -56,7 +55,6 @@ const ButtonSpinner = () => <Loader2 className="h-4 w-4 animate-spin inline-bloc
 function ClassProfile() {
   const { user, getAuthHeaders, isAuthenticated } = useAuth();
   
-  // State
   const [activeTab, setActiveTab] = useState('my-class');
   const [selectedStream, setSelectedStream] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
@@ -65,6 +63,7 @@ function ClassProfile() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState([]);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [classAnalytics, setClassAnalytics] = useState({
     meanScore: 0,
     classRank: 0,
@@ -75,14 +74,12 @@ function ClassProfile() {
     mostImproved: []
   });
   
-  // Modal states
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [showStudentProfileModal, setShowStudentProfileModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   
-  // Form states
   const [attendanceForm, setAttendanceForm] = useState({ 
     date: new Date().toISOString().split('T')[0], 
     period: 'morning'
@@ -97,8 +94,6 @@ function ClassProfile() {
   });
   const [evidenceForm, setEvidenceForm] = useState({ studentId: '', description: '', file: null });
   const [submitting, setSubmitting] = useState(false);
-  
-  // Search/filter
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
 
@@ -131,7 +126,6 @@ function ClassProfile() {
     }
   };
 
-  // Fetch my classes (class teacher view)
   const fetchMyClasses = useCallback(async () => {
     try {
       const data = await fetchWithTimeout(
@@ -140,9 +134,6 @@ function ClassProfile() {
       );
       if (data && data.success) {
         setMyClasses(data.data || []);
-        if (data.data && data.data.length > 0 && !selectedStream) {
-          setSelectedStream(data.data[0]);
-        }
         return data.data || [];
       }
       return [];
@@ -153,7 +144,6 @@ function ClassProfile() {
     }
   }, [getAuthHeaders]);
 
-  // Fetch subject classes (teacher as subject instructor)
   const fetchSubjectClasses = useCallback(async () => {
     try {
       const data = await fetchWithTimeout(
@@ -162,9 +152,6 @@ function ClassProfile() {
       );
       if (data && data.success) {
         setSubjectClasses(data.data || []);
-        if (data.data && data.data.length > 0 && !selectedSubject) {
-          setSelectedSubject(data.data[0]);
-        }
         return data.data || [];
       }
       return [];
@@ -175,7 +162,6 @@ function ClassProfile() {
     }
   }, [getAuthHeaders]);
 
-  // Fetch students for a class
   const fetchStudents = useCallback(async (classId) => {
     if (!classId) return;
     
@@ -186,8 +172,6 @@ function ClassProfile() {
       );
       if (data && data.success) {
         setStudents(data.data || []);
-        
-        // Initialize attendance statuses
         const initialStatuses = {};
         const initialRemarks = {};
         (data.data || []).forEach(student => {
@@ -206,7 +190,6 @@ function ClassProfile() {
     }
   }, [getAuthHeaders]);
 
-  // Fetch class analytics
   const fetchClassAnalytics = useCallback(async (classId) => {
     if (!classId) return;
     
@@ -220,19 +203,14 @@ function ClassProfile() {
       }
     } catch (error) {
       console.error('Error fetching analytics:', error);
-      // Don't show toast for analytics - it's not critical
     }
   }, [getAuthHeaders]);
 
-  // Load initial data
+  // INITIAL LOAD - ONLY ONCE
   useEffect(() => {
-    if (!isAuthenticated) {
-      addToast('error', 'Please login to access class profile');
-      setLoading(false);
-      return;
-    }
+    if (!isAuthenticated || initialLoadDone) return;
     
-    const loadInitialData = async () => {
+    const loadData = async () => {
       setLoading(true);
       try {
         const [myClassesData, subjectClassesData] = await Promise.all([
@@ -240,13 +218,15 @@ function ClassProfile() {
           fetchSubjectClasses()
         ]);
         
-        // If we have classes, load students for the first one
-        if (myClassesData && myClassesData.length > 0 && activeTab === 'my-class') {
+        if (activeTab === 'my-class' && myClassesData?.length > 0) {
+          setSelectedStream(myClassesData[0]);
           await fetchStudents(myClassesData[0].id);
           await fetchClassAnalytics(myClassesData[0].id);
-        } else if (subjectClassesData && subjectClassesData.length > 0 && activeTab === 'subject-classes') {
+        } else if (activeTab === 'subject-classes' && subjectClassesData?.length > 0) {
+          setSelectedSubject(subjectClassesData[0]);
           await fetchStudents(subjectClassesData[0].id);
         }
+        setInitialLoadDone(true);
       } catch (error) {
         console.error('Error loading initial data:', error);
         addToast('error', 'Failed to load data');
@@ -255,23 +235,35 @@ function ClassProfile() {
       }
     };
     
-    loadInitialData();
+    loadData();
   }, [isAuthenticated]);
 
-  // Reload when selected class changes
+  // Handle tab changes - ONLY when tab changes
   useEffect(() => {
-    if (activeTab === 'my-class' && selectedStream?.id) {
+    if (!initialLoadDone) return;
+    
+    if (activeTab === 'my-class' && myClasses.length > 0 && selectedStream?.id) {
+      fetchStudents(selectedStream.id);
+      fetchClassAnalytics(selectedStream.id);
+    } else if (activeTab === 'subject-classes' && subjectClasses.length > 0 && selectedSubject?.id) {
+      fetchStudents(selectedSubject.id);
+    }
+  }, [activeTab]);
+
+  // Handle selected subject change - ONLY when selected subject changes
+  useEffect(() => {
+    if (activeTab === 'subject-classes' && selectedSubject?.id && initialLoadDone) {
+      fetchStudents(selectedSubject.id);
+    }
+  }, [selectedSubject?.id]);
+
+  // Handle selected stream change - ONLY when selected stream changes
+  useEffect(() => {
+    if (activeTab === 'my-class' && selectedStream?.id && initialLoadDone) {
       fetchStudents(selectedStream.id);
       fetchClassAnalytics(selectedStream.id);
     }
-  }, [selectedStream?.id, activeTab]);
-
-  // Reload when selected subject changes
-  useEffect(() => {
-    if (activeTab === 'subject-classes' && selectedSubject?.id) {
-      fetchStudents(selectedSubject.id);
-    }
-  }, [selectedSubject?.id, activeTab]);
+  }, [selectedStream?.id]);
 
   const handleAttendanceSubmit = async () => {
     if (!selectedStream?.id && !selectedSubject?.id) {
@@ -437,7 +429,6 @@ function ClassProfile() {
     }));
   };
 
-  // Calculate attendance rate from students data
   const averageAttendanceRate = students.length > 0 
     ? Math.round(students.reduce((sum, s) => sum + (s.attendance_rate || 0), 0) / students.length)
     : 0;
@@ -480,7 +471,6 @@ function ClassProfile() {
         <Toast key={toast.id} type={toast.type} message={toast.message} onClose={() => removeToast(toast.id)} />
       ))}
 
-      {/* Header */}
       <div className="bg-green-700 px-6 py-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
@@ -500,7 +490,6 @@ function ClassProfile() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
       <div className="border-b border-gray-200 bg-white px-6">
         <div className="flex gap-6">
           <button
@@ -534,7 +523,6 @@ function ClassProfile() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="px-6 py-6">
         {loading ? (
           <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
@@ -543,10 +531,8 @@ function ClassProfile() {
           </div>
         ) : (
           <>
-            {/* TAB 1: MY CLASS */}
             {activeTab === 'my-class' && (
               <div>
-                {/* Class Selector */}
                 {myClasses.length > 1 && (
                   <div className="mb-6 flex items-center gap-4 bg-white rounded-lg border border-gray-200 p-4">
                     <label className="text-sm font-medium text-gray-700">Select Class:</label>
@@ -560,7 +546,7 @@ function ClassProfile() {
                     >
                       {myClasses.map(cls => (
                         <option key={cls.id} value={cls.id}>
-                          {cls.class_name} {cls.class_teacher_name === `${user?.first_name} ${user?.last_name}` ? '(Your Class)' : ''}
+                          {cls.class_name}
                         </option>
                       ))}
                     </select>
@@ -575,7 +561,6 @@ function ClassProfile() {
                   </div>
                 ) : selectedStream && students.length > 0 ? (
                   <>
-                    {/* Class Overview Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                       <div className="bg-white rounded-lg border border-gray-200 p-4">
                         <p className="text-sm text-gray-600">Total Students</p>
@@ -599,7 +584,6 @@ function ClassProfile() {
                       </div>
                     </div>
 
-                    {/* Student Register Table */}
                     <div className="bg-white rounded-lg border border-gray-200">
                       <div className="border-b border-gray-200 px-4 py-3 bg-gray-50 rounded-t-lg flex justify-between items-center flex-wrap gap-3">
                         <div>
@@ -698,10 +682,8 @@ function ClassProfile() {
               </div>
             )}
 
-            {/* TAB 2: SUBJECT CLASSES */}
             {activeTab === 'subject-classes' && (
               <div>
-                {/* Class Selector */}
                 {subjectClasses.length > 0 && (
                   <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
                     <div className="flex flex-wrap items-center gap-4">
@@ -732,7 +714,6 @@ function ClassProfile() {
                   </div>
                 ) : selectedSubject && students.length > 0 ? (
                   <>
-                    {/* Quick Actions */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                       <div className="bg-white rounded-lg border border-gray-200 p-4 lg:col-span-2">
                         <h3 className="font-bold text-gray-900 mb-2">Syllabus Coverage - {selectedSubject.subject_name}</h3>
@@ -777,7 +758,6 @@ function ClassProfile() {
                       </div>
                     </div>
 
-                    {/* Student Performance Table */}
                     <div className="bg-white rounded-lg border border-gray-200">
                       <div className="border-b border-gray-200 px-4 py-3 bg-gray-50 rounded-t-lg flex justify-between items-center flex-wrap gap-3">
                         <div>

@@ -222,8 +222,14 @@ function Attendance() {
       if (data && data.success) {
         setClasses(data.data);
         if (data.data.length > 0) {
-          setSelectedClass(data.data[0]);
-          await fetchClassStudents(data.data[0].id);
+          // FIXED: Use class_id instead of id
+          const firstClass = data.data[0];
+          setSelectedClass({
+            id: firstClass.class_id,
+            class_name: firstClass.class_name,
+            subject_name: firstClass.subject_name
+          });
+          await fetchClassStudents(firstClass.class_id);
         } else {
           addToast('warning', 'No classes assigned to you');
         }
@@ -427,12 +433,19 @@ function Attendance() {
     }
   };
 
+  // FIXED: Handle class change using class_id
   const handleClassChange = async (classId) => {
-    const newClass = classes.find(c => c.id === classId);
-    setSelectedClass(newClass);
-    setSelectedStudents(new Set());
-    setCurrentPage(1);
-    await fetchClassStudents(newClass.id);
+    const selected = classes.find(c => c.class_id === classId);
+    if (selected) {
+      setSelectedClass({
+        id: selected.class_id,
+        class_name: selected.class_name,
+        subject_name: selected.subject_name
+      });
+      setSelectedStudents(new Set());
+      setCurrentPage(1);
+      await fetchClassStudents(classId);
+    }
   };
 
   const filteredStudents = useMemo(() => {
@@ -574,8 +587,8 @@ function Attendance() {
               >
                 <option value="">Select Class</option>
                 {classes.map(cls => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.class_name} - {cls.subject_name} ({cls.period || 'No period'})
+                  <option key={cls.class_id} value={cls.class_id}>
+                    {cls.class_name} - {cls.subject_name}
                   </option>
                 ))}
               </select>
