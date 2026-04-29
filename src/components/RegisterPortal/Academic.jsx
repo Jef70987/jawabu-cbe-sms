@@ -121,6 +121,7 @@ function AcademicManagement() {
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [showPublishConfirmModal, setShowPublishConfirmModal] = useState(false);
+  const [showGradeModal, setShowGradeModal] = useState(false); // NEW: Grade CRUD modal
   const [itemToDelete, setItemToDelete] = useState(null);
   
   // Form Data
@@ -138,7 +139,9 @@ function AcademicManagement() {
     description: '', domain: 'cognitive', competencies: []
   });
   const [versionForm, setVersionForm] = useState({ name: '', academicYear: '', isActive: false });
-  
+  const [gradeForm, setGradeForm] = useState({ name: '', level: '', description: '' }); // NEW
+  const [editingGrade, setEditingGrade] = useState(null); // NEW
+
   // Bulk Import
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -189,7 +192,6 @@ function AcademicManagement() {
         addNotification('error', data.error || 'Failed to load curriculum');
       }
     } catch (error) {
-   
       addNotification('error', 'Failed to load curriculum data');
     }
   };
@@ -647,6 +649,104 @@ function AcademicManagement() {
     addNotification('success', 'Template downloaded');
   };
 
+  // --- GRADE LEVEL CRUD ---
+
+  const handleCreateGrade = async () => {
+    if (!gradeForm.name || !gradeForm.level) {
+      addNotification('warning', 'Please fill in name and level');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/grade-levels/create/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: gradeForm.name,
+          level: parseInt(gradeForm.level),
+          description: gradeForm.description
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'Grade level created');
+        setShowGradeModal(false);
+        setGradeForm({ name: '', level: '', description: '' });
+        fetchGradeLevels();
+      } else {
+        addNotification('error', data.error || 'Failed to create grade level');
+      }
+    } catch (err) {
+      addNotification('error', 'Network error');
+    }
+  };
+
+  const handleUpdateGrade = async () => {
+    if (!editingGrade) return;
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/grade-levels/${editingGrade.id}/`,
+        {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            name: gradeForm.name,
+            level: parseInt(gradeForm.level),
+            description: gradeForm.description
+          })
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'Grade level updated');
+        setShowGradeModal(false);
+        setEditingGrade(null);
+        setGradeForm({ name: '', level: '', description: '' });
+        fetchGradeLevels();
+      } else {
+        addNotification('error', data.error || 'Failed to update grade level');
+      }
+    } catch (err) {
+      addNotification('error', 'Network error');
+    }
+  };
+
+  const handleDeleteGrade = async (grade) => {
+    if (!window.confirm(`Delete ${grade.name}?`)) return;
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/grade-levels/${grade.id}/`,
+        { method: 'DELETE', headers: getAuthHeaders() }
+      );
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'Grade level deleted');
+        fetchGradeLevels();
+      } else {
+        addNotification('error', data.error || 'Failed to delete');
+      }
+    } catch (err) {
+      addNotification('error', 'Network error');
+    }
+  };
+
+  const openEditGrade = (grade) => {
+    setEditingGrade(grade);
+    setGradeForm({
+      name: grade.name,
+      level: grade.level.toString(),
+      description: grade.description || ''
+    });
+    setShowGradeModal(true);
+  };
+
+  const openAddGrade = () => {
+    setEditingGrade(null);
+    setGradeForm({ name: '', level: '', description: '' });
+    setShowGradeModal(true);
+  };
+
+  // --- end grade level CRUD ---
+
   const resetSubjectForm = () => {
     setSubjectForm({
       name: '', code: '', gradeLevel: selectedGrade, isCore: true, isActive: true, description: ''
@@ -791,6 +891,13 @@ function AcademicManagement() {
         >
           <Database className="h-4 w-4 inline mr-2" />
           Version History
+        </button>
+        <button 
+          onClick={() => setActiveTab('grade-levels')} 
+          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'grade-levels' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+        >
+          <School className="h-4 w-4 inline mr-2" />
+          Grade Levels
         </button>
       </div>
 
@@ -1212,6 +1319,42 @@ function AcademicManagement() {
         </div>
       )}
 
+      {/* TAB 5: GRADE LEVELS - NEW */}
+      {activeTab === 'grade-levels' && (
+        <div>
+          <div className="flex justify-end mb-4">
+            <button onClick={openAddGrade} className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800">
+              <Plus className="h-4 w-4 inline mr-2" /> Add Grade Level
+            </button>
+          </div>
+          <div className="bg-white border border-gray-300 overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-100 border-b border-gray-300">
+                  <th className="px-4 py-3 text-left font-bold text-gray-700">Level</th>
+                  <th className="px-4 py-3 text-left font-bold text-gray-700">Name</th>
+                  <th className="px-4 py-3 text-left font-bold text-gray-700">Description</th>
+                  <th className="px-4 py-3 text-center font-bold text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gradeLevels.map(grade => (
+                  <tr key={grade.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono">{grade.level}</td>
+                    <td className="px-4 py-3 font-medium">{grade.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{grade.description || '—'}</td>
+                    <td className="px-4 py-3 text-center">
+                      <button onClick={() => openEditGrade(grade)} className="mr-2 p-1.5 bg-yellow-600 text-white rounded hover:bg-yellow-700"><Edit2 className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => handleDeleteGrade(grade)} className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Subject Modal */}
       {showSubjectModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowSubjectModal(false); setEditingItem(null); resetSubjectForm(); }}>
@@ -1479,6 +1622,45 @@ function AcademicManagement() {
             <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
               <button onClick={() => setShowVersionModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
               <button onClick={createNewVersion} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grade Level Modal */}
+      {showGradeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowGradeModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">{editingGrade ? 'Edit Grade Level' : 'Add Grade Level'}</h3>
+              <button onClick={() => setShowGradeModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Level Number *</label>
+                <input type="number" min="1" max="12" value={gradeForm.level}
+                  onChange={(e) => setGradeForm({...gradeForm, level: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Grade Name *</label>
+                <input type="text" value={gradeForm.name}
+                  onChange={(e) => setGradeForm({...gradeForm, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" placeholder="e.g., Grade 7" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                <textarea value={gradeForm.description}
+                  onChange={(e) => setGradeForm({...gradeForm, description: e.target.value})}
+                  rows="2" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowGradeModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
+              <button onClick={editingGrade ? handleUpdateGrade : handleCreateGrade}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">
+                {editingGrade ? 'Update' : 'Create'}
+              </button>
             </div>
           </div>
         </div>
