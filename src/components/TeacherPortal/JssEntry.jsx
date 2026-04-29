@@ -83,6 +83,7 @@ function JssEntryMarks() {
   const [viewMode, setViewMode] = useState('student');
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [expandedStudents, setExpandedStudents] = useState({});
+  const [terms, setTerms] = useState([]);
 
   // Generate dynamic year range (current year - 2 to current year + 2)
   const currentYear = new Date().getFullYear();
@@ -100,6 +101,7 @@ function JssEntryMarks() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchClasses();
+      fetchTerms();
     }
   }, [isAuthenticated]);
 
@@ -139,6 +141,18 @@ function JssEntryMarks() {
       addToast('error', 'Network error loading classes');
     } finally {
       setLoading(prev => ({ ...prev, classes: false }));
+    }
+  };
+
+  const fetchTerms = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/teacher/jss/terms/`, { headers: getAuthHeaders() });
+      const data = await response.json();
+      if (data.success && data.data) {
+        setTerms(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching terms:', error);
     }
   };
 
@@ -377,10 +391,14 @@ function JssEntryMarks() {
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Academic Term</label>
-              <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
-                <option value="Term 1">Term 1</option>
-                <option value="Term 2">Term 2</option>
-                <option value="Term 3">Term 3</option>
+              <select 
+                value={selectedTerm} 
+                onChange={(e) => setSelectedTerm(e.target.value)} 
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+              >
+                {terms.map(term => (
+                  <option key={term.id} value={term.name}>{term.name}</option>
+                ))}
               </select>
             </div>
             <div>
