@@ -3,7 +3,6 @@ import { Routes, Route } from "react-router-dom";
 import DeputyPrincipalSidebar from "../../sidebars/DeputyPrincipalSidebar";
 import DeputyPrincipalDashboard from "./DeputyPrincipalDashboard";
 import Discipline from "./DeputyDiscipline";
-import DeputyStudentAffairs from "./DeputyStudentAffairs";
 import Login from "../Authentication/Login";
 import Logout from "../Authentication/Logout";
 import TeacherAssignment from "./TeacherAssign";
@@ -30,7 +29,6 @@ const DeputyPrincipal = () => {
                     <Route path="/" element={<DeputyPrincipalDashboard />} />
                     <Route path="/dashboard" element={<DeputyPrincipalDashboard />} />
                     <Route path="/discipline" element={<Discipline />} />
-                    <Route path="/student-affairs/" element={<DeputyStudentAffairs />} />
                     <Route path="/Assignments" element={<TeacherAssignment/>}/>
                     <Route path="/login" element={<Login />} />
                     <Route path="/Logout" element={<Logout/>}/>

@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, RefreshCw, School, CheckCircle, Users, 
   BarChart3, AlertCircle, X, Loader2, Info,
@@ -80,6 +80,7 @@ function ClassManagement() {
   const { user, getAuthHeaders, isAuthenticated } = useAuth();
   const [classes, setClasses] = useState([]);
   const [streams, setStreams] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [numericLevels, setNumericLevels] = useState([]);
   const [loading, setLoading] = useState({ classes: true, teachers: true, streams: true, levels: true });
   const [toasts, setToasts] = useState([]);
@@ -145,6 +146,31 @@ function ClassManagement() {
     }
     fetchInitialData();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+      fetchSubjects();
+    }, []);
+
+    // Fetch with timeout
+  const fetchWithTimeout = useCallback(async (url, options, timeout = 8000) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return await response.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout');
+      }
+      throw error;
+    }
+  }, []);
 
   const fetchInitialData = async () => {
     if (!isAuthenticated) return;
@@ -214,6 +240,24 @@ function ClassManagement() {
       addToast('error', 'Error fetching classes. Please check your connection.');
     } finally {
       setLoading(prev => ({ ...prev, classes: false }));
+    }
+  };
+
+  const fetchSubjects = async () => {
+    try {
+      const data = await fetchWithTimeout(
+        `${API_BASE_URL}/api/registrar/classes/subjects/`,
+        { headers: getAuthHeaders() },
+        8000
+      );
+      if (data && data.success) {
+        setSubjects(data.data);
+        
+      }
+    } catch (error) {
+      addToast('error', 'Failed to load subjects');
+    } finally {
+      setLoading(prev => ({ ...prev, subjects: false }));
     }
   };
 
@@ -986,7 +1030,7 @@ function ClassManagement() {
                   value={newStream.name}
                   onChange={(e) => setNewStream({ ...newStream, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" 
-                  placeholder="e.g., Kilimanjaro, Alpha, Kenya"
+                  placeholder="e.g., blue, red, green"
                   disabled={actionLoading.addStream || actionLoading.updateStream}
                 />
               </div>
@@ -997,7 +1041,7 @@ function ClassManagement() {
                   value={newStream.code}
                   onChange={(e) => setNewStream({ ...newStream, code: e.target.value.toUpperCase() })}
                   className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" 
-                  placeholder="e.g., KIL, ALP, KEN"
+                  placeholder="e.g., B001, R001, Y001"
                   disabled={actionLoading.addStream || actionLoading.updateStream}
                 />
               </div>
@@ -1117,14 +1161,11 @@ function ClassManagement() {
                   className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
                 >
                   <option value="">Select Subject</option>
-                  <option value="math">Mathematics</option>
-                  <option value="eng">English</option>
-                  <option value="kis">Kiswahili</option>
-                  <option value="sci">Integrated Science</option>
-                  <option value="pts">Pre-Technical Studies</option>
-                  <option value="cas">Creative Arts & Sports</option>
-                  <option value="sst">Social Studies</option>
-                  <option value="re">Religious Education</option>
+                  {subjects.map(subject => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="mb-4">
@@ -1154,7 +1195,7 @@ function ClassManagement() {
           </div>
         </div>
       )}
-      
+            
       {/* Add CSS animation for toasts */}
       <style jsx>{`
         @keyframes slideInRight {

@@ -211,8 +211,8 @@ const Login = () => {
             </div>
             <div className="w-px bg-white/20"></div>
             <div>
-              <div className="text-4xl font-bold text-white">50+</div>
-              <div className="text-sm uppercase tracking-wider text-green-300 mt-1">Skills</div>
+              <div className="text-4xl font-bold text-white">24/7+</div>
+              <div className="text-sm uppercase tracking-wider text-green-300 mt-1">User support</div>
             </div>
           </div>
         </div>

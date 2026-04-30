@@ -34,7 +34,7 @@ const TeacherSidebarData = [
   /* --- SECTION: DAILY OPERATIONS --- */
   {
     title: "Attendance",
-    icon: <ClipboardCheckIcon />, // Changed to CheckIcon for "taking roll"
+    icon: <ClipboardCheckIcon />, 
     link: "/TeacherPortal/Attendance"
   },
   {
@@ -63,11 +63,11 @@ const TeacherSidebarData = [
     icon: <CameraIcon />, // For uploading student evidence
     link: "/TeacherPortal/Portfolio"
   },
-  {
-    title: "Timetable",
-    icon: <TimerIcon />,
-    link: "/TeacherPortal/Timetable"
-  },
+  // {
+  //   title: "Timetable",
+  //   icon: <TimerIcon />,
+  //   link: "/TeacherPortal/Timetable"
+  // },
 
   /* --- SECTION: RESULTS & UPDATES --- */
   {
