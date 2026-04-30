@@ -13,7 +13,6 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// Toast Notification Component
 const Toast = ({ message, type, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
 
@@ -29,18 +28,18 @@ const Toast = ({ message, type, onClose }) => {
     success: 'bg-green-600',
     error: 'bg-red-600',
     info: 'bg-blue-600',
-    warning: 'bg-yellow-600'
+    warning: 'bg-yellow-500'
   };
 
   if (!isVisible) return null;
 
   return (
     <div className="fixed top-6 right-6 z-50">
-      <div className={`${styles[type]} text-white shadow-lg p-4 min-w-[280px] max-w-md`}>
+      <div className={`${styles[type]} text-white border border-gray-600 p-4 min-w-[280px] max-w-md`}>
         <div className="flex items-start gap-3">
           <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-medium capitalize text-sm">{type}</p>
+            <p className="font-bold capitalize text-sm">{type}</p>
             <p className="text-sm text-white/90 mt-1">{message}</p>
           </div>
           <button onClick={onClose} className="text-white/70 hover:text-white">
@@ -52,19 +51,18 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-// Session Expired Modal
 const SessionExpiredModal = ({ isOpen, onLogout }) => {
   if (!isOpen) return null;
   
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white shadow-lg max-w-md w-full">
+      <div className="bg-white border border-gray-400 max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-red-100 flex items-center justify-center">
+            <div className="w-10 h-10 bg-red-100 flex items-center justify-center border border-red-200">
               <AlertCircle className="w-5 h-5 text-red-600" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900">Session Expired</h3>
+            <h3 className="text-lg font-bold text-gray-900">Session Expired</h3>
           </div>
           <p className="text-gray-600 mb-6">Your session has expired. Please log in again to continue.</p>
           <button 
@@ -80,7 +78,6 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
   );
 };
 
-// Editable Field Component
 const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'text', required = false, editable = true }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value || '');
@@ -117,7 +114,7 @@ const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'te
         <div className="flex items-start gap-3">
           <Icon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{label}</p>
             <p className="text-sm text-gray-900 mt-1 break-words">{value || 'Not provided'}</p>
           </div>
         </div>
@@ -130,14 +127,14 @@ const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'te
       <div className="flex items-start gap-3">
         <Icon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
         <div className="flex-1">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{label}</p>
           {isEditing ? (
             <div className="mt-1">
               {type === 'textarea' ? (
                 <textarea
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   rows={3}
                   autoFocus
                 />
@@ -146,7 +143,7 @@ const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'te
                   type={type}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   autoFocus
                 />
               )}
@@ -185,14 +182,13 @@ const EditableField = ({ label, value, icon: Icon, onSave, fieldName, type = 'te
   );
 };
 
-// Info Card Component - No border-left, consistent borders
 const InfoCard = ({ title, icon: Icon, children, color = 'blue' }) => {
   return (
-    <div className={`bg-white border border-gray-300 overflow-hidden`}>
-      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+    <div className={`bg-white border border-gray-300 overflow-hidden rounded-lg`}>
+      <div className="px-6 py-4 border-b border-gray-300 bg-gray-50">
         <div className="flex items-center gap-2">
           <Icon className={`w-5 h-5 text-${color}-600`} />
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-md font-bold text-gray-900">{title}</h3>
         </div>
       </div>
       <div className="p-6">
@@ -202,7 +198,6 @@ const InfoCard = ({ title, icon: Icon, children, color = 'blue' }) => {
   );
 };
 
-// Stat Badge Component
 const StatBadge = ({ label, value, icon: Icon, color }) => {
   const colorClasses = {
     blue: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -212,17 +207,16 @@ const StatBadge = ({ label, value, icon: Icon, color }) => {
   };
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 border ${colorClasses[color]}`}>
+    <div className={`flex items-center gap-3 px-4 py-3 border rounded-lg ${colorClasses[color]}`}>
       <Icon className="w-5 h-5" />
       <div>
-        <p className="text-xs font-medium text-gray-500">{label}</p>
+        <p className="text-xs font-bold text-gray-500">{label}</p>
         <p className="text-base font-bold">{value}</p>
       </div>
     </div>
   );
 };
 
-// Password Change Modal
 const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -264,12 +258,12 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white shadow-lg max-w-md w-full">
+      <div className="bg-white border border-gray-400 max-w-md w-full rounded-lg">
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Lock className="w-5 h-5 text-blue-600" />
-              <h3 className="text-xl font-semibold text-gray-900">Change Password</h3>
+              <h3 className="text-md font-bold text-gray-900">Change Password</h3>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <X size={20} />
@@ -278,13 +272,13 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Current Password</label>
               <div className="relative">
                 <input
                   type={showCurrent ? 'text' : 'password'}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   required
                 />
                 <button
@@ -298,13 +292,13 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <label className="block text-sm font-bold text-gray-700 mb-1">New Password</label>
               <div className="relative">
                 <input
                   type={showNew ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   required
                 />
                 <button
@@ -318,12 +312,12 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Confirm New Password</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 required
               />
             </div>
@@ -338,7 +332,7 @@ const PasswordModal = ({ isOpen, onClose, onChangePassword }) => {
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-gray-400 text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -556,7 +550,7 @@ export default function StudentProfile() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="w-16 h-16 bg-red-100 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-red-100 flex items-center justify-center mx-auto mb-4 border border-red-200 rounded-full">
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
@@ -577,7 +571,7 @@ export default function StudentProfile() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="w-16 h-16 bg-yellow-100 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-yellow-100 flex items-center justify-center mx-auto mb-4 border border-yellow-200 rounded-full">
             <AlertCircle className="w-8 h-8 text-yellow-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
@@ -611,20 +605,18 @@ export default function StudentProfile() {
         onChangePassword={handleChangePassword}
       />
 
-      {/* Full Width Layout */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Student Profile</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Student Profile</h1>
           <p className="text-gray-600 mt-1">View and manage your personal information</p>
         </div>
 
         {/* Profile Header - Green Background */}
-        <div className="bg-green-700 border border-green-800 mb-8 overflow-hidden">
+        <div className="bg-green-700 border border-green-600 mb-8 overflow-hidden rounded-lg">
           <div className="px-8 py-12">
             <div className="flex flex-col md:flex-row items-center gap-8">
               <div className="relative">
-                <div className="w-32 h-32 bg-white/20 flex items-center justify-center overflow-hidden border-4 border-white">
+                <div className="w-32 h-32 bg-white/20 flex items-center justify-center overflow-hidden border-4 border-white rounded-full">
                   {student?.photo_url ? (
                     <img 
                       src={student.photo_url} 
@@ -640,7 +632,7 @@ export default function StudentProfile() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingImage}
-                  className="absolute bottom-0 right-0 bg-white p-2 shadow-lg hover:bg-gray-50 disabled:opacity-50"
+                  className="absolute bottom-0 right-0 bg-white p-2 shadow-lg hover:bg-gray-50 disabled:opacity-50 rounded-full"
                 >
                   {uploadingImage ? (
                     <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
@@ -660,17 +652,17 @@ export default function StudentProfile() {
                 <h2 className="text-2xl md:text-3xl font-bold">{student?.full_name}</h2>
                 <p className="text-green-100 mt-1">Admission Number: {student?.admission_no}</p>
                 <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
-                  <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5">
+                  <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg">
                     <GraduationCap size={16} />
                     <span className="text-sm">Class {student?.current_class_name || 'Not Assigned'}</span>
                   </div>
                   {student?.stream && (
-                    <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5">
+                    <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg">
                       <Users size={16} />
                       <span className="text-sm">Stream {student.stream}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5">
+                  <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg">
                     <Award size={16} />
                     <span className="text-sm">Roll No: {student?.roll_number || 'N/A'}</span>
                   </div>
@@ -679,7 +671,7 @@ export default function StudentProfile() {
               <div>
                 <button
                   onClick={() => setShowPasswordModal(true)}
-                  className="px-4 py-2 bg-white text-green-700 hover:bg-gray-100 flex items-center gap-2 font-medium border border-gray-200"
+                  className="px-4 py-2 bg-white text-green-700 hover:bg-gray-100 flex items-center gap-2 font-medium border border-gray-200 rounded-lg"
                 >
                   <Lock size={16} />
                   Change Password
@@ -724,7 +716,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Calendar className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date of Birth</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Date of Birth</p>
                     <p className="text-sm text-gray-900 mt-1">{formatDate(student?.date_of_birth)}</p>
                   </div>
                 </div>
@@ -733,7 +725,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Activity className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Gender</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Gender</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.gender || 'Not provided'}</p>
                   </div>
                 </div>
@@ -742,7 +734,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Globe className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nationality</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Nationality</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.nationality || 'Not provided'}</p>
                   </div>
                 </div>
@@ -805,7 +797,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Globe className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Country</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Country</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.country || 'Kenya'}</p>
                   </div>
                 </div>
@@ -820,7 +812,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Guardian Name</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Guardian Name</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.guardian_name || 'Not provided'}</p>
                   </div>
                 </div>
@@ -829,7 +821,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Users className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Relation</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Relation</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.guardian_relation || 'Not provided'}</p>
                   </div>
                 </div>
@@ -838,7 +830,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Guardian Phone</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Guardian Phone</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.guardian_phone || 'Not provided'}</p>
                   </div>
                 </div>
@@ -847,7 +839,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Mail className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Guardian Email</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Guardian Email</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.guardian_email || 'Not provided'}</p>
                   </div>
                 </div>
@@ -856,7 +848,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Home className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Guardian Address</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Guardian Address</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.guardian_address || 'Not provided'}</p>
                   </div>
                 </div>
@@ -918,7 +910,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Full Name</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Full Name</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.father_name || 'Not provided'}</p>
                   </div>
                 </div>
@@ -927,7 +919,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone Number</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Phone Number</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.father_phone || 'Not provided'}</p>
                   </div>
                 </div>
@@ -936,7 +928,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Mail className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Address</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Email Address</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.father_email || 'Not provided'}</p>
                   </div>
                 </div>
@@ -945,7 +937,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Briefcase className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Occupation</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Occupation</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.father_occupation || 'Not provided'}</p>
                   </div>
                 </div>
@@ -957,7 +949,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Full Name</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Full Name</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.mother_name || 'Not provided'}</p>
                   </div>
                 </div>
@@ -966,7 +958,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone Number</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Phone Number</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.mother_phone || 'Not provided'}</p>
                   </div>
                 </div>
@@ -975,7 +967,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Mail className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Address</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Email Address</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.mother_email || 'Not provided'}</p>
                   </div>
                 </div>
@@ -984,7 +976,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Briefcase className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Occupation</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Occupation</p>
                     <p className="text-sm text-gray-900 mt-1">{student?.mother_occupation || 'Not provided'}</p>
                   </div>
                 </div>
@@ -996,7 +988,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Username</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Username</p>
                     <p className="text-sm text-gray-900 mt-1">{userAccount?.username || user?.username || 'Not set'}</p>
                   </div>
                 </div>
@@ -1005,7 +997,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Mail className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Account Email</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Account Email</p>
                     <p className="text-sm text-gray-900 mt-1">{userAccount?.email || user?.email || 'Not set'}</p>
                   </div>
                 </div>
@@ -1014,7 +1006,7 @@ export default function StudentProfile() {
                 <div className="flex items-start gap-3">
                   <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Account Phone</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Account Phone</p>
                     <p className="text-sm text-gray-900 mt-1">{userAccount?.phone || user?.phone || 'Not set'}</p>
                   </div>
                 </div>
@@ -1052,7 +1044,6 @@ export default function StudentProfile() {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="mt-12 pt-6 border-t border-gray-200 text-center">
           <p className="text-sm text-gray-500">
             &copy; {new Date().getFullYear()} Jawabu School Management System. All rights reserved.

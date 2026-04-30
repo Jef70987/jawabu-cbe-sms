@@ -36,7 +36,6 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// Toast Component
 const Toast = ({ message, type, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
 
@@ -52,20 +51,20 @@ const Toast = ({ message, type, onClose }) => {
     success: 'bg-green-600',
     error: 'bg-red-600',
     info: 'bg-blue-600',
-    warning: 'bg-yellow-600'
+    warning: 'bg-yellow-500'
   };
 
   if (!isVisible) return null;
 
   return (
-    <div className="fixed top-4 right-4 left-4 md:left-auto z-50">
-      <div className={`${bgColor[type]} text-white shadow-lg p-4 max-w-md mx-auto md:mx-0`}>
+    <div className="fixed top-4 right-4 z-50 animate-slideIn">
+      <div className={`${bgColor[type]} text-white border border-gray-600 p-4 min-w-[280px] max-w-md`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <p className="font-semibold capitalize text-sm md:text-base">{type}</p>
-            <p className="text-xs md:text-sm text-white/90 mt-1">{message}</p>
+            <p className="font-bold capitalize">{type}</p>
+            <p className="text-sm text-white/90 mt-1">{message}</p>
           </div>
-          <button onClick={() => { setIsVisible(false); setTimeout(onClose, 300); }} className="text-white/70 hover:text-white shrink-0">
+          <button onClick={() => { setIsVisible(false); setTimeout(onClose, 300); }} className="text-white/70 hover:text-white">
             <AlertCircle size={16} />
           </button>
         </div>
@@ -74,21 +73,20 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-// Session Expired Modal
 const SessionExpiredModal = ({ isOpen, onLogout }) => {
   if (!isOpen) return null;
   
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[100]">
-      <div className="bg-white shadow-lg max-w-md w-full mx-4">
-        <div className="p-4 md:p-6">
+      <div className="bg-white border border-gray-400 max-w-md w-full">
+        <div className="p-6">
           <div className="flex items-center mb-4">
-            <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-red-600 mr-3" />
-            <h3 className="text-lg md:text-xl font-semibold text-gray-900">Session Expired</h3>
+            <AlertCircle className="h-8 w-8 text-red-500 mr-3" />
+            <h3 className="text-lg font-bold text-gray-900">Session Expired</h3>
           </div>
-          <p className="text-sm md:text-base text-gray-600 mb-6">Your session has expired. Please login again to continue.</p>
+          <p className="text-gray-600 mb-6">Your session has expired. Please login again to continue.</p>
           <div className="flex justify-end">
-            <button onClick={onLogout} className="px-4 py-2 md:px-6 md:py-2 bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2 text-sm md:text-base">
+            <button onClick={onLogout} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700 flex items-center gap-2">
               <LogOut className="h-4 w-4" />
               Logout
             </button>
@@ -99,7 +97,6 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
   );
 };
 
-// Stat Card Component - No border-left, consistent colors
 const StatCard = ({ title, value, icon: Icon, color, onClick, subtitle }) => {
   const colorClasses = {
     blue: { bg: 'bg-blue-50', text: 'text-blue-600', iconBg: 'bg-blue-100' },
@@ -113,51 +110,49 @@ const StatCard = ({ title, value, icon: Icon, color, onClick, subtitle }) => {
   return (
     <div 
       onClick={onClick}
-      className="bg-white border border-gray-300 p-4 md:p-6 hover:shadow-md transition-all cursor-pointer"
+      className="bg-white border border-gray-300 p-4 hover:shadow-md transition-all cursor-pointer"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs md:text-sm font-medium text-gray-600 truncate">{title}</p>
-          <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1 break-words">{value}</p>
+          <p className="text-xs font-medium text-gray-600 truncate">{title}</p>
+          <p className="text-xl font-bold text-gray-900 mt-1 break-words">{value}</p>
           {subtitle && <p className="text-xs text-gray-500 mt-1 truncate">{subtitle}</p>}
         </div>
-        <div className={`p-2 md:p-3 ${colors.iconBg} shrink-0`}>
-          <Icon className={`w-5 h-5 md:w-6 md:h-6 ${colors.text}`} />
+        <div className={`p-2 ${colors.iconBg} shrink-0 rounded-full`}>
+          <Icon className={`w-5 h-5 ${colors.text}`} />
         </div>
       </div>
     </div>
   );
 };
 
-// Info Card Component - No border-left
 const InfoCard = ({ title, icon: Icon, children }) => {
   return (
-    <div className="bg-white border border-gray-300 p-4 md:p-6">
+    <div className="bg-white border border-gray-300 p-4">
       <div className="flex items-center gap-2 mb-4">
-        <div className="p-1.5 md:p-2 bg-blue-100">
-          <Icon className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+        <div className="p-1.5 bg-blue-100 rounded-full">
+          <Icon className="w-4 h-4 text-blue-600" />
         </div>
-        <h3 className="text-base md:text-lg font-semibold text-gray-900">{title}</h3>
+        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
       </div>
       {children}
     </div>
   );
 };
 
-// Attendance Item Component
 const AttendanceItem = ({ date, status, subject }) => {
   const statusColors = {
-    Present: 'bg-green-100 text-green-700',
-    Absent: 'bg-red-100 text-red-700',
-    Late: 'bg-yellow-100 text-yellow-700',
-    Excused: 'bg-blue-100 text-blue-700'
+    Present: 'bg-green-100 text-green-700 border-green-200',
+    Absent: 'bg-red-100 text-red-700 border-red-200',
+    Late: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    Excused: 'bg-blue-100 text-blue-700 border-blue-200'
   };
 
   const statusIcons = {
-    Present: <CheckCircle className="w-3 h-3 md:w-4 md:h-4" />,
-    Absent: <XCircle className="w-3 h-3 md:w-4 md:h-4" />,
-    Late: <Clock className="w-3 h-3 md:w-4 md:h-4" />,
-    Excused: <FileText className="w-3 h-3 md:w-4 md:h-4" />
+    Present: <CheckCircle className="w-3 h-3" />,
+    Absent: <XCircle className="w-3 h-3" />,
+    Late: <Clock className="w-3 h-3" />,
+    Excused: <FileText className="w-3 h-3" />
   };
 
   const formatDate = (date) => {
@@ -171,7 +166,7 @@ const AttendanceItem = ({ date, status, subject }) => {
         <p className="text-sm font-medium text-gray-900 truncate">{subject}</p>
         <p className="text-xs text-gray-500 mt-0.5">{formatDate(date)}</p>
       </div>
-      <span className={`flex items-center gap-1 px-2 py-1 text-xs font-medium ${statusColors[status]} self-start sm:self-center`}>
+      <span className={`flex items-center gap-1 px-2 py-1 text-xs font-medium border ${statusColors[status]} self-start sm:self-center rounded-full`}>
         {statusIcons[status]}
         {status}
       </span>
@@ -179,7 +174,6 @@ const AttendanceItem = ({ date, status, subject }) => {
   );
 };
 
-// Discipline Item Component
 const DisciplineItem = ({ date, incident, points, status }) => {
   const formatDate = (date) => {
     if (!date) return 'N/A';
@@ -202,13 +196,12 @@ const DisciplineItem = ({ date, incident, points, status }) => {
   );
 };
 
-// Fee Item Component
 const FeeItem = ({ description, amount, dueDate, status }) => {
   const statusColors = {
-    Paid: 'bg-green-100 text-green-700',
-    Pending: 'bg-yellow-100 text-yellow-700',
-    Overdue: 'bg-red-100 text-red-700',
-    Partial: 'bg-blue-100 text-blue-700'
+    Paid: 'bg-green-100 text-green-700 border-green-200',
+    Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    Overdue: 'bg-red-100 text-red-700 border-red-200',
+    Partial: 'bg-blue-100 text-blue-700 border-blue-200'
   };
 
   const formatCurrency = (amount) => {
@@ -228,7 +221,7 @@ const FeeItem = ({ description, amount, dueDate, status }) => {
       </div>
       <div className="text-left sm:text-right">
         <p className="text-sm font-semibold text-gray-900">{formatCurrency(amount)}</p>
-        <span className={`inline-block px-2 py-0.5 text-xs font-medium mt-1 ${statusColors[status]}`}>
+        <span className={`inline-block px-2 py-0.5 text-xs font-medium border mt-1 rounded-full ${statusColors[status]}`}>
           {status}
         </span>
       </div>
@@ -236,14 +229,19 @@ const FeeItem = ({ description, amount, dueDate, status }) => {
   );
 };
 
-// Performance Item Component
 const PerformanceItem = ({ subject, score, grade, trend }) => {
   const gradeColors = {
-    'Exceeding': 'bg-green-100 text-green-700',
-    'Meeting': 'bg-blue-100 text-blue-700',
-    'Approaching': 'bg-yellow-100 text-yellow-700',
-    'Below': 'bg-red-100 text-red-700'
+    'Exceeding': 'bg-green-100 text-green-700 border-green-200',
+    'Meeting': 'bg-blue-100 text-blue-700 border-blue-200',
+    'Approaching': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    'Below': 'bg-red-100 text-red-700 border-red-200',
+    'EE': 'bg-green-100 text-green-700 border-green-200',
+    'ME': 'bg-blue-100 text-blue-700 border-blue-200',
+    'AE': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    'BE': 'bg-red-100 text-red-700 border-red-200'
   };
+
+  const displayGrade = grade || (score >= 80 ? 'Exceeding' : score >= 65 ? 'Meeting' : score >= 50 ? 'Approaching' : 'Below');
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-gray-100 last:border-0 gap-2">
@@ -252,8 +250,8 @@ const PerformanceItem = ({ subject, score, grade, trend }) => {
       </div>
       <div className="flex items-center justify-between sm:justify-end gap-3">
         <span className="text-sm font-semibold text-gray-900">{score}%</span>
-        <span className={`px-2 py-0.5 text-xs font-medium ${gradeColors[grade]}`}>
-          {grade}
+        <span className={`px-2 py-0.5 text-xs font-medium border rounded-full ${gradeColors[displayGrade]}`}>
+          {displayGrade}
         </span>
         {trend === 'up' && <TrendingUp className="w-4 h-4 text-green-600 shrink-0" />}
         {trend === 'down' && <TrendingDown className="w-4 h-4 text-red-600 shrink-0" />}
@@ -265,7 +263,6 @@ const PerformanceItem = ({ subject, score, grade, trend }) => {
 const StudentDashboard = () => {
   const { user, getAuthHeaders, isAuthenticated, logout } = useAuth();
   
-  // State
   const [loading, setLoading] = useState(true);
   const [studentProfile, setStudentProfile] = useState(null);
   const [feeSummary, setFeeSummary] = useState(null);
@@ -279,11 +276,8 @@ const StudentDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [greeting, setGreeting] = useState('');
 
-  // Colors for pie chart
-  const COLORS = ['#108529','#d42424', '#F59E0B', '#1636d6'];
+  const COLORS = ['#108529', '#d42424', '#F59E0B', '#1636d6'];
 
-
-  // Update greeting and time
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -299,7 +293,6 @@ const StudentDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Helper Functions
   const showToast = (message, type = 'info') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -327,7 +320,6 @@ const StudentDashboard = () => {
     return date.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Fetch Student Dashboard Data
   const fetchDashboardData = async () => {
     if (!isAuthenticated) {
       setLoading(false);
@@ -336,7 +328,6 @@ const StudentDashboard = () => {
     
     setLoading(true);
     try {
-      // 1. Fetch student profile
       const profileRes = await fetch(`${API_BASE_URL}/api/student/profile/`, {
         headers: getAuthHeaders()
       });
@@ -354,7 +345,6 @@ const StudentDashboard = () => {
         }
       }
       
-      // 2. Fetch fee summary
       const feeRes = await fetch(`${API_BASE_URL}/api/student/dashboard/fees/summary/`, {
         headers: getAuthHeaders()
       });
@@ -387,7 +377,6 @@ const StudentDashboard = () => {
         }
       }
       
-      // 3. Fetch recent attendance
       const attendanceRes = await fetch(`${API_BASE_URL}/api/student/attendance/recent/?limit=5`, {
         headers: getAuthHeaders()
       });
@@ -407,7 +396,6 @@ const StudentDashboard = () => {
         }
       }
       
-      // 4. Fetch discipline records
       const disciplineRes = await fetch(`${API_BASE_URL}/api/student/discipline/`, {
         headers: getAuthHeaders()
       });
@@ -419,7 +407,6 @@ const StudentDashboard = () => {
         }
       }
       
-      // 5. Fetch academic performance
       const performanceRes = await fetch(`${API_BASE_URL}/api/student/performance/current/`, {
         headers: getAuthHeaders()
       });
@@ -439,18 +426,15 @@ const StudentDashboard = () => {
     }
   };
 
-  // Refresh data
   const refreshData = () => {
     fetchDashboardData();
     showToast('Dashboard refreshed', 'success');
   };
 
-  // Navigation handlers
   const navigateTo = (path) => {
     window.location.href = path;
   };
 
-  // Effects
   useEffect(() => {
     if (isAuthenticated && user?.role === 'student') {
       fetchDashboardData();
@@ -463,10 +447,10 @@ const StudentDashboard = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 md:h-16 md:w-16 text-blue-600 mx-auto mb-4" />
-          <h2 className="text-xl md:text-2xl font-bold">Authentication Required</h2>
-          <p className="text-gray-600 mt-2 text-sm md:text-base">Please login to access your dashboard</p>
-          <a href="/login" className="mt-4 inline-block px-4 py-2 md:px-6 md:py-3 bg-blue-600 text-white text-sm md:text-base">Go to Login</a>
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900">Authentication Required</h2>
+          <p className="text-gray-600 mt-2">Please login to access your dashboard</p>
+          <a href="/login" className="mt-4 inline-block px-6 py-3 bg-blue-600 text-white font-medium border border-blue-700 hover:bg-blue-700">Go to Login</a>
         </div>
       </div>
     );
@@ -476,10 +460,9 @@ const StudentDashboard = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 md:h-16 md:w-16 text-yellow-600 mx-auto mb-4" />
-          <h2 className="text-xl md:text-2xl font-bold">Access Denied</h2>
-          <p className="text-gray-600 mt-2 text-sm md:text-base">This portal is only for students.</p>
-          <p className="text-gray-500 text-xs md:text-sm mt-1">Please use your student account to access this page.</p>
+          <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900">Access Denied</h2>
+          <p className="text-gray-600 mt-2">This portal is only for students.</p>
         </div>
       </div>
     );
@@ -487,46 +470,48 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } } .animate-slideIn { animation: slideIn 0.3s ease-out; }`}</style>
+
       <SessionExpiredModal isOpen={showSessionExpired} onLogout={handleLogout} />
       {toasts.map(t => (
         <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts(prev => prev.filter(t2 => t2.id !== t.id))} />
       ))}
 
-      <div className="p-3 py-9 md:p-6 w-full max-w-full">
-        {/* Header Card - Green-700 background, no border-left */}
-        <div className="bg-green-700 p-4 md:p-6 mb-4 md:mb-8 w-full">
+      <div className="p-6 w-full max-w-full">
+        {/* Header Card - Green-700 background */}
+        <div className="bg-green-700 p-6 mb-8 w-full">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex-1">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h1 className="text-xl md:text-3xl font-bold text-white">
+                  <h1 className="text-2xl font-bold text-white">
                     {greeting}, {studentProfile?.first_name || user?.first_name || 'Student'}!
                   </h1>
-                  <p className="text-sm md:text-base text-green-100 mt-1">
+                  <p className="text-green-100 mt-1">
                     Welcome to your Student Dashboard
                   </p>
                 </div>
                 <button 
                   onClick={refreshData}
-                  className="px-3 py-1.5 md:px-4 md:py-2 bg-white text-gray-700 hover:bg-gray-100 flex items-center gap-1 md:gap-2 text-sm md:text-base shrink-0 border border-gray-200"
+                  className="px-4 py-2 bg-white text-gray-700 hover:bg-gray-100 flex items-center gap-2 text-sm font-medium border border-gray-200"
                 >
-                  <RefreshCw className="w-3 h-3 md:w-4 md:h-4" />
-                  <span className="hidden sm:inline">Refresh</span>
+                  <RefreshCw className="w-4 h-4" />
+                  Refresh
                 </button>
               </div>
-              <div className="flex flex-wrap items-center gap-2 mt-2 text-xs md:text-sm text-green-100">
-                <Calendar className="w-3 h-3 md:w-4 md:h-4" />
+              <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-green-100">
+                <Calendar className="w-4 h-4" />
                 <span>{currentTime.toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                <Clock className="w-3 h-3 md:w-4 md:h-4 ml-1" />
+                <Clock className="w-4 h-4 ml-2" />
                 <span>{formatTime(currentTime)}</span>
               </div>
             </div>
             
-            {/* Student Profile Mini Card */}
+            {/* Student Profile Mini Card - Rounded profile picture */}
             {studentProfile && (
               <div className="flex items-center gap-3 p-3 bg-white border border-gray-200">
-                <div className="h-10 w-10 md:h-12 md:w-12 bg-green-600 flex items-center justify-center">
-                  <span className="text-base md:text-lg font-bold text-white">
+                <div className="h-12 w-12 bg-green-600 rounded-full flex items-center justify-center">
+                  <span className="text-lg font-bold text-white">
                     {studentProfile.first_name?.[0]}{studentProfile.last_name?.[0]}
                   </span>
                 </div>
@@ -542,12 +527,12 @@ const StudentDashboard = () => {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="animate-spin h-8 w-8 md:h-12 md:w-12 text-blue-600" />
+            <Loader2 className="animate-spin h-12 w-12 text-blue-600" />
           </div>
         ) : (
           <>
             {/* Stats Cards Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <StatCard
                 title="Total Fees"
                 value={formatCurrency(feeSummary?.total_fees || 0)}
@@ -579,7 +564,7 @@ const StudentDashboard = () => {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8 border-t border-green-600 pt-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Fee Breakdown Chart */}
               <InfoCard title="Fee Breakdown" icon={PieChartIcon}>
                 {feeBreakdown.length > 0 && feeBreakdown[0]?.name !== 'No Fee Data' ? (
@@ -637,7 +622,7 @@ const StudentDashboard = () => {
             </div>
 
             {/* Recent Attendance and Discipline */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               <InfoCard title="Recent Attendance" icon={Calendar}>
                 {recentAttendance.length > 0 ? (
                   <div className="max-h-64 overflow-y-auto">
@@ -682,7 +667,7 @@ const StudentDashboard = () => {
 
             {/* Recent Fee Transactions */}
             {feeSummary?.recent_transactions?.length > 0 && (
-              <div className="mb-4 md:mb-8">
+              <div className="mb-8">
                 <InfoCard title="Recent Fee Transactions" icon={DollarSign}>
                   <div className="max-h-64 overflow-y-auto">
                     {feeSummary.recent_transactions.slice(0, 5).map((transaction, idx) => (
@@ -698,51 +683,51 @@ const StudentDashboard = () => {
                   {feeSummary.recent_transactions.length > 5 && (
                     <button 
                       onClick={() => navigateTo('/student/fees')}
-                      className="mt-4 text-xs md:text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                      className="mt-4 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
                     >
-                      View All Transactions <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
+                      View All Transactions <ChevronRight className="w-4 h-4" />
                     </button>
                   )}
                 </InfoCard>
               </div>
             )}
 
-            {/* Quick Links - Clear buttons with consistent colors */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+            {/* Quick Links */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <button 
                 onClick={() => navigateTo('/student/fees')}
-                className="p-3 md:p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
+                className="p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
               >
-                <DollarSign className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2" />
-                <p className="text-xs md:text-sm font-medium text-gray-700">Fee Details</p>
+                <DollarSign className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-700">Fee Details</p>
               </button>
               <button 
                 onClick={() => navigateTo('/student/attendance')}
-                className="p-3 md:p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
+                className="p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
               >
-                <Calendar className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2" />
-                <p className="text-xs md:text-sm font-medium text-gray-700">Attendance</p>
+                <Calendar className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-700">Attendance</p>
               </button>
               <button 
                 onClick={() => navigateTo('/student/results')}
-                className="p-3 md:p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
+                className="p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
               >
-                <BookOpen className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2" />
-                <p className="text-xs md:text-sm font-medium text-gray-700">Results</p>
+                <BookOpen className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-700">Results</p>
               </button>
               <button 
                 onClick={() => navigateTo('/student/profile')}
-                className="p-3 md:p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
+                className="p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
               >
-                <User className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2" />
-                <p className="text-xs md:text-sm font-medium text-gray-700">Profile</p>
+                <User className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-700">Profile</p>
               </button>
             </div>
 
             {/* Footer */}
-            <div className="mt-6 md:mt-8 text-center text-xs md:text-sm text-gray-500">
-              <p>© {new Date().getFullYear()} Jawabu. All rights reserved.</p>
-              <p className="mt-1 truncate">Student Portal | {studentProfile?.first_name} {studentProfile?.last_name}</p>
+            <div className="mt-8 text-center text-sm text-gray-500">
+              <p>© {new Date().getFullYear()} Jawabu Academy. All rights reserved.</p>
+              <p className="mt-1">Student Portal | {studentProfile?.first_name} {studentProfile?.last_name}</p>
             </div>
           </>
         )}

@@ -501,7 +501,7 @@ function JssEntryMarks() {
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
                                   <label className="block text-xs font-bold text-red-400 mb-1">
-                                    SBA Average ({subject.sba_weight}%) - Auto-calculated from assessments
+                                    SBA/CAT Average ({subject.sba_weight}%) - Auto-calculated from assessments
                                   </label>
                                   <input 
                                     type="number" 
@@ -512,7 +512,7 @@ function JssEntryMarks() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-bold text-gray-700 mb-1">Summative ({subject.exam_weight}%)</label>
+                                  <label className="block text-xs font-bold text-gray-700 mb-1">EndTerm/Summative ({subject.exam_weight}%) from main exams</label>
                                   <input 
                                     type="number" 
                                     value={marks.exam === null ? '' : marks.exam} 

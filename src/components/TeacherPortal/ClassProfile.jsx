@@ -730,32 +730,7 @@ function ClassProfile() {
                           ></div>
                         </div>
                       </div>
-                      <div className="bg-white rounded-lg border border-gray-200 p-4">
-                        <h3 className="font-bold text-gray-900 mb-3">Quick Actions</h3>
-                        <div className="flex flex-col gap-2">
-                          <button 
-                            onClick={() => setShowAttendanceModal(true)} 
-                            className="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 text-left"
-                          >
-                            <UserCheck className="h-4 w-4 inline mr-2" />
-                            Take Lesson Attendance
-                          </button>
-                          <button 
-                            onClick={() => setShowAssessmentModal(true)} 
-                            className="px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 text-left"
-                          >
-                            <FileText className="h-4 w-4 inline mr-2" />
-                            Quick Assessment Entry
-                          </button>
-                          <button 
-                            onClick={() => setShowEvidenceModal(true)} 
-                            className="px-3 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 text-left"
-                          >
-                            <Camera className="h-4 w-4 inline mr-2" />
-                            Upload Evidence
-                          </button>
-                        </div>
-                      </div>
+                      
                     </div>
 
                     <div className="bg-white rounded-lg border border-gray-200">

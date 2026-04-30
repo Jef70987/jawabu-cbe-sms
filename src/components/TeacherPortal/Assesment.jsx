@@ -495,8 +495,8 @@ function AssessmentManager() {
       <div className="bg-green-700 p-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Assessment Manager</h1>
-            <p className="text-green-100 mt-1">Create, manage, and grade assessments for your classes</p>
+            <h1 className="text-2xl font-bold text-white">Assessment Manager for subject assigned</h1>
+            <p className="text-green-100 mt-1">Create, manage, and grade assessments for subject-classes assigned to you </p>
           </div>
           <div className="flex gap-3">
             <button onClick={() => setShowCreateModal(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
