@@ -5,6 +5,67 @@ import { useAuth } from '../Authentication/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+const Toast = ({ message, type, onClose }) => {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisible(false);
+      setTimeout(onClose, 300);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const styles = {
+    success: 'bg-green-600 text-white',
+    error: 'bg-red-600 text-white',
+    warning: 'bg-yellow-500 text-white',
+    info: 'bg-blue-600 text-white'
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div className={`fixed top-4 right-4 z-50 ${styles[type]} border border-gray-600 p-4 min-w-[280px] shadow-lg animate-slide-in-right`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <p className="font-bold capitalize text-sm">{type}</p>
+          <p className="text-sm text-white/90 mt-1">{message}</p>
+        </div>
+        <button onClick={() => { setVisible(false); setTimeout(onClose, 300); }} className="text-white/70 hover:text-white">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white border border-gray-400 max-w-md w-full rounded">
+        <div className="p-6">
+          <div className="flex items-center mb-4">
+            <svg className="h-6 w-6 text-yellow-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+          </div>
+          <p className="text-gray-600 mb-6">{message}</p>
+          <div className="flex justify-end gap-3">
+            <button onClick={onClose} className="px-4 py-2 border border-gray-400 text-gray-700 text-sm font-medium rounded hover:bg-gray-100">Cancel</button>
+            <button onClick={onConfirm} className="px-4 py-2 bg-yellow-600 text-white text-sm font-bold rounded hover:bg-yellow-700">Finalize</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function Exams() {
   const { getAuthHeaders, isAuthenticated } = useAuth();
   
@@ -17,7 +78,18 @@ function Exams() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('entry');
+  const [toasts, setToasts] = useState([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  const addToast = (message, type = 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -35,7 +107,6 @@ function Exams() {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch exams created by Registrar that are available for marking
       const response = await fetch(`${API_BASE_URL}/api/teacher/exams/`, {
         headers: getAuthHeaders()
       });
@@ -138,20 +209,18 @@ function Exams() {
       });
       const data = await response.json();
       if (data.success) {
-        alert(`Saved ${data.saved_count} scores successfully`);
+        addToast(`Saved ${data.saved_count} scores successfully`, 'success');
       } else {
-        alert(data.message || 'Failed to save scores');
+        addToast(data.message || 'Failed to save scores', 'error');
       }
     } catch (err) {
-      alert('Network error: Could not save scores');
+      addToast('Network error: Could not save scores', 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const handleFinalizeExam = async () => {
-    if (!confirm('Finalize this exam? Scores will be locked and sent for moderation.')) return;
-    
     setSaving(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/teacher/exams/${selectedExam.id}/finalize/`, {
@@ -160,16 +229,21 @@ function Exams() {
       });
       const data = await response.json();
       if (data.success) {
-        alert('Exam finalized and submitted for moderation');
+        addToast('Exam finalized and submitted for moderation', 'success');
         await fetchExams();
       } else {
-        alert(data.message || 'Failed to finalize');
+        addToast(data.message || 'Failed to finalize', 'error');
       }
     } catch (err) {
-      alert('Network error: Could not finalize exam');
+      addToast('Network error: Could not finalize exam', 'error');
     } finally {
       setSaving(false);
+      setShowConfirmModal(false);
     }
+  };
+
+  const openFinalizeConfirm = () => {
+    setShowConfirmModal(true);
   };
 
   const getStatistics = () => {
@@ -191,6 +265,11 @@ function Exams() {
 
   const stats = getStatistics();
 
+  const filteredStudents = students.filter(s =>
+    `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.admission_no?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -207,6 +286,28 @@ function Exams() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 0.3s ease-out;
+        }
+      `}</style>
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleFinalizeExam}
+        title="Finalize Exam"
+        message={`Are you sure you want to finalize "${selectedExam?.title}"? Scores will be locked and sent for moderation.`}
+      />
+
+      {toasts.map(toast => (
+        <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
+      ))}
+
       <div className="bg-green-700 px-6 py-6">
         <h1 className="text-2xl font-bold text-white">Examination Center</h1>
         <p className="text-green-100 mt-1">Mark student scores for assigned exams</p>
@@ -236,7 +337,7 @@ function Exams() {
                 <option value="">Select Exam</option>
                 {exams.map(exam => (
                   <option key={exam.id} value={exam.id}>
-                    {exam.title} ({exam.exam_type}) - {exam.status}
+                    {exam.title} - {exam.assigned_subject} ({exam.status})
                   </option>
                 ))}
               </select>
@@ -261,6 +362,17 @@ function Exams() {
             </div>
           </div>
         </div>
+
+        {/* Subject Info Card */}
+        {selectedExam && selectedExam.assigned_subject && (
+          <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
+            <p className="text-sm text-blue-800">
+              <span className="font-bold">You are marking:</span> {selectedExam.title} - 
+              <span className="font-bold ml-1 text-green-700">{selectedExam.assigned_subject}</span>
+            </p>
+            <p className="text-xs text-red-600 mt-1">Only enter scores for this subject. Other subjects will be marked by other teachers.</p>
+          </div>
+        )}
 
         {/* Statistics */}
         {selectedExam && (
@@ -300,7 +412,7 @@ function Exams() {
               <div className="flex gap-2">
                 {selectedExam.status === 'marking' && (
                   <button
-                    onClick={handleFinalizeExam}
+                    onClick={openFinalizeConfirm}
                     disabled={saving}
                     className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded hover:bg-purple-700 disabled:opacity-50"
                   >
@@ -330,23 +442,23 @@ function Exams() {
                   </tr>
                 </thead>
                 <tbody>
-                  {students.length === 0 ? (
+                  {filteredStudents.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="px-4 py-8 text-center text-gray-400">
                         No students found
                       </td>
                     </tr>
                   ) : (
-                    students.map((student, idx) => {
+                    filteredStudents.map((student, idx) => {
                       const isAbsent = absentStudents.has(student.student_id);
                       const score = scores[student.student_id] || '';
                       const percentage = score ? (score / selectedExam.total_marks) * 100 : 0;
                       let grade = '';
                       if (!isAbsent && score) {
-                        if (selectedExam.grade_level === 'pp1' || selectedExam.grade_level === 'pp2' || 
-                            selectedExam.grade_level === '1' || selectedExam.grade_level === '2' || 
+                        if (selectedExam.grade_level === '1' || selectedExam.grade_level === '2' || 
                             selectedExam.grade_level === '3' || selectedExam.grade_level === '4' || 
-                            selectedExam.grade_level === '5') {
+                            selectedExam.grade_level === '5' || selectedExam.grade_level === '6' || 
+                            selectedExam.grade_level === '5' || selectedExam.grade_level=== '7') {
                           if (percentage >= 90) grade = 'EE';
                           else if (percentage >= 75) grade = 'ME';
                           else if (percentage >= 58) grade = 'AE';

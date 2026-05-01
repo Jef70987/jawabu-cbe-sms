@@ -26,14 +26,14 @@ const TeacherSidebarData = [
     link: "/TeacherPortal/Dashboard"
   },
   {
-    title: "Class Profile",
+    title: "Class Profile/attendance",
     icon: <HomeIcon />,
     link: "/TeacherPortal/ClassProfile"
   },
 
   /* --- SECTION: DAILY OPERATIONS --- */
   {
-    title: "Attendance",
+    title: "Subject-Attendance",
     icon: <ClipboardCheckIcon />, 
     link: "/TeacherPortal/Attendance"
   },

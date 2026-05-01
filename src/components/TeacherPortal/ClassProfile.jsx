@@ -474,8 +474,8 @@ function ClassProfile() {
       <div className="bg-green-700 px-6 py-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Class Profile</h1>
-            <p className="text-green-100 mt-1">Manage your class, track attendance, and monitor student progress</p>
+            <h1 className="text-2xl font-bold text-white">Class Profile - Track Attendance of Your Own Class</h1>
+            <p className="text-green-100 mt-1">Manage your class and monitor student progress</p>
           </div>
           <div className="flex gap-3">
             <button 

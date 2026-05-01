@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
@@ -118,44 +119,55 @@ function ExamManagement() {
   useEffect(() => {
     applyScheduleFilters();
   }, [allSchedules, scheduleSearchTerm, scheduleFilterDate, scheduleFilterSubject]);
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [examsRes, classesRes, teachersRes, subjectsRes, gradeLevelsRes, schedulesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/registrar/exams/`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}/api/registrar/classes/`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}/api/registrar/classes/teachers/`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}/api/registrar/classes/subjects/`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}/api/registrar/exams/grade-levels/`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}/api/registrar/exams/all-schedules/`, { headers: getAuthHeaders() })
-      ]);
-      
-      const examsData = await examsRes.json();
-      if (examsData.success) setExams(examsData.data || []);
-      
-      const classesData = await classesRes.json();
-      if (classesData.success) setClasses(classesData.data || []);
-      
-      const teachersData = await teachersRes.json();
-      if (teachersData.success) setTeachers(teachersData.data || []);
-      
-      const subjectsData = await subjectsRes.json();
-      if (subjectsData.success) setSubjects(subjectsData.data || []);
-      
-      const gradeLevelsData = await gradeLevelsRes.json();
-      if (gradeLevelsData.success) setGradeLevels(gradeLevelsData.data || []);
-      
-      const schedulesData = await schedulesRes.json();
-      if (schedulesData.success) setAllSchedules(schedulesData.data || []);
-      
-    } catch (error) {
-
-      addNotification('error', 'Failed to connect to backend server');
-    } finally {
-      setIsLoading(false);
+const fetchData = async () => {
+  setIsLoading(true);
+  try {
+    const [examsRes, classesRes, teachersRes, subjectsRes, gradeLevelsRes, schedulesRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/registrar/exams/`, { headers: getAuthHeaders() }),
+      fetch(`${API_BASE_URL}/api/registrar/classes/`, { headers: getAuthHeaders() }),
+      fetch(`${API_BASE_URL}/api/registrar/classes/teachers/`, { headers: getAuthHeaders() }),
+      fetch(`${API_BASE_URL}/api/registrar/classes/subjects/`, { headers: getAuthHeaders() }),
+      fetch(`${API_BASE_URL}/api/registrar/exams/grade-levels/`, { headers: getAuthHeaders() }),
+      fetch(`${API_BASE_URL}/api/registrar/exams/all-schedules/`, { headers: getAuthHeaders() })
+    ]);
+    
+    const examsData = await examsRes.json();
+    if (examsData.success) {
+      // Fetch markers for each exam
+      const examsWithMarkers = await Promise.all(
+        (examsData.data || []).map(async (exam) => {
+          const markersRes = await fetch(`${API_BASE_URL}/api/registrar/exams/getmarkers/${exam.id}/`, {
+            headers: getAuthHeaders()
+          });
+          const markersData = await markersRes.json();
+          return { ...exam, markers: markersData.success ? markersData.data : [] };
+        })
+      );
+      setExams(examsWithMarkers);
     }
-  };
+    
+    const classesData = await classesRes.json();
+    if (classesData.success) setClasses(classesData.data || []);
+    
+    const teachersData = await teachersRes.json();
+    if (teachersData.success) setTeachers(teachersData.data || []);
+    console.log(teachersData.data)
+    
+    const subjectsData = await subjectsRes.json();
+    if (subjectsData.success) setSubjects(subjectsData.data || []);
+    
+    const gradeLevelsData = await gradeLevelsRes.json();
+    if (gradeLevelsData.success) setGradeLevels(gradeLevelsData.data || []);
+    
+    const schedulesData = await schedulesRes.json();
+    if (schedulesData.success) setAllSchedules(schedulesData.data || []);
+    
+  } catch (error) {
+    addNotification('error', 'Failed to connect to backend server');
+  } finally {
+    setIsLoading(false);
+  }
+};
   const applyFilters = () => {
     let filtered = [...exams];
     if (searchTerm) {
@@ -326,7 +338,8 @@ function ExamManagement() {
   };
 
   const openMarkingModal = (exam) => {
-    setSelectedExam(exam);
+    const fullExam = exams.find(e => e.id === exam.id);
+    setSelectedExam(fullExam);
     setMarkingData({});
     setShowMarkingModal(true);
   };
@@ -1166,27 +1179,45 @@ function ExamManagement() {
               {(selectedExam.subjects || []).length === 0 ? (
                 <p className="text-sm text-gray-500">No subjects assigned to this exam.</p>
               ) : (
-                (selectedExam.subjects || []).map(subject => (
-                  <div key={subject} className="mb-4 p-3 border border-gray-300 rounded">
-                    <label className="block text-sm font-bold text-gray-700 mb-2">{subject}</label>
-                    <select 
-                      multiple 
-                      value={markingData[subject] || []}
-                      onChange={(e) => {
-                        const selected = Array.from(e.target.selectedOptions, option => option.value);
-                        setMarkingData({...markingData, [subject]: selected});
-                      }}
-                      className="w-full px-3 py-2 text-sm border border-gray-400 bg-white h-32 rounded"
-                    >
-                      {teachers.map(teacher => (
-                        <option key={teacher.id} value={teacher.id}>{teacher.first_name} {teacher.last_name}</option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">Hold Ctrl to select multiple markers</p>
-                  </div>
-                ))
+                (selectedExam.subjects || []).map(subject => {
+                  // Get already assigned teacher IDs for this subject (ensure they are strings)
+                  const assignedTeachers = (selectedExam.markers || [])
+                    .filter(m => m.subject === subject)
+                    .map(m => String(m.id));  // Convert to string
+                  
+                  return (
+                    <div key={subject} className="mb-4 p-3 border border-gray-300 rounded">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">{subject}</label>
+                      <p className="text-xs text-blue-600 font-bold mb-2 flex flex-row">
+                        Currently assigned: <p className="text-red-600 font-bold mb-2"> {(selectedExam.markers || [])
+                          .filter(m => m.subject === subject)
+                          .map(m => m.teacher_name)
+                          .join(', ') || 'None'}
+                          </p>
+                      </p>
+                      <select 
+                        multiple 
+                        value={markingData[subject] || (selectedExam.markers || [])
+                          .filter(m => m.subject === subject)
+                          .map(m => m.id)}
+                        onChange={(e) => {
+                          const selected = Array.from(e.target.selectedOptions, option => option.value);
+                          setMarkingData({...markingData, [subject]: selected});
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-400 bg-white h-32 rounded"
+                      >
+                        {teachers.map(teacher => (
+                          <option key={teacher.id} value={teacher.id}>
+                            {teacher.first_name} {teacher.last_name} ----- {teacher.specialization}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">Hold Ctrl to select multiple markers</p>
+                    </div>
+                  );
+                })
               )}
-            </div>
+                          </div>
             <div className="px-5 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3 sticky bottom-0">
               <button onClick={() => setShowMarkingModal(false)} className="px-4 py-2 border border-gray-400 text-gray-700 text-sm font-medium bg-white hover:bg-gray-100 rounded">Cancel</button>
               <button onClick={assignMarkers} className="px-4 py-2 bg-yellow-600 text-white text-sm font-medium border border-yellow-700 hover:bg-yellow-700 rounded">Assign Markers</button>

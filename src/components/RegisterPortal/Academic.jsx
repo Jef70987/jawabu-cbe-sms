@@ -257,6 +257,18 @@ function AcademicManagement() {
   }); // NEW
   const [editingGrade, setEditingGrade] = useState(null); // NEW
 
+  // Terms
+  const [terms, setTerms] = useState([]);
+  const [showTermModal, setShowTermModal] = useState(false);
+  const [editingTerm, setEditingTerm] = useState(null);
+  const [termForm, setTermForm] = useState({
+    academic_year: "", // ID of the AcademicYear
+    term: "Term 1",
+    start_date: "",
+    end_date: "",
+    is_current: false,
+  });
+  const [termAcademicYearFilter, setTermAcademicYearFilter] = useState("");
   // Bulk Import
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -289,6 +301,7 @@ function AcademicManagement() {
       fetchCoreValues(),
       fetchWeightConfig(),
       fetchAcademicYears(),
+      fetchTerms(),
     ]);
     setIsLoading(false);
   };
@@ -334,7 +347,102 @@ function AcademicManagement() {
       addNotification("error", "Failed to load versions");
     }
   };
+  const fetchTerms = async () => {
+    try {
+      let url = `${API_BASE_URL}/api/registrar/academic/terms/`;
+      if (termAcademicYearFilter) {
+        url += `?academic_year=${termAcademicYearFilter}`;
+      }
+      const res = await fetch(url, { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (data.success) setTerms(data.data);
+      else addNotification("error", data.error || "Failed to load terms");
+    } catch {
+      addNotification("error", "Failed to load terms");
+    }
+  };
 
+  const handleSaveTerm = async () => {
+    if (
+      !termForm.academic_year ||
+      !termForm.term ||
+      !termForm.start_date ||
+      !termForm.end_date
+    ) {
+      addNotification("warning", "Please fill in all required fields");
+      return;
+    }
+    const url = editingTerm
+      ? `${API_BASE_URL}/api/registrar/academic/terms/${editingTerm.id}/`
+      : `${API_BASE_URL}/api/registrar/academic/terms/create/`;
+    const method = editingTerm ? "PUT" : "POST";
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          academic_year: termForm.academic_year,
+          term: termForm.term,
+          start_date: termForm.start_date,
+          end_date: termForm.end_date,
+          is_current: termForm.is_current,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        addNotification(
+          "success",
+          editingTerm ? "Term updated" : "Term created",
+        );
+        setShowTermModal(false);
+        setEditingTerm(null);
+        setTermForm({
+          academic_year: "",
+          term: "Term 1",
+          start_date: "",
+          end_date: "",
+          is_current: false,
+        });
+        fetchTerms();
+      } else {
+        addNotification("error", data.error || "Failed to save term");
+      }
+    } catch {
+      addNotification("error", "Network error");
+    }
+  };
+
+  const handleDeleteTerm = async (term) => {
+    if (!window.confirm(`Delete Term ${term.term}?`)) return;
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/terms/${term.id}/`,
+        {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        },
+      );
+      const data = await res.json();
+      if (data.success) {
+        addNotification("success", "Term deleted");
+        fetchTerms();
+      } else addNotification("error", data.error || "Failed to delete");
+    } catch {
+      addNotification("error", "Network error");
+    }
+  };
+
+  const openEditTerm = (t) => {
+    setEditingTerm(t);
+    setTermForm({
+      academic_year: t.academic_year || t.academic_year_id, // depends on serializer
+      term: t.term,
+      start_date: t.start_date,
+      end_date: t.end_date,
+      is_current: t.is_current,
+    });
+    setShowTermModal(true);
+  };
   const fetchGradeLevels = async () => {
     try {
       const response = await fetch(
@@ -1087,6 +1195,10 @@ function AcademicManagement() {
     fetchAllData();
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    fetchTerms();
+  }, [termAcademicYearFilter]);
+
   // Authentication check
   if (!isAuthenticated) {
     return (
@@ -1245,6 +1357,13 @@ function AcademicManagement() {
         >
           <Calendar className="h-4 w-4 inline mr-2" />
           Academic Years
+        </button>
+        <button
+          onClick={() => setActiveTab("terms")}
+          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === "terms" ? "bg-green-700 text-white" : "bg-gray-200 text-gray-800"}`}
+        >
+          <Clock className="h-4 w-4 inline mr-2" />
+          Terms
         </button>
       </div>
 
@@ -2060,7 +2179,123 @@ function AcademicManagement() {
           </div>
         </div>
       )}
+      {/* TAB 7: TERMS */}
+      {activeTab === "terms" && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-bold text-gray-700">
+                Filter by Year:
+              </label>
+              <select
+                value={termAcademicYearFilter}
+                onChange={(e) => setTermAcademicYearFilter(e.target.value)}
+                className="px-3 py-1 border border-gray-400 text-sm bg-white"
+              >
+                <option value="">All Years</option>
+                {academicYears.map((yr) => (
+                  <option key={yr.id} value={yr.id}>
+                    {yr.year_code}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={() => {
+                setEditingTerm(null);
+                setTermForm({
+                  academic_year: "",
+                  term: "Term 1",
+                  start_date: "",
+                  end_date: "",
+                  is_current: false,
+                });
+                setShowTermModal(true);
+              }}
+              className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800"
+            >
+              <Plus className="h-4 w-4 inline mr-2" /> Add Term
+            </button>
+          </div>
 
+          <div className="bg-white border border-gray-300 overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-100 border-b border-gray-300">
+                  <th className="px-4 py-3 text-left font-bold text-gray-700">
+                    Academic Year
+                  </th>
+                  <th className="px-4 py-3 text-left font-bold text-gray-700">
+                    Term
+                  </th>
+                  <th className="px-4 py-3 text-left font-bold text-gray-700">
+                    Start Date
+                  </th>
+                  <th className="px-4 py-3 text-left font-bold text-gray-700">
+                    End Date
+                  </th>
+                  <th className="px-4 py-3 text-center font-bold text-gray-700">
+                    Current
+                  </th>
+                  <th className="px-4 py-3 text-center font-bold text-gray-700">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {terms.map((t) => (
+                  <tr
+                    key={t.id}
+                    className="border-b border-gray-200 hover:bg-gray-50"
+                  >
+                    <td className="px-4 py-3 font-medium">
+                      {t.academic_year_name || t.academic_year?.year_code}
+                    </td>
+                    <td className="px-4 py-3">Term {t.term}</td>
+                    <td className="px-4 py-3">{t.start_date}</td>
+                    <td className="px-4 py-3">{t.end_date}</td>
+                    <td className="px-4 py-3 text-center">
+                      {t.is_current ? (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium border border-green-200">
+                          Current
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs border border-gray-200">
+                          —
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => openEditTerm(t)}
+                        className="mr-2 p-1.5 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTerm(t)}
+                        className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {terms.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan="6"
+                      className="px-4 py-8 text-center text-gray-400"
+                    >
+                      No terms found. Select an academic year or add a new term.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {/* Subject Modal */}
       {showSubjectModal && (
         <div
@@ -2948,6 +3183,124 @@ function AcademicManagement() {
                 className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
               >
                 {editingAcademicYear ? "Update" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Term Modal */}
+      {showTermModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowTermModal(false)}
+        >
+          <div
+            className="bg-white border border-gray-400 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">
+                {editingTerm ? "Edit Term" : "Add Term"}
+              </h3>
+              <button
+                onClick={() => setShowTermModal(false)}
+                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Academic Year *
+                </label>
+                <select
+                  value={termForm.academic_year}
+                  onChange={(e) =>
+                    setTermForm({ ...termForm, academic_year: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                >
+                  <option value="">Select Year</option>
+                  {academicYears.map((yr) => (
+                    <option key={yr.id} value={yr.id}>
+                      {yr.year_code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Term Number *
+                </label>
+                <select
+                  value={termForm.term}
+                  onChange={(e) =>
+                    setTermForm({ ...termForm, term: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                >
+                  <option value="Term 1">Term 1</option>
+                  <option value="Term 2">Term 2</option>
+                  <option value="Term 3">Term 3</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Start Date *
+                </label>
+                <input
+                  type="date"
+                  value={termForm.start_date}
+                  onChange={(e) =>
+                    setTermForm({ ...termForm, start_date: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  End Date *
+                </label>
+                <input
+                  type="date"
+                  value={termForm.end_date}
+                  onChange={(e) =>
+                    setTermForm({ ...termForm, end_date: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={termForm.is_current}
+                    onChange={(e) =>
+                      setTermForm({ ...termForm, is_current: e.target.checked })
+                    }
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Set as current term for this academic year
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 ml-5">
+                  This will unset any other current term for the same year.
+                </p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowTermModal(false)}
+                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTerm}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
+              >
+                {editingTerm ? "Update" : "Create"}
               </button>
             </div>
           </div>
