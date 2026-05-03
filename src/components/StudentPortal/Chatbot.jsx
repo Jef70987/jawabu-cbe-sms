@@ -354,6 +354,25 @@ const Chatbot = () => {
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState(null);
 
+  // Canonical ML interface (frontend abstraction)
+  const mlInsights = analyticsData ? {
+    // Core ML fields (matches spec)
+    prediction: analyticsData?.risks?.failure_risk?.value ?? null,
+    confidence: analyticsData?.confidence_score ?? null,
+    recommendations: analyticsData?.recommendations ?? [],
+    factors: (analyticsData?.top_factors || []).map(f => ({
+      feature: f.feature,
+      impact: f.impact
+    })),
+
+    // Existing fields (backward compatibility)
+    overall_competency: analyticsData.overall_competency || 0,
+    performance_trend: analyticsData.performance_trend || [],
+    competencies: analyticsData.competencies || [],
+    risks: analyticsData.risks || {},
+    career_pathways: analyticsData.career_pathways || []
+  } : null;
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -479,11 +498,15 @@ const Chatbot = () => {
     );
   }
 
-  const overall = analyticsData?.overall_competency ?? 0;
-  const trend = analyticsData?.performance_trend ?? [];
-  const competencies = analyticsData?.competencies ?? [];
-  const risks = analyticsData?.risks ?? {};
-  const pathways = analyticsData?.career_pathways ?? [];
+  const overall = mlInsights?.overall_competency ?? 0;
+  const trend = mlInsights?.performance_trend ?? [];
+  const competencies = mlInsights?.competencies ?? [];
+  const risks = mlInsights?.risks ?? {};
+  const pathways = mlInsights?.career_pathways ?? [];
+  const prediction = mlInsights?.prediction;
+  const confidence = mlInsights?.confidence;
+  const recommendations = mlInsights?.recommendations ?? [];
+  const topFactors = mlInsights?.factors ?? [];
 
   // Shared chat panel props
   const chatPanelProps = {
