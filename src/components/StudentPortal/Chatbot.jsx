@@ -195,6 +195,188 @@ const getRecommendationSourceLabel = (source) => {
   return 'Recommendation';
 };
 
+const ML_INSIGHT_UNAVAILABLE_MESSAGE = 'ML insight is not available yet. I can still give general study guidance, but personalized prediction-based advice requires the latest ML insight to load.';
+const LOW_CONFIDENCE_CAVEAT = 'This estimate may be incomplete because model confidence is low or unavailable.';
+const IMPROVEMENT_EMPTY_RECOMMENDATIONS = 'No personalized recommendations are available yet. Review your recent performance, attendance, and competency gaps with a teacher or advisor.';
+const CAREER_FALLBACK_MESSAGE = 'I do not have personalized career pathway recommendations yet. A teacher or career advisor should review your competencies, interests, and subject performance before choosing a pathway.';
+
+const normalizeMessageText = (message) => (typeof message === 'string' ? message.toLowerCase().trim() : '');
+
+const detectMlIntent = (message) => {
+  const content = normalizeMessageText(message);
+  if (!content) return null;
+
+  const riskPatterns = [
+    'why at risk',
+    'why am i at risk',
+    'why this prediction',
+    'explain prediction',
+    'why predicted',
+    'what affects my risk',
+  ];
+  const improvementPatterns = [
+    'how can i improve',
+    'how do i improve',
+    'improve my performance',
+    'what should i focus on',
+    'what should i work on',
+    'next steps',
+  ];
+  const studyPlanPatterns = [
+    'study plan',
+    'revision plan',
+    'learning plan',
+    'recommend study',
+    'what should i study',
+  ];
+  const careerPatterns = [
+    'career pathway',
+    'career paths',
+    'future career',
+    'subject choice',
+    'career',
+    'pathway',
+  ];
+
+  if (riskPatterns.some((pattern) => content.includes(pattern))) return 'risk_explanation';
+  if (improvementPatterns.some((pattern) => content.includes(pattern))) return 'improvement';
+  if (studyPlanPatterns.some((pattern) => content.includes(pattern))) return 'study_plan';
+  if (careerPatterns.some((pattern) => content.includes(pattern))) return 'career';
+  return null;
+};
+
+const formatPredictionForMessage = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return null;
+  if (value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
+  return `${Math.round(value)}`;
+};
+
+const formatConfidenceForMessage = (value, band) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return band ? `Confidence band: ${formatConfidenceBand(band)}.` : null;
+  }
+
+  let formattedValue = null;
+  if (value >= 0 && value <= 1) formattedValue = `${Math.round(value * 100)}%`;
+  else if (value > 1 && value <= 100) formattedValue = `${Math.round(value)}%`;
+  else formattedValue = `${Math.round(value)}`;
+
+  if (band) return `${formattedValue} (${formatConfidenceBand(band)})`;
+  return formattedValue;
+};
+
+const hasLowOrUnknownConfidence = (insight) => {
+  const confidence = insight?.confidence;
+  const confidenceBand = typeof insight?.confidenceBand === 'string' ? insight.confidenceBand.toLowerCase() : 'unknown';
+  if (typeof confidence !== 'number' || Number.isNaN(confidence)) return true;
+  if (confidenceBand === 'low' || confidenceBand === 'unknown') return true;
+  return confidence < 0.5;
+};
+
+const summarizeFactorsForMessage = (factors, limit = 3) => {
+  if (!Array.isArray(factors)) return [];
+  return factors.slice(0, limit).map((factor) => {
+    const label = factor?.label || humanizeFeatureName(factor?.feature);
+    const directionMeta = getFactorDirectionMeta(factor?.direction);
+    return `${label}: ${directionMeta.fallbackExplanation}`;
+  });
+};
+
+const summarizeRecommendationsForMessage = (recommendations, limit = 3) => {
+  if (!Array.isArray(recommendations)) return [];
+  return recommendations.slice(0, limit).map((recommendation) => {
+    const title = recommendation?.title || 'Recommended action';
+    const description = recommendation?.description || 'Review this recommendation with a teacher or advisor.';
+    return `${title} - ${description}`;
+  });
+};
+
+const hasRuleBasedRecommendations = (recommendations) =>
+  Array.isArray(recommendations)
+  && recommendations.some((recommendation) => normalizeMessageText(recommendation?.source) === 'rule_based');
+
+const buildMlAwareResponse = (intent, insight) => {
+  if (!insight || insight?.source === 'unavailable') {
+    return ML_INSIGHT_UNAVAILABLE_MESSAGE;
+  }
+
+  const riskLevel = formatRiskLevel(insight?.riskLevel);
+  const prediction = formatPredictionForMessage(insight?.prediction);
+  const confidence = formatConfidenceForMessage(insight?.confidence, insight?.confidenceBand);
+  const factors = summarizeFactorsForMessage(insight?.factors, intent === 'improvement' ? 2 : 3);
+  const recommendations = summarizeRecommendationsForMessage(insight?.recommendations, 3);
+  const lowConfidence = hasLowOrUnknownConfidence(insight);
+  const ruleBasedRecommendation = hasRuleBasedRecommendations(insight?.recommendations);
+  const confidenceNote = lowConfidence ? LOW_CONFIDENCE_CAVEAT : '';
+  const ruleBasedNote = ruleBasedRecommendation ? 'Some recommendations are rule-based, not direct model decisions.' : '';
+
+  if (intent === 'risk_explanation') {
+    const sections = [];
+    sections.push(`Current estimate: ${riskLevel}${prediction ? `, with a prediction value of ${prediction}.` : '.'}`);
+    if (confidence) sections.push(`Confidence context: ${confidence}.`);
+    if (factors.length > 0) {
+      sections.push(`Top signals associated with this estimate:\n${factors.map((factor, index) => `${index + 1}. ${factor}`).join('\n')}`);
+    } else {
+      sections.push('Factor details are not available yet, so this estimate should be reviewed with your teacher or advisor.');
+    }
+    if (confidenceNote) sections.push(confidenceNote);
+    return sections.join('\n\n');
+  }
+
+  if (intent === 'improvement') {
+    if (recommendations.length === 0) {
+      return [IMPROVEMENT_EMPTY_RECOMMENDATIONS, confidenceNote].filter(Boolean).join('\n\n');
+    }
+
+    const sections = [];
+    sections.push(`Suggested next steps:\n${recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`).join('\n')}`);
+    if (factors.length > 0) {
+      sections.push(`Signals to review with your teacher:\n${factors.map((factor, index) => `${index + 1}. ${factor}`).join('\n')}`);
+    }
+    sections.push('Review these actions with a teacher or advisor before making major study changes.');
+    if (ruleBasedNote) sections.push(ruleBasedNote);
+    if (confidenceNote) sections.push(confidenceNote);
+    return sections.join('\n\n');
+  }
+
+  if (intent === 'study_plan') {
+    if (recommendations.length === 0) {
+      const generalPlan = [
+        'General guidance (not personalized):',
+        '1. Review your weakest topics first.',
+        '2. Practice recent assessments and track repeated mistakes.',
+        '3. Ask your teacher for targeted feedback on priority gaps.',
+        '4. Track progress weekly and adjust your plan.',
+      ].join('\n');
+      return [generalPlan, confidenceNote].filter(Boolean).join('\n\n');
+    }
+
+    const planFromRecommendations = `Study plan based on available recommendations:\n${recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`).join('\n')}`;
+    return [planFromRecommendations, ruleBasedNote, confidenceNote].filter(Boolean).join('\n\n');
+  }
+
+  if (intent === 'career') {
+    const careerRecommendations = Array.isArray(insight?.recommendations)
+      ? insight.recommendations.filter((recommendation) => normalizeRecommendationType(recommendation?.type) === 'career')
+      : [];
+
+    if (careerRecommendations.length === 0) {
+      return [CAREER_FALLBACK_MESSAGE, confidenceNote].filter(Boolean).join('\n\n');
+    }
+
+    const careerSummary = summarizeRecommendationsForMessage(careerRecommendations, 3);
+    const responseSections = [
+      `Career-related suggestions from your current insight:\n${careerSummary.map((item, index) => `${index + 1}. ${item}`).join('\n')}`,
+      'Review these options with a teacher or career advisor before choosing a pathway.',
+    ];
+    if (ruleBasedNote) responseSections.push(ruleBasedNote);
+    if (confidenceNote) responseSections.push(confidenceNote);
+    return responseSections.join('\n\n');
+  }
+
+  return ML_INSIGHT_UNAVAILABLE_MESSAGE;
+};
+
 // ─── Bot message formatter (bold, italic, lists, paragraphs) ─────────────────
 const formatBotMessage = (text) => {
   if (!text) return null;
@@ -643,13 +825,27 @@ const Chatbot = () => {
     setInputValue('');
     setIsTyping(true);
 
+    const mlIntent = detectMlIntent(message);
+    if (mlIntent) {
+      const mlAwareReply = buildMlAwareResponse(mlIntent, mlInsight);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        text: mlAwareReply,
+        isUser: false,
+        timestamp: getTimestamp(),
+      }]);
+      setIsTyping(false);
+      setIsSending(false);
+      return;
+    }
+
     try {
-      const context = analyticsData ? {
-        student_name:  analyticsData.student_name  || `${user?.first_name || ''} ${user?.last_name || ''}`.trim(),
-        student_class: analyticsData.student_class || '',
-        admission_no:  analyticsData.admission_no  || '',
+      const context = {
+        student_name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Student',
+        student_class: user?.student_class || user?.class_name || '',
+        admission_no: user?.admission_no || '',
         student_role:  user?.role || 'student',
-      } : {};
+      };
 
       const res = await fetch(`${API_BASE_URL}/api/student/chatbot/message/`, {
         method: 'POST',
@@ -683,7 +879,7 @@ const Chatbot = () => {
       setIsTyping(false);
       setIsSending(false);
     }
-  }, [analyticsData, user, getAuthHeaders, messages, isSending]);
+  }, [user, getAuthHeaders, messages, isSending, mlInsight]);
 
   const handleSuggestionClick = useCallback((query) => sendMessage(query), [sendMessage]);
   const handleSend = useCallback(() => {
