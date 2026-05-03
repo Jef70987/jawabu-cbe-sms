@@ -146,6 +146,55 @@ const getFactorSourceLabel = (source) => {
   return 'Signal';
 };
 
+const normalizeRecommendationPriority = (priority) => {
+  const normalized = typeof priority === 'string' ? priority.toLowerCase() : 'medium';
+  if (normalized === 'high' || normalized === 'medium' || normalized === 'low') return normalized;
+  return 'medium';
+};
+
+const getRecommendationPriorityMeta = (priority) => {
+  if (priority === 'high') {
+    return {
+      label: 'High priority',
+      classes: 'bg-amber-50 text-amber-700 border-amber-200',
+    };
+  }
+  if (priority === 'low') {
+    return {
+      label: 'Low priority',
+      classes: 'bg-green-50 text-green-700 border-green-200',
+    };
+  }
+  return {
+    label: 'Medium priority',
+    classes: 'bg-slate-50 text-slate-700 border-slate-200',
+  };
+};
+
+const normalizeRecommendationType = (type) => {
+  const normalized = typeof type === 'string' ? type.toLowerCase() : 'general';
+  if (normalized === 'academic' || normalized === 'attendance' || normalized === 'behavior' || normalized === 'career' || normalized === 'general') {
+    return normalized;
+  }
+  return 'general';
+};
+
+const getRecommendationTypeLabel = (type) => {
+  if (type === 'academic') return 'Academic';
+  if (type === 'attendance') return 'Attendance';
+  if (type === 'behavior') return 'Behavior';
+  if (type === 'career') return 'Career';
+  return 'General';
+};
+
+const getRecommendationSourceLabel = (source) => {
+  const normalized = typeof source === 'string' ? source.toLowerCase() : '';
+  if (normalized === 'ml') return 'ML recommendation';
+  if (normalized === 'rule_based') return 'Rule-based recommendation';
+  if (normalized === 'fallback') return 'Fallback recommendation';
+  return 'Recommendation';
+};
+
 // ─── Bot message formatter (bold, italic, lists, paragraphs) ─────────────────
 const formatBotMessage = (text) => {
   if (!text) return null;
@@ -662,6 +711,7 @@ const Chatbot = () => {
     ? `ML insight unavailable: ${analyticsError}`
     : analyticsError;
   const explainabilityFactors = Array.isArray(mlInsight?.factors) ? mlInsight.factors : [];
+  const mlRecommendations = Array.isArray(mlInsight?.recommendations) ? mlInsight.recommendations : [];
 
   const mlSummaryPanel = (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
@@ -755,6 +805,50 @@ const Chatbot = () => {
     </div>
   );
 
+  const mlRecommendationsPanel = (
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="mb-4">
+        <h3 className="font-semibold text-gray-800">Recommended actions</h3>
+        <p className="text-xs text-gray-500">Personalized next steps based on available ML context</p>
+      </div>
+
+      {mlRecommendations.length === 0 ? (
+        <p className="text-sm text-gray-500">No personalized recommendations are available yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {mlRecommendations.map((recommendation, index) => {
+            const priority = normalizeRecommendationPriority(recommendation?.priority);
+            const type = normalizeRecommendationType(recommendation?.type);
+            const priorityMeta = getRecommendationPriorityMeta(priority);
+            const title = recommendation?.title || 'Recommended action';
+            const description = recommendation?.description || 'Review this recommendation with a teacher or advisor.';
+
+            return (
+              <div
+                key={recommendation?.id || recommendation?.title || `recommendation-${index}`}
+                className="border border-gray-200 rounded-lg p-3 bg-gray-50"
+              >
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                  <p className="text-sm font-medium text-gray-800">{title}</p>
+                  <span className={`text-xs font-medium border px-2 py-0.5 rounded-full ${priorityMeta.classes}`}>
+                    {priorityMeta.label}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mb-2">{description}</p>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                  <span className="px-2 py-0.5 bg-white border border-gray-200 rounded-full">
+                    {getRecommendationTypeLabel(type)}
+                  </span>
+                  <span>{getRecommendationSourceLabel(recommendation?.source)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   if (analyticsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -819,6 +913,7 @@ const Chatbot = () => {
 
             {mlSummaryPanel}
             {mlExplainabilityPanel}
+            {mlRecommendationsPanel}
 
             {/* Overall Competency */}
             <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -947,6 +1042,7 @@ const Chatbot = () => {
 
         {mlSummaryPanel}
         {mlExplainabilityPanel}
+        {mlRecommendationsPanel}
 
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
