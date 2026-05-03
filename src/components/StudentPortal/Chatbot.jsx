@@ -95,6 +95,57 @@ const formatLastUpdated = (value) => {
   return date.toLocaleString();
 };
 
+const humanizeFeatureName = (feature) => {
+  if (typeof feature !== 'string' || !feature.trim()) return 'Signal';
+  return feature
+    .split('_')
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+};
+
+const formatFactorImpact = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'Impact unavailable';
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+  const absoluteValue = Math.abs(value);
+  if (absoluteValue <= 1) return `${sign}${Math.round(absoluteValue * 100)}%`;
+  return `${sign}${absoluteValue.toFixed(1)}`;
+};
+
+const getFactorDirectionMeta = (direction) => {
+  const normalized = typeof direction === 'string' ? direction.toLowerCase() : 'neutral';
+  if (normalized === 'positive') {
+    return {
+      direction: 'positive',
+      label: 'Positive signal',
+      classes: 'bg-green-50 text-green-700 border-green-200',
+      fallbackExplanation: 'This signal is associated with a stronger estimate.',
+    };
+  }
+  if (normalized === 'negative') {
+    return {
+      direction: 'negative',
+      label: 'Needs attention',
+      classes: 'bg-amber-50 text-amber-700 border-amber-200',
+      fallbackExplanation: 'This signal is associated with a weaker estimate.',
+    };
+  }
+  return {
+    direction: 'neutral',
+    label: 'Context signal',
+    classes: 'bg-slate-50 text-slate-700 border-slate-200',
+    fallbackExplanation: 'This signal is included in the available ML context.',
+  };
+};
+
+const getFactorSourceLabel = (source) => {
+  const normalized = typeof source === 'string' ? source.toLowerCase() : '';
+  if (normalized === 'model') return 'Model signal';
+  if (normalized === 'rule_based') return 'Rule-based signal';
+  if (normalized === 'fallback') return 'Fallback signal';
+  return 'Signal';
+};
+
 // ─── Bot message formatter (bold, italic, lists, paragraphs) ─────────────────
 const formatBotMessage = (text) => {
   if (!text) return null;
@@ -610,6 +661,7 @@ const Chatbot = () => {
   const mlErrorDisplay = analyticsError && analyticsError !== 'ML insight unavailable'
     ? `ML insight unavailable: ${analyticsError}`
     : analyticsError;
+  const explainabilityFactors = Array.isArray(mlInsight?.factors) ? mlInsight.factors : [];
 
   const mlSummaryPanel = (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
@@ -658,6 +710,48 @@ const Chatbot = () => {
           <p className="font-medium text-gray-800">{lastUpdatedDisplay}</p>
         </div>
       </div>
+    </div>
+  );
+
+  const mlExplainabilityPanel = (
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="mb-4">
+        <h3 className="font-semibold text-gray-800">Why this prediction?</h3>
+        <p className="text-xs text-gray-500">Main signals associated with this estimate</p>
+      </div>
+
+      {explainabilityFactors.length === 0 ? (
+        <p className="text-sm text-gray-500">Explanation is not available for this prediction yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {explainabilityFactors.map((factor, index) => {
+            const directionMeta = getFactorDirectionMeta(factor?.direction);
+            const factorLabel = factor?.label || humanizeFeatureName(factor?.feature);
+            const factorExplanation = factor?.explanation || directionMeta.fallbackExplanation;
+
+            return (
+              <div
+                key={factor?.feature || factor?.label || `factor-${index}`}
+                className="border border-gray-200 rounded-lg p-3 bg-gray-50"
+              >
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                  <p className="text-sm font-medium text-gray-800">{factorLabel}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-600">
+                      {formatFactorImpact(factor?.impact)}
+                    </span>
+                    <span className={`text-xs font-medium border px-2 py-0.5 rounded-full ${directionMeta.classes}`}>
+                      {directionMeta.label}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600 mb-2">{factorExplanation}</p>
+                <p className="text-[11px] text-gray-500">{getFactorSourceLabel(factor?.source)}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 
@@ -724,6 +818,7 @@ const Chatbot = () => {
             )}
 
             {mlSummaryPanel}
+            {mlExplainabilityPanel}
 
             {/* Overall Competency */}
             <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -851,6 +946,7 @@ const Chatbot = () => {
         )}
 
         {mlSummaryPanel}
+        {mlExplainabilityPanel}
 
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
