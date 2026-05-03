@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
+import { fetchStudentMLInsight } from '../../services/mlApi';
 import {
   MessageCircle, Send, X, Bot, User, Loader2,
   Clock, Calendar, TrendingUp, Award, GraduationCap,
@@ -350,20 +351,63 @@ const Chatbot = () => {
   const [isSending, setIsSending] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  const [analyticsData, setAnalyticsData] = useState(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
-  const [analyticsError, setAnalyticsError] = useState(null);
+  const [mlInsight, setMlInsight] = useState(null);
+  const [mlLoading, setMlLoading] = useState(false);
+  const [mlError, setMlError] = useState(null);
+  const [mlLastUpdated, setMlLastUpdated] = useState(null);
+  const [mlReloadKey, setMlReloadKey] = useState(0);
+
+  const analyticsLoading = mlLoading;
+  const analyticsError = mlError;
+
+  const refreshMlInsight = useCallback(() => {
+    setMlReloadKey((prev) => prev + 1);
+  }, []);
+
+  const studentId = useMemo(() => {
+    return user?.student_id || user?.student?.id || user?.student_profile?.id || null;
+  }, [user]);
+
+  const analyticsData = useMemo(() => {
+    const studentName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Student';
+    const predictionValue = mlInsight?.prediction;
+    const riskLevel = mlInsight?.riskLevel || 'unknown';
+    const riskPercent = typeof predictionValue === 'number'
+      ? `${Math.round(predictionValue * 100)}%`
+      : 'Prediction unavailable';
+
+    return {
+      student_name: studentName,
+      student_class: user?.student_class || user?.class_name || '',
+      admission_no: user?.admission_no || '',
+      confidence_score: mlInsight?.confidence ?? null,
+      recommendations: mlInsight?.recommendations ?? [],
+      top_factors: mlInsight?.factors ?? [],
+      overall_competency: typeof predictionValue === 'number' ? Math.round(predictionValue * 100) : 0,
+      performance_trend: [],
+      competencies: [],
+      career_pathways: [],
+      risks: predictionValue === null
+        ? {}
+        : {
+            failure_risk: {
+              value: riskPercent,
+              level: riskLevel,
+              description: 'ML-based estimate from available student signals.',
+            },
+          },
+      source: mlInsight?.source ?? 'unavailable',
+      last_updated: mlLastUpdated,
+    };
+  }, [mlInsight, mlLastUpdated, user]);
 
   // Canonical ML interface (frontend abstraction)
   const mlInsights = analyticsData ? {
     // Core ML fields (matches spec)
-    prediction: analyticsData?.risks?.failure_risk?.value ?? null,
-    confidence: analyticsData?.confidence_score ?? null,
-    recommendations: analyticsData?.recommendations ?? [],
-    factors: (analyticsData?.top_factors || []).map(f => ({
-      feature: f.feature,
-      impact: f.impact
-    })),
+    prediction: mlInsight?.prediction ?? null,
+    confidence: mlInsight?.confidence ?? null,
+    recommendations: mlInsight?.recommendations ?? [],
+    factors: mlInsight?.factors ?? [],
 
     // Existing fields (backward compatibility)
     overall_competency: analyticsData.overall_competency || 0,
@@ -384,32 +428,55 @@ const Chatbot = () => {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Fetch analytics
+  // Fetch ML insight when chat is open and user context is ready.
   useEffect(() => {
-    if (!isAuthenticated) { setAnalyticsLoading(false); return; }
-    fetchAnalytics();
-  }, [isAuthenticated]);
+    const isChatOpen = !isMobile || isMobileChatOpen;
+    if (!isChatOpen) return;
 
-  const fetchAnalytics = async () => {
-    setAnalyticsLoading(true);
-    setAnalyticsError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/student/chatbot/analytics/`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      const json = await res.json();
-      if (json.success) {
-        setAnalyticsData(json.data);
-      } else {
-        setAnalyticsError(json.error || 'Failed to load analytics.');
-      }
-    } catch (err) {
-      setAnalyticsError(err.message || 'Failed to connect to server.');
-    } finally {
-      setAnalyticsLoading(false);
+    if (!isAuthenticated) {
+      setMlInsight(null);
+      setMlError(null);
+      setMlLoading(false);
+      return;
     }
-  };
+
+    const controller = new AbortController();
+
+    const loadMlInsight = async () => {
+      setMlLoading(true);
+      setMlError(null);
+
+      try {
+        const token = getAuthHeaders()?.Authorization || null;
+        const insight = await fetchStudentMLInsight({
+          studentId,
+          token,
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) return;
+
+        setMlInsight(insight);
+        setMlLastUpdated(insight?.lastUpdated || new Date().toISOString());
+        if (insight?.source === 'unavailable') {
+          setMlError('ML insight unavailable');
+        }
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        setMlError(err?.message || 'Unable to load ML insight.');
+        setMlInsight(null);
+        setMlLastUpdated(null);
+      } finally {
+        if (!controller.signal.aborted) {
+          setMlLoading(false);
+        }
+      }
+    };
+
+    loadMlInsight();
+
+    return () => controller.abort();
+  }, [isMobile, isMobileChatOpen, isAuthenticated, studentId, getAuthHeaders, mlReloadKey]);
 
   // Auto-scroll
   useEffect(() => {
@@ -545,7 +612,7 @@ const Chatbot = () => {
             {analyticsError && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
                 Analytics data could not be loaded: {analyticsError}
-                <button onClick={fetchAnalytics} className="ml-3 underline text-amber-800 font-medium">Retry</button>
+                <button onClick={refreshMlInsight} className="ml-3 underline text-amber-800 font-medium">Retry</button>
               </div>
             )}
 
@@ -670,7 +737,7 @@ const Chatbot = () => {
         {analyticsError && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
             {analyticsError}
-            <button onClick={fetchAnalytics} className="ml-2 underline font-medium">Retry</button>
+            <button onClick={refreshMlInsight} className="ml-2 underline font-medium">Retry</button>
           </div>
         )}
 
