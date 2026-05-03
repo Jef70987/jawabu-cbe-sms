@@ -9,6 +9,7 @@ import Report from "./Report";
 import HelpSupport from "./HelpSupport";
 import Settings from "./Settings";
 import Logout from "../Authentication/Logout";
+import Message from "../CommonService/StaffMessaging";
 
 const Accountant = () => {
     return(
@@ -35,6 +36,7 @@ const Accountant = () => {
                     <Route path="/Reports" element={<Report/>}/>
                     <Route path="/HelpSupport" element={<HelpSupport/>}/>
                     <Route path="/Settings" element={<Settings/>}/>
+                    <Route path="/Messages" element={<Message/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     
                     <Route path="*" element={<Logout/>}/>

@@ -646,7 +646,7 @@ const StudentFeeManagement = () => {
   const [activeTab, setActiveTab] = useState('invoices');
 
   // Colors for charts
-  const COLORS = ['#10a73b','#ec1310', '#F59E0B', '#EF4444'];
+  const COLORS = ['#ec1310','#10a73b', '#F59E0B', '#EF4444'];
 
   // Helper Functions
   const showToast = (message, type = 'info') => {

@@ -692,33 +692,54 @@ const PaymentManagement = () => {
       setLoading(false);
     }
   };
-
-  const checkStudentInvoice = async (studentId) => {
-    setIsCheckingInvoice(true);
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/bursar/students/${studentId}/invoice-status/`,
-        { headers: getAuthHeaders() },
-      );
-      if (res.status === 401) {
-        handleApiError({ status: 401 });
-        return;
+  const recalculateInvoice = async (studentId, silent = false) => {
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/bursar/students/${studentId}/recalculate-invoice/`,
+      { method: "POST", headers: getAuthHeaders() }
+    );
+    if (res.status === 401) { handleApiError({ status: 401 }); return; }
+    const data = await res.json();
+    if (data.success) {
+      if (!silent && data.amount_changed) {
+        showToast("Invoice updated with latest fee structure", "info");
       }
-      const data = await res.json();
-      if (data.success) {
-        if (data.data.has_invoice) await fetchStudentBalance(studentId);
-        else {
-          showToast("Generating invoice for current term...", "info");
-          await generateInvoice(studentId);
-        }
-      }
-    } catch {
-      showToast("Failed to check invoice status", "error");
-    } finally {
-      setIsCheckingInvoice(false);
+      await fetchStudentBalance(studentId);
     }
-  };
+  } catch {
+    // Silent — recalculation is best-effort
+  }
+};
 
+const checkStudentInvoice = async (studentId) => {
+  setIsCheckingInvoice(true);
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/bursar/students/${studentId}/invoice-status/`,
+      { headers: getAuthHeaders() }
+    );
+    if (res.status === 401) { handleApiError({ status: 401 }); return; }
+    const data = await res.json();
+
+    if (!data.success) {
+      showToast("Failed to check invoice status", "error");
+      return;
+    }
+
+    if (data.data.has_invoice) {
+      // silent=true — don't toast unless amount actually changed
+      await recalculateInvoice(studentId, true);
+    } else {
+      showToast("Generating invoice for current term...", "info");
+      await generateInvoice(studentId);
+      await fetchStudentBalance(studentId);
+    }
+  } catch {
+    showToast("Failed to check invoice status", "error");
+  } finally {
+    setIsCheckingInvoice(false);
+  }
+};
   const generateInvoice = async (studentId) => {
     try {
       const res = await fetch(
@@ -732,11 +753,13 @@ const PaymentManagement = () => {
       const data = await res.json();
       if (data.success) {
         showToast("Invoice generated successfully", "success");
-        await fetchStudentBalance(studentId);
-      } else showToast(data.error || "Failed to generate invoice", "error");
+      } else {
+        showToast(data.error || "Failed to generate invoice", "error");
+      }
     } catch {
       showToast("Failed to generate invoice", "error");
     }
+    // No fetchStudentBalance here — caller handles it
   };
 
   const fetchStudentBalance = async (studentId) => {

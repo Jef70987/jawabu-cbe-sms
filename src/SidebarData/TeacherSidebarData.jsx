@@ -48,11 +48,11 @@ const TeacherSidebarData = [
     icon: <DescriptionIcon />,
     link: "/TeacherPortal/AssessmentManager"
   },
-  {
-    title: "JSS Mark Entry", // 8-Point Scale (G7-G9)
-    icon: <PenBoxIcon />,
-    link: "/TeacherPortal/MarkEntry"
-  },
+ // {
+ //   title: "JSS Mark Entry", // 8-Point Scale (G7-G9)
+ //   icon: <PenBoxIcon />,
+ //   link: "/TeacherPortal/MarkEntry"
+ // },
   {
     title: "Competency Matrix",
     icon: <LayoutGridIcon />, // Visualizes student skill gaps

@@ -7,7 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { GraduationCapIcon, PenBoxIcon } from 'lucide-react';
+import { GraduationCapIcon, PenBoxIcon,MessageCircle } from 'lucide-react';
 
 const DeputyPrincipalSidebarData = [
     {
@@ -30,6 +30,11 @@ const DeputyPrincipalSidebarData = [
         title: "Assign Teacher",
         icon: <PenBoxIcon />,
         link: "/DeputyPortal/Assignments"
+    },
+    {
+        title: "Messages",
+        icon: <MessageCircle />,
+        link: "/DeputyPortal/Messages"
     },
     {
         title: "LogOut",
