@@ -9,6 +9,7 @@ import Report from "./Report";
 import HelpSupport from "./HelpSupport";
 import Settings from "./Settings";
 import Logout from "../Authentication/Logout";
+import StaffMessaging from "../CommonService/StaffMessaging";
 
 const Bursar = () => {
     return(
@@ -35,6 +36,7 @@ const Bursar = () => {
                     <Route path="/Report" element={<Report/>}/>
                     <Route path="/HelpSupport" element={<HelpSupport/>}/>
                     <Route path="/Settings" element={<Settings/>}/>
+                    <Route path="/Messages" element={<StaffMessaging/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     <Route path="*" element={<Logout/>}/>
                 </Routes>

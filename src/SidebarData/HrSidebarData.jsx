@@ -8,7 +8,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PeopleIcon from '@mui/icons-material/People';
-import { HouseIcon } from 'lucide-react';
+import { HouseIcon,MessageCircle } from 'lucide-react';
 
 const HrData = [
     {
@@ -54,6 +54,11 @@ const HrData = [
     //     icon: <HelpIcon />,
     //     link: "/HrPortal/HelpSupport"
     // },
+    {
+        title: "Message",
+        icon: <MessageCircle />,
+        link: "/HrPortal/Messages"
+    },
     {
         title: "LogOut",
         icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,

@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 // src/components/Student/Profile.jsx
 
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
 import { 
   User, Mail, Phone, MapPin, Calendar, Heart, Users, 
@@ -364,17 +364,17 @@ export default function StudentProfile() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef(null);
 
-  const showToast = (message, type = 'info') => {
+  const showToast = useCallback((message, type = 'info') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
-  };
+  }, []);
 
-  const handleApiError = (error) => {
+  const handleApiError = useCallback((error) => {
     if (error?.status === 401) {
       setShowSessionExpired(true);
     }
-  };
+  }, []);
 
   const handleLogout = () => {
     setShowSessionExpired(false);
@@ -390,7 +390,7 @@ export default function StudentProfile() {
     });
   };
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!isAuthenticated) {
       setLoading(false);
       return;
@@ -432,7 +432,7 @@ export default function StudentProfile() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAuthHeaders, handleApiError, isAuthenticated, showToast]);
 
   const updateField = async (fieldName, value) => {
     try {
@@ -544,7 +544,7 @@ export default function StudentProfile() {
     } else {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [fetchProfile, isAuthenticated, user?.role]);
 
   if (!isAuthenticated) {
     return (

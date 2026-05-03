@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
 import {
   FileText,
@@ -115,58 +115,18 @@ const Report = () => {
     { id: 'transactions', name: 'All Transactions', icon: <FileText className="w-5 h-5" />, description: 'Complete transaction history' }
   ];
 
-  const showToast = (message, type = 'info') => {
+  const showToast = useCallback((message, type = 'info') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
-  };
+  }, []);
 
-  const handleApiError = (error) => {
+  const handleApiError = useCallback((error) => {
     if (error?.status === 401) setShowSessionExpired(true);
-  };
-
-  const handleLogout = () => {
-    setShowSessionExpired(false);
-    logout();
-    window.location.href = '/logout';
-  };
-
-  // Fetch data from backend
-  const fetchAllData = async () => {
-    if (!isAuthenticated) return;
-    
-    setIsLoading(true);
-    try {
-      // Fetch transactions and stats from existing endpoints
-      const params = new URLSearchParams();
-      params.append('start_date', dateRange.startDate);
-      params.append('end_date', dateRange.endDate);
-      
-      const [transactionsRes, statsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/bursar/records/transactions/?${params}`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}/api/bursar/records/transactions/stats/?${params}`, { headers: getAuthHeaders() })
-      ]);
-
-      if (transactionsRes.status === 401) { handleApiError({ status: 401 }); return; }
-
-      const transactionsData = await transactionsRes.json();
-      const statsData = await statsRes.json();
-
-      if (transactionsData.success) setTransactions(transactionsData.data || []);
-      if (statsData.success) setStats(statsData.data);
-
-      generateReportData(transactionsData.data, statsData.data);
-      
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      showToast('Failed to load report data', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, []);
 
   // Generate report data based on selection
-  const generateReportData = (transactionsList, statsData) => {
+  const generateReportData = useCallback((transactionsList, statsData) => {
     const totalRevenue = statsData?.total_collected || 0;
     const totalTransactions = statsData?.total_transactions || 0;
     const avgTransaction = statsData?.average_amount || 0;
@@ -197,7 +157,7 @@ const Report = () => {
           { label: 'Unique Students', value: uniqueStudents.toLocaleString(), icon: <Users className="w-5 h-5" />, color: 'orange' }
         ],
         charts: [
-          { title: 'Daily Revenue Trend', type: 'line', data: Object.entries(dailyTotals).slice(-14).map(([date, amount]) => ({ date: formatDate(date), amount })) },
+          { title: 'Daily Revenue Trend', type: 'line', data: Object.entries(dailyTotals).slice(-14).map(([date, amount]) => ({ date: new Date(date).toLocaleDateString(), amount })) },
           { title: 'Payment Methods', type: 'pie', data: Object.entries(paymentMethods).map(([method, amount]) => ({ name: method, value: amount })) }
         ],
         transactions: filteredTransactions.slice(0, 10)
@@ -211,7 +171,7 @@ const Report = () => {
           { label: 'Collection Days', value: Object.keys(dailyTotals).length.toString(), icon: <Calendar className="w-5 h-5" />, color: 'orange' }
         ],
         charts: [
-          { title: 'Daily Collections', type: 'bar', data: Object.entries(dailyTotals).slice(-14).map(([date, amount]) => ({ date: formatDate(date), amount })) }
+          { title: 'Daily Collections', type: 'bar', data: Object.entries(dailyTotals).slice(-14).map(([date, amount]) => ({ date: new Date(date).toLocaleDateString(), amount })) }
         ],
         transactions: filteredTransactions.slice(0, 10)
       },
@@ -228,7 +188,47 @@ const Report = () => {
     };
 
     setReportData(report[selectedReport]);
+  }, [selectedReport]);
+
+  const handleLogout = () => {
+    setShowSessionExpired(false);
+    logout();
+    window.location.href = '/logout';
   };
+
+  // Fetch data from backend
+  const fetchAllData = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    setIsLoading(true);
+    try {
+      // Fetch transactions and stats from existing endpoints
+      const params = new URLSearchParams();
+      params.append('start_date', dateRange.startDate);
+      params.append('end_date', dateRange.endDate);
+      
+      const [transactionsRes, statsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/bursar/records/transactions/?${params}`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE_URL}/api/bursar/records/transactions/stats/?${params}`, { headers: getAuthHeaders() })
+      ]);
+
+      if (transactionsRes.status === 401) { handleApiError({ status: 401 }); return; }
+
+      const transactionsData = await transactionsRes.json();
+      const statsData = await statsRes.json();
+
+      if (transactionsData.success) setTransactions(transactionsData.data || []);
+      if (statsData.success) setStats(statsData.data);
+
+      generateReportData(transactionsData.data, statsData.data);
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      showToast('Failed to load report data', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dateRange.endDate, dateRange.startDate, generateReportData, getAuthHeaders, handleApiError, isAuthenticated, showToast]);
 
   const formatCurrency = (amount) => `KSh ${(amount || 0).toLocaleString()}`;
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString();
@@ -292,7 +292,7 @@ const Report = () => {
 
   useEffect(() => {
     if (isAuthenticated) fetchAllData();
-  }, [isAuthenticated, dateRange, selectedReport]);
+  }, [fetchAllData, isAuthenticated]);
 
   if (!isAuthenticated) {
     return (

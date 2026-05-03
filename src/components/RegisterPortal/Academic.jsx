@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
 import {
   BookOpen,
@@ -208,20 +208,21 @@ function AcademicManagement() {
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [showPublishConfirmModal, setShowPublishConfirmModal] = useState(false);
-  const [showGradeModal, setShowGradeModal] = useState(false); // NEW: Grade CRUD modal
+  const [showGradeModal, setShowGradeModal] = useState(false);
+  const [showCompetencyModal, setShowCompetencyModal] = useState(false);
+  const [showValueModal, setShowValueModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  // grade level
-  const [academicYears, setAcademicYears] = useState([]);
-  const [showAcademicYearModal, setShowAcademicYearModal] = useState(false);
-  const [editingAcademicYear, setEditingAcademicYear] = useState(null);
-  const [academicYearForm, setAcademicYearForm] = useState({
-    year_code: "",
-    year_name: "",
-    start_date: "",
-    end_date: "",
-    is_current: false,
-  });
-  // Form Data
+
+  // Editing states for different entities
+  const [editingItem, setEditingItem] = useState(null); // for subjects
+  const [editingStrand, setEditingStrand] = useState(null);
+  const [editingSubStrand, setEditingSubStrand] = useState(null);
+  const [editingOutcome, setEditingOutcome] = useState(null);
+  const [editingCompetency, setEditingCompetency] = useState(null);
+  const [editingValue, setEditingValue] = useState(null);
+  const [editingGrade, setEditingGrade] = useState(null);
+
+  // Forms
   const [subjectForm, setSubjectForm] = useState({
     name: "",
     code: "",
@@ -233,7 +234,7 @@ function AcademicManagement() {
     name: "",
     code: "",
     description: "",
-    gradeLevel: "", // ADDED: grade level for strand
+    gradeLevel: "",
   });
   const [subStrandForm, setSubStrandForm] = useState({
     name: "",
@@ -254,59 +255,60 @@ function AcademicManagement() {
     name: "",
     level: "",
     description: "",
-  }); // NEW
-  const [editingGrade, setEditingGrade] = useState(null); // NEW
+  });
+  const [competencyForm, setCompetencyForm] = useState({
+    name: "",
+    code: "",
+    indicators: "",
+  });
+  const [valueForm, setValueForm] = useState({
+    name: "",
+    indicators: "",
+  });
 
-  // Terms
+  // Academic years and terms
+  const [academicYears, setAcademicYears] = useState([]);
+  const [showAcademicYearModal, setShowAcademicYearModal] = useState(false);
+  const [editingAcademicYear, setEditingAcademicYear] = useState(null);
+  const [academicYearForm, setAcademicYearForm] = useState({
+    year_code: "",
+    year_name: "",
+    start_date: "",
+    end_date: "",
+    is_current: false,
+  });
   const [terms, setTerms] = useState([]);
   const [showTermModal, setShowTermModal] = useState(false);
   const [editingTerm, setEditingTerm] = useState(null);
   const [termForm, setTermForm] = useState({
-    academic_year: "", // ID of the AcademicYear
+    academic_year: "",
     term: "Term 1",
     start_date: "",
     end_date: "",
     is_current: false,
   });
   const [termAcademicYearFilter, setTermAcademicYearFilter] = useState("");
+
   // Bulk Import
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [importPreview, setImportPreview] = useState([]);
-
-  // Editing State
-  const [editingItem, setEditingItem] = useState(null);
 
   // Expanded/Collapsed State for Tree View
   const [expandedGrades, setExpandedGrades] = useState({});
   const [expandedSubjects, setExpandedSubjects] = useState({});
   const [expandedStrands, setExpandedStrands] = useState({});
 
-  const addNotification = (type, message) => {
+  const addNotification = useCallback((type, message) => {
     const id = Date.now();
     setNotifications((prev) => [...prev, { id, type, message }]);
-  };
+  }, []);
 
   const removeNotification = (id) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
-  const fetchAllData = async () => {
-    setIsLoading(true);
-    await Promise.all([
-      fetchCurriculum(),
-      fetchVersions(),
-      fetchGradeLevels(),
-      fetchCoreCompetencies(),
-      fetchCoreValues(),
-      fetchWeightConfig(),
-      fetchAcademicYears(),
-      fetchTerms(),
-    ]);
-    setIsLoading(false);
-  };
-
-  const fetchCurriculum = async () => {
+  const fetchCurriculum = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/curriculum/`,
@@ -326,9 +328,9 @@ function AcademicManagement() {
     } catch (error) {
       addNotification("error", "Failed to load curriculum data");
     }
-  };
+  }, [addNotification, getAuthHeaders, selectedGrade]);
 
-  const fetchVersions = async () => {
+  const fetchVersions = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/curriculum/versions/`,
@@ -346,8 +348,9 @@ function AcademicManagement() {
       console.error("Error fetching versions:", error);
       addNotification("error", "Failed to load versions");
     }
-  };
-  const fetchTerms = async () => {
+  }, [addNotification, getAuthHeaders]);
+
+  const fetchTerms = useCallback(async () => {
     try {
       let url = `${API_BASE_URL}/api/registrar/academic/terms/`;
       if (termAcademicYearFilter) {
@@ -360,7 +363,7 @@ function AcademicManagement() {
     } catch {
       addNotification("error", "Failed to load terms");
     }
-  };
+  }, [addNotification, getAuthHeaders, termAcademicYearFilter]);
 
   const handleSaveTerm = async () => {
     if (
@@ -435,7 +438,7 @@ function AcademicManagement() {
   const openEditTerm = (t) => {
     setEditingTerm(t);
     setTermForm({
-      academic_year: t.academic_year || t.academic_year_id, // depends on serializer
+      academic_year: t.academic_year || t.academic_year_id,
       term: t.term,
       start_date: t.start_date,
       end_date: t.end_date,
@@ -443,7 +446,8 @@ function AcademicManagement() {
     });
     setShowTermModal(true);
   };
-  const fetchGradeLevels = async () => {
+
+  const fetchGradeLevels = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/grade-levels/`,
@@ -463,9 +467,9 @@ function AcademicManagement() {
     } catch (error) {
       console.error("Error fetching grade levels:", error);
     }
-  };
+  }, [getAuthHeaders]);
 
-  const fetchCoreCompetencies = async () => {
+  const fetchCoreCompetencies = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/core-competencies/`,
@@ -480,9 +484,9 @@ function AcademicManagement() {
     } catch (error) {
       console.error("Error fetching core competencies:", error);
     }
-  };
+  }, [getAuthHeaders]);
 
-  const fetchCoreValues = async () => {
+  const fetchCoreValues = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/core-values/`,
@@ -497,9 +501,9 @@ function AcademicManagement() {
     } catch (error) {
       console.error("Error fetching core values:", error);
     }
-  };
+  }, [getAuthHeaders]);
 
-  const fetchWeightConfig = async () => {
+  const fetchWeightConfig = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/weight-config/`,
@@ -517,8 +521,9 @@ function AcademicManagement() {
     } catch (error) {
       console.error("Error fetching weight config:", error);
     }
-  };
-  const fetchAcademicYears = async () => {
+  }, [getAuthHeaders]);
+
+  const fetchAcademicYears = useCallback(async () => {
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/registrar/academic/academic-years/`,
@@ -529,7 +534,31 @@ function AcademicManagement() {
     } catch {
       addNotification("error", "Failed to load academic years");
     }
-  };
+  }, [addNotification, getAuthHeaders]);
+
+  const fetchAllData = useCallback(async () => {
+    setIsLoading(true);
+    await Promise.all([
+      fetchCurriculum(),
+      fetchVersions(),
+      fetchGradeLevels(),
+      fetchCoreCompetencies(),
+      fetchCoreValues(),
+      fetchWeightConfig(),
+      fetchAcademicYears(),
+      fetchTerms(),
+    ]);
+    setIsLoading(false);
+  }, [
+    fetchAcademicYears,
+    fetchCoreCompetencies,
+    fetchCoreValues,
+    fetchCurriculum,
+    fetchGradeLevels,
+    fetchTerms,
+    fetchVersions,
+    fetchWeightConfig,
+  ]);
 
   const handleSaveAcademicYear = async () => {
     if (
@@ -605,7 +634,10 @@ function AcademicManagement() {
     });
     setShowAcademicYearModal(true);
   };
+
+  // ---------------------------------------------------------------
   // Subject CRUD
+  // ---------------------------------------------------------------
   const createSubject = async () => {
     if (!subjectForm.name || !subjectForm.code) {
       addNotification("warning", "Please fill in required fields");
@@ -690,7 +722,6 @@ function AcademicManagement() {
 
   const deleteSubject = async () => {
     if (!itemToDelete) return;
-
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/learning-areas/${itemToDelete.data.id}/`,
@@ -717,346 +748,449 @@ function AcademicManagement() {
     }
   };
 
-  // Strand CRUD - FIXED with grade_level
-  const createStrand = async () => {
+  // ---------------------------------------------------------------
+  // Strand CRUD
+  // ---------------------------------------------------------------
+  const saveStrand = async () => {
     if (!strandForm.name || !selectedSubject) {
-      addNotification(
-        "warning",
-        "Please select a subject and fill in strand name",
-      );
+      addNotification("warning", "Please select a subject and fill in strand name");
       return;
     }
-
     if (!strandForm.gradeLevel) {
       addNotification("warning", "Please select a grade level for this strand");
       return;
     }
 
+    const url = editingStrand
+      ? `${API_BASE_URL}/api/registrar/academic/strands/${editingStrand.id}/`
+      : `${API_BASE_URL}/api/registrar/academic/strands/create/`;
+    const method = editingStrand ? "PUT" : "POST";
+
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/registrar/academic/strands/create/`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            learning_area: selectedSubject.id,
-            strand_name: strandForm.name,
-            strand_code:
-              strandForm.code || strandForm.name.substring(0, 3).toUpperCase(),
-            grade_level: strandForm.gradeLevel, // ✅ FIXED: Send grade_level
-            description: strandForm.description,
-            display_order: 0,
-          }),
-        },
-      );
+      const response = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          learning_area: editingStrand ? editingStrand.learning_area || selectedSubject.id : selectedSubject.id,
+          strand_name: strandForm.name,
+          strand_code: strandForm.code || strandForm.name.substring(0, 3).toUpperCase(),
+          grade_level: strandForm.gradeLevel,
+          description: strandForm.description,
+          display_order: 0,
+        }),
+      });
       const data = await response.json();
       if (data.success) {
         addNotification(
           "success",
-          `Strand "${strandForm.name}" created successfully for grade`,
+          editingStrand ? "Strand updated" : "Strand created successfully",
         );
         setShowStrandModal(false);
+        setEditingStrand(null);
         setStrandForm({ name: "", code: "", description: "", gradeLevel: "" });
         await fetchCurriculum();
       } else {
-        addNotification("error", data.error || "Failed to create strand");
+        addNotification("error", data.error || "Failed to save strand");
       }
     } catch (error) {
-      console.error("Error creating strand:", error);
-      addNotification("error", "Failed to create strand");
+      console.error("Error saving strand:", error);
+      addNotification("error", "Failed to save strand");
     }
   };
 
-  // Sub-Strand CRUD
-  const createSubStrand = async () => {
-    if (!subStrandForm.name || !selectedStrand) {
-      addNotification(
-        "warning",
-        "Please select a strand and fill in sub-strand name",
+  const openEditStrand = (strand) => {
+    setEditingStrand(strand);
+    setStrandForm({
+      name: strand.name,
+      code: strand.code,
+      description: strand.description || "",
+      gradeLevel: strand.grade_level || strand.gradeLevel || "",
+    });
+    setSelectedSubject({ id: strand.learning_area || strand.subjectId });
+    setShowStrandModal(true);
+  };
+
+  const confirmDeleteStrand = (strand) => {
+    setItemToDelete({ type: "strand", data: strand });
+    setShowDeleteConfirmModal(true);
+  };
+
+  const deleteStrand = async () => {
+    if (!itemToDelete || itemToDelete.type !== "strand") return;
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/strands/${itemToDelete.data.id}/`,
+        { method: "DELETE", headers: getAuthHeaders() },
       );
+      const data = await res.json();
+      if (data.success) {
+        addNotification("success", "Strand deleted");
+        setShowDeleteConfirmModal(false);
+        setItemToDelete(null);
+        await fetchCurriculum();
+      } else {
+        addNotification("error", data.error || "Failed to delete strand");
+      }
+    } catch {
+      addNotification("error", "Network error");
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // Sub-Strand CRUD
+  // ---------------------------------------------------------------
+  const saveSubStrand = async () => {
+    if (!subStrandForm.name || !selectedStrand) {
+      addNotification("warning", "Please select a strand and fill in sub-strand name");
       return;
     }
 
+    const url = editingSubStrand
+      ? `${API_BASE_URL}/api/registrar/academic/substrands/${editingSubStrand.id}/`
+      : `${API_BASE_URL}/api/registrar/academic/substrands/create/`;
+    const method = editingSubStrand ? "PUT" : "POST";
+
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/registrar/academic/substrands/create/`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            strand: selectedStrand.id,
-            substrand_name: subStrandForm.name,
-            substrand_code:
-              subStrandForm.code ||
-              subStrandForm.name.substring(0, 4).toUpperCase(),
-            description: subStrandForm.description,
-            display_order: 0,
-          }),
-        },
-      );
+      const response = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          strand: editingSubStrand ? editingSubStrand.strand || selectedStrand.id : selectedStrand.id,
+          substrand_name: subStrandForm.name,
+          substrand_code: subStrandForm.code || subStrandForm.name.substring(0, 4).toUpperCase(),
+          description: subStrandForm.description,
+          display_order: 0,
+        }),
+      });
       const data = await response.json();
       if (data.success) {
         addNotification(
           "success",
-          `Sub-Strand "${subStrandForm.name}" created successfully`,
+          editingSubStrand ? "Sub-strand updated" : "Sub-strand created successfully",
         );
         setShowSubStrandModal(false);
+        setEditingSubStrand(null);
         setSubStrandForm({ name: "", code: "", description: "" });
         await fetchCurriculum();
       } else {
-        addNotification("error", data.error || "Failed to create sub-strand");
+        addNotification("error", data.error || "Failed to save sub-strand");
       }
     } catch (error) {
-      console.error("Error creating sub-strand:", error);
-      addNotification("error", "Failed to create sub-strand");
+      console.error("Error saving sub-strand:", error);
+      addNotification("error", "Failed to save sub-strand");
     }
   };
 
+  const openEditSubStrand = (subStrand) => {
+    setEditingSubStrand(subStrand);
+    setSubStrandForm({
+      name: subStrand.name,
+      code: subStrand.code,
+      description: subStrand.description || "",
+    });
+    setSelectedStrand({ id: subStrand.strand });
+    setShowSubStrandModal(true);
+  };
+
+  const confirmDeleteSubStrand = (subStrand) => {
+    setItemToDelete({ type: "substrand", data: subStrand });
+    setShowDeleteConfirmModal(true);
+  };
+
+  const deleteSubStrand = async () => {
+    if (!itemToDelete || itemToDelete.type !== "substrand") return;
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/substrands/${itemToDelete.data.id}/`,
+        { method: "DELETE", headers: getAuthHeaders() },
+      );
+      const data = await res.json();
+      if (data.success) {
+        addNotification("success", "Sub-strand deleted");
+        setShowDeleteConfirmModal(false);
+        setItemToDelete(null);
+        await fetchCurriculum();
+      } else {
+        addNotification("error", data.error || "Failed to delete");
+      }
+    } catch {
+      addNotification("error", "Network error");
+    }
+  };
+
+  // ---------------------------------------------------------------
   // Learning Outcome CRUD
-  const createOutcome = async () => {
+  // ---------------------------------------------------------------
+  const saveOutcome = async () => {
     if (!outcomeForm.description || !selectedSubStrand) {
       addNotification("warning", "Please fill in learning outcome description");
       return;
     }
 
+    const url = editingOutcome
+      ? `${API_BASE_URL}/api/registrar/academic/outcomes/${editingOutcome.id}/`
+      : `${API_BASE_URL}/api/registrar/academic/outcomes/create/`;
+    const method = editingOutcome ? "PUT" : "POST";
+
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/registrar/academic/outcomes/create/`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            substrand: selectedSubStrand.id,
-            description: outcomeForm.description,
-            domain: outcomeForm.domain,
-            competencies: outcomeForm.competencies,
-          }),
-        },
-      );
+      const response = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          substrand: editingOutcome ? editingOutcome.substrand || selectedSubStrand.id : selectedSubStrand.id,
+          description: outcomeForm.description,
+          domain: outcomeForm.domain,
+          competencies: outcomeForm.competencies,
+        }),
+      });
       const data = await response.json();
       if (data.success) {
-        addNotification("success", "Learning outcome created successfully");
+        addNotification(
+          "success",
+          editingOutcome ? "Learning outcome updated" : "Learning outcome created successfully",
+        );
         setShowOutcomeModal(false);
-        setOutcomeForm({
-          description: "",
-          domain: "cognitive",
-          competencies: [],
-        });
+        setEditingOutcome(null);
+        setOutcomeForm({ description: "", domain: "cognitive", competencies: [] });
         await fetchCurriculum();
       } else {
-        addNotification(
-          "error",
-          data.error || "Failed to create learning outcome",
-        );
+        addNotification("error", data.error || "Failed to save learning outcome");
       }
     } catch (error) {
-      console.error("Error creating outcome:", error);
-      addNotification("error", "Failed to create learning outcome");
+      console.error("Error saving outcome:", error);
+      addNotification("error", "Failed to save learning outcome");
     }
   };
 
-  // Clone Curriculum
-  const cloneCurriculum = async () => {
-    if (!versionForm.academicYear) {
-      addNotification("warning", "Please enter target academic year");
+  const openEditOutcome = (outcome) => {
+    setEditingOutcome(outcome);
+    setOutcomeForm({
+      description: outcome.description,
+      domain: outcome.domain,
+      competencies: outcome.competencies || [],
+    });
+    setSelectedSubStrand({ id: outcome.substrand });
+    setShowOutcomeModal(true);
+  };
+
+  const confirmDeleteOutcome = (outcome) => {
+    setItemToDelete({ type: "outcome", data: outcome });
+    setShowDeleteConfirmModal(true);
+  };
+
+  const deleteOutcome = async () => {
+    if (!itemToDelete || itemToDelete.type !== "outcome") return;
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/outcomes/${itemToDelete.data.id}/`,
+        { method: "DELETE", headers: getAuthHeaders() },
+      );
+      const data = await res.json();
+      if (data.success) {
+        addNotification("success", "Learning outcome deleted");
+        setShowDeleteConfirmModal(false);
+        setItemToDelete(null);
+        await fetchCurriculum();
+      } else {
+        addNotification("error", data.error || "Failed to delete");
+      }
+    } catch {
+      addNotification("error", "Network error");
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // Core Competency CRUD
+  // ---------------------------------------------------------------
+  const saveCompetency = async () => {
+    if (!competencyForm.name || !competencyForm.code) {
+      addNotification("warning", "Please fill name and code");
       return;
     }
+    const url = editingCompetency
+      ? `${API_BASE_URL}/api/registrar/academic/core-competencies/${editingCompetency.id}/`
+      : `${API_BASE_URL}/api/registrar/academic/core-competencies/create/`;
+    const method = editingCompetency ? "PUT" : "POST";
+    const indicatorsArray = competencyForm.indicators
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/registrar/academic/curriculum/clone/`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            target_year: versionForm.academicYear,
-            target_name:
-              versionForm.name || `${versionForm.academicYear} Curriculum`,
-            source_year: activeVersion?.academicYear,
-          }),
-        },
-      );
-      const data = await response.json();
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: competencyForm.name,
+          code: competencyForm.code,
+          indicators: indicatorsArray,
+        }),
+      });
+      const data = await res.json();
       if (data.success) {
         addNotification(
           "success",
-          `Curriculum cloned to ${versionForm.academicYear} successfully`,
+          editingCompetency ? "Competency updated" : "Competency created",
         );
-        setShowCloneModal(false);
-        setVersionForm({ name: "", academicYear: "", isActive: false });
-        await fetchVersions();
-        await fetchCurriculum();
+        setShowCompetencyModal(false);
+        setEditingCompetency(null);
+        setCompetencyForm({ name: "", code: "", indicators: "" });
+        fetchCoreCompetencies();
       } else {
-        addNotification("error", data.error || "Failed to clone curriculum");
+        addNotification("error", data.error || "Failed");
       }
-    } catch (error) {
-      console.error("Error cloning curriculum:", error);
-      addNotification("error", "Failed to clone curriculum");
+    } catch {
+      addNotification("error", "Network error");
     }
   };
 
-  // Create New Version
-  const createNewVersion = async () => {
-    if (!versionForm.name || !versionForm.academicYear) {
-      addNotification("warning", "Please fill in all required fields");
+  const openEditCompetency = (comp) => {
+    setEditingCompetency(comp);
+    setCompetencyForm({
+      name: comp.name,
+      code: comp.code,
+      indicators: (comp.indicators || []).join(", "),
+    });
+    setShowCompetencyModal(true);
+  };
+
+  const confirmDeleteCompetency = (comp) => {
+    setItemToDelete({ type: "competency", data: comp });
+    setShowDeleteConfirmModal(true);
+  };
+
+  const deleteCompetency = async () => {
+    if (!itemToDelete || itemToDelete.type !== "competency") return;
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/core-competencies/${itemToDelete.data.id}/`,
+        { method: "DELETE", headers: getAuthHeaders() },
+      );
+      const data = await res.json();
+      if (data.success) {
+        addNotification("success", "Competency deleted");
+        setShowDeleteConfirmModal(false);
+        setItemToDelete(null);
+        fetchCoreCompetencies();
+      } else {
+        addNotification("error", data.error || "Failed");
+      }
+    } catch {
+      addNotification("error", "Network error");
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // Core Value CRUD
+  // ---------------------------------------------------------------
+  const saveValue = async () => {
+    if (!valueForm.name) {
+      addNotification("warning", "Please fill name");
       return;
     }
+    const url = editingValue
+      ? `${API_BASE_URL}/api/registrar/academic/core-values/${editingValue.id}/`
+      : `${API_BASE_URL}/api/registrar/academic/core-values/create/`;
+    const method = editingValue ? "PUT" : "POST";
+    const indicatorsArray = valueForm.indicators
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/registrar/academic/curriculum/versions/create/`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            name: versionForm.name,
-            academic_year: versionForm.academicYear,
-            is_active: versionForm.isActive,
-          }),
-        },
-      );
-      const data = await response.json();
-      if (data.success) {
-        addNotification("success", "New version created successfully");
-        setShowVersionModal(false);
-        setVersionForm({ name: "", academicYear: "", isActive: false });
-        await fetchVersions();
-      } else {
-        addNotification("error", data.error || "Failed to create version");
-      }
-    } catch (error) {
-      console.error("Error creating version:", error);
-      addNotification("error", "Failed to create version");
-    }
-  };
-
-  // Publish Curriculum
-  const confirmPublishCurriculum = () => {
-    setShowPublishConfirmModal(true);
-  };
-
-  const publishCurriculum = async () => {
-    if (!activeVersion) return;
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/registrar/academic/curriculum/versions/${activeVersion.id}/publish/`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-        },
-      );
-      const data = await response.json();
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: valueForm.name,
+          indicators: indicatorsArray,
+        }),
+      });
+      const data = await res.json();
       if (data.success) {
         addNotification(
           "success",
-          "Curriculum published and locked successfully",
+          editingValue ? "Value updated" : "Value created",
         );
-        setShowPublishConfirmModal(false);
-        await fetchVersions();
+        setShowValueModal(false);
+        setEditingValue(null);
+        setValueForm({ name: "", indicators: "" });
+        fetchCoreValues();
       } else {
-        addNotification("error", data.error || "Failed to publish curriculum");
+        addNotification("error", data.error || "Failed");
       }
-    } catch (error) {
-      console.error("Error publishing curriculum:", error);
-      addNotification("error", "Failed to publish curriculum");
+    } catch {
+      addNotification("error", "Network error");
     }
   };
 
-  // Update Weight Configuration
-  const updateWeightConfig = async () => {
+  const openEditValue = (val) => {
+    setEditingValue(val);
+    setValueForm({
+      name: val.name,
+      indicators: (val.indicators || []).join(", "),
+    });
+    setShowValueModal(true);
+  };
+
+  const confirmDeleteValue = (val) => {
+    setItemToDelete({ type: "value", data: val });
+    setShowDeleteConfirmModal(true);
+  };
+
+  const deleteValue = async () => {
+    if (!itemToDelete || itemToDelete.type !== "value") return;
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/registrar/academic/weight-config/update/`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            sba_weight: weightConfig.sbaWeight,
-            exam_weight: weightConfig.examWeight,
-          }),
-        },
+      const res = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/core-values/${itemToDelete.data.id}/`,
+        { method: "DELETE", headers: getAuthHeaders() },
       );
-      const data = await response.json();
+      const data = await res.json();
       if (data.success) {
-        addNotification("success", "Weight configuration updated successfully");
-        setShowWeightModal(false);
+        addNotification("success", "Value deleted");
+        setShowDeleteConfirmModal(false);
+        setItemToDelete(null);
+        fetchCoreValues();
       } else {
-        addNotification(
-          "error",
-          data.error || "Failed to update weight configuration",
-        );
+        addNotification("error", data.error || "Failed");
       }
-    } catch (error) {
-      console.error("Error updating weight config:", error);
-      addNotification("error", "Failed to update weight configuration");
+    } catch {
+      addNotification("error", "Network error");
     }
   };
 
-  // Bulk Import
-  const handleBulkUpload = async () => {
-    if (!uploadFile) {
-      addNotification("warning", "Please select a file to upload");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", uploadFile);
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/registrar/academic/bulk-import/`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: getAuthHeaders()["Authorization"],
-          },
-          body: formData,
-        },
-      );
-      const data = await response.json();
-      if (data.success) {
-        addNotification(
-          "success",
-          `Curriculum imported successfully: ${data.imported_count} items`,
-        );
-        setShowBulkImportModal(false);
-        setUploadFile(null);
-        await fetchCurriculum();
-      } else {
-        addNotification("error", data.error || "Failed to import curriculum");
-      }
-    } catch (error) {
-      console.error("Error importing curriculum:", error);
-      addNotification("error", "Failed to import curriculum");
+  // ---------------------------------------------------------------
+  // Generic delete handler (used by the confirmation modal)
+  // ---------------------------------------------------------------
+  const handleDeleteConfirm = () => {
+    if (!itemToDelete) return;
+    switch (itemToDelete.type) {
+      case "subject":
+        deleteSubject();
+        break;
+      case "strand":
+        deleteStrand();
+        break;
+      case "substrand":
+        deleteSubStrand();
+        break;
+      case "outcome":
+        deleteOutcome();
+        break;
+      case "competency":
+        deleteCompetency();
+        break;
+      case "value":
+        deleteValue();
+        break;
+      default:
+        break;
     }
   };
 
-  const downloadTemplate = () => {
-    const template = [
-      {
-        Grade_Level: "G7",
-        Subject_Name: "Integrated Science",
-        Strand_Name: "Human Health",
-        Sub_Strand_Name: "Respiratory System",
-        Learning_Outcome:
-          "Learner should be able to model the breathing process",
-        Competency_Key: "CT, DL",
-        Assessment_Scale: "8",
-        SBA_Weight: "40",
-        Summative_Weight: "60",
-        Is_Optional: "FALSE",
-      },
-    ];
-    const worksheet = XLSX.utils.json_to_sheet(template);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Curriculum_Template");
-    XLSX.writeFile(workbook, "curriculum_import_template.xlsx");
-    addNotification("success", "Template downloaded");
-  };
-
-  // --- GRADE LEVEL CRUD ---
-
+  // ---------------------------------------------------------------
+  // Grade Level CRUD
+  // ---------------------------------------------------------------
   const handleCreateGrade = async () => {
     if (!gradeForm.name || !gradeForm.level) {
       addNotification("warning", "Please fill in name and level");
@@ -1154,13 +1288,220 @@ function AcademicManagement() {
     setShowGradeModal(true);
   };
 
-  // --- end grade level CRUD ---
+  // ---------------------------------------------------------------
+  // Clone Curriculum
+  // ---------------------------------------------------------------
+  const cloneCurriculum = async () => {
+    if (!versionForm.academicYear) {
+      addNotification("warning", "Please enter target academic year");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/curriculum/clone/`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            target_year: versionForm.academicYear,
+            target_name:
+              versionForm.name || `${versionForm.academicYear} Curriculum`,
+            source_year: activeVersion?.academicYear,
+          }),
+        },
+      );
+      const data = await response.json();
+      if (data.success) {
+        addNotification(
+          "success",
+          `Curriculum cloned to ${versionForm.academicYear} successfully`,
+        );
+        setShowCloneModal(false);
+        setVersionForm({ name: "", academicYear: "", isActive: false });
+        await fetchVersions();
+        await fetchCurriculum();
+      } else {
+        addNotification("error", data.error || "Failed to clone curriculum");
+      }
+    } catch (error) {
+      console.error("Error cloning curriculum:", error);
+      addNotification("error", "Failed to clone curriculum");
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // Create New Version
+  // ---------------------------------------------------------------
+  const createNewVersion = async () => {
+    if (!versionForm.name || !versionForm.academicYear) {
+      addNotification("warning", "Please fill in all required fields");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/curriculum/versions/create/`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            name: versionForm.name,
+            academic_year: versionForm.academicYear,
+            is_active: versionForm.isActive,
+          }),
+        },
+      );
+      const data = await response.json();
+      if (data.success) {
+        addNotification("success", "New version created successfully");
+        setShowVersionModal(false);
+        setVersionForm({ name: "", academicYear: "", isActive: false });
+        await fetchVersions();
+      } else {
+        addNotification("error", data.error || "Failed to create version");
+      }
+    } catch (error) {
+      console.error("Error creating version:", error);
+      addNotification("error", "Failed to create version");
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // Publish Curriculum
+  // ---------------------------------------------------------------
+  const confirmPublishCurriculum = () => {
+    setShowPublishConfirmModal(true);
+  };
+
+  const publishCurriculum = async () => {
+    if (!activeVersion) return;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/curriculum/versions/${activeVersion.id}/publish/`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+        },
+      );
+      const data = await response.json();
+      if (data.success) {
+        addNotification(
+          "success",
+          "Curriculum published and locked successfully",
+        );
+        setShowPublishConfirmModal(false);
+        await fetchVersions();
+      } else {
+        addNotification("error", data.error || "Failed to publish curriculum");
+      }
+    } catch (error) {
+      console.error("Error publishing curriculum:", error);
+      addNotification("error", "Failed to publish curriculum");
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // Update Weight Configuration
+  // ---------------------------------------------------------------
+  const updateWeightConfig = async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/weight-config/update/`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            sba_weight: weightConfig.sbaWeight,
+            exam_weight: weightConfig.examWeight,
+          }),
+        },
+      );
+      const data = await response.json();
+      if (data.success) {
+        addNotification("success", "Weight configuration updated successfully");
+        setShowWeightModal(false);
+      } else {
+        addNotification(
+          "error",
+          data.error || "Failed to update weight configuration",
+        );
+      }
+    } catch (error) {
+      console.error("Error updating weight config:", error);
+      addNotification("error", "Failed to update weight configuration");
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // Bulk Import
+  // ---------------------------------------------------------------
+  const handleBulkUpload = async () => {
+    if (!uploadFile) {
+      addNotification("warning", "Please select a file to upload");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", uploadFile);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/bulk-import/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: getAuthHeaders()["Authorization"],
+          },
+          body: formData,
+        },
+      );
+      const data = await response.json();
+      if (data.success) {
+        addNotification(
+          "success",
+          `Curriculum imported successfully: ${data.imported_count} items`,
+        );
+        setShowBulkImportModal(false);
+        setUploadFile(null);
+        await fetchCurriculum();
+      } else {
+        addNotification("error", data.error || "Failed to import curriculum");
+      }
+    } catch (error) {
+      console.error("Error importing curriculum:", error);
+      addNotification("error", "Failed to import curriculum");
+    }
+  };
+
+  const downloadTemplate = () => {
+    const template = [
+      {
+        Grade_Level: "G7",
+        Subject_Name: "Integrated Science",
+        Strand_Name: "Human Health",
+        Sub_Strand_Name: "Respiratory System",
+        Learning_Outcome:
+          "Learner should be able to model the breathing process",
+        Competency_Key: "CT, DL",
+        Assessment_Scale: "8",
+        SBA_Weight: "40",
+        Summative_Weight: "60",
+        Is_Optional: "FALSE",
+      },
+    ];
+    const worksheet = XLSX.utils.json_to_sheet(template);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Curriculum_Template");
+    XLSX.writeFile(workbook, "curriculum_import_template.xlsx");
+    addNotification("success", "Template downloaded");
+  };
 
   const resetSubjectForm = () => {
     setSubjectForm({
       name: "",
       code: "",
-      gradeLevel: selectedGrade,
       isCore: true,
       isActive: true,
       description: "",
@@ -1168,7 +1509,6 @@ function AcademicManagement() {
   };
 
   const getSubjectsForGrade = (gradeId) => {
-    // Convert to string for comparison
     const searchId = String(gradeId);
     const gradeData = curriculum.find((g) => String(g.gradeId) === searchId);
     return gradeData?.subjects || [];
@@ -1193,11 +1533,11 @@ function AcademicManagement() {
       return;
     }
     fetchAllData();
-  }, [isAuthenticated]);
+  }, [addNotification, fetchAllData, isAuthenticated]);
 
   useEffect(() => {
     fetchTerms();
-  }, [termAcademicYearFilter]);
+  }, [fetchTerms]);
 
   // Authentication check
   if (!isAuthenticated) {
@@ -1240,8 +1580,8 @@ function AcademicManagement() {
       <ConfirmationModal
         isOpen={showDeleteConfirmModal}
         title="Confirm Delete"
-        message={`Are you sure you want to delete "${itemToDelete?.data?.name || itemToDelete?.data?.class_name || "this item"}"? This action cannot be undone.`}
-        onConfirm={deleteSubject}
+        message={`Are you sure you want to delete "${itemToDelete?.data?.name || itemToDelete?.data?.code || itemToDelete?.data?.class_name || "this item"}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
         onCancel={() => {
           setShowDeleteConfirmModal(false);
           setItemToDelete(null);
@@ -1390,6 +1730,7 @@ function AcademicManagement() {
             <button
               onClick={() => {
                 resetSubjectForm();
+                setEditingItem(null);
                 setShowSubjectModal(true);
               }}
               className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800"
@@ -1472,6 +1813,8 @@ function AcademicManagement() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setSelectedSubject(subject);
+                                        setEditingStrand(null);
+                                        setStrandForm({ name: "", code: "", description: "", gradeLevel: "" });
                                         setShowStrandModal(true);
                                       }}
                                       className="px-2 py-1 bg-blue-600 text-white text-xs font-medium border border-blue-700 hover:bg-blue-700"
@@ -1484,10 +1827,11 @@ function AcademicManagement() {
                                         e.stopPropagation();
                                         setEditingItem(subject);
                                         setSubjectForm({
-                                          ...subject,
                                           name: subject.name,
                                           code: subject.code,
                                           isCore: subject.isCore,
+                                          isActive: subject.isActive,
+                                          description: subject.description,
                                         });
                                         setShowSubjectModal(true);
                                       }}
@@ -1516,8 +1860,7 @@ function AcademicManagement() {
                                   <div className="p-4 border-t border-gray-200">
                                     {subject.strands?.length === 0 ? (
                                       <div className="text-center py-4 text-gray-400">
-                                        No strands configured. Click "Add
-                                        Strand" to add topics.
+                                        No strands configured. Click "Add Strand" to add topics.
                                       </div>
                                     ) : (
                                       subject.strands?.map((strand) => (
@@ -1544,12 +1887,32 @@ function AcademicManagement() {
                                                 onClick={(e) => {
                                                   e.stopPropagation();
                                                   setSelectedStrand(strand);
+                                                  setEditingSubStrand(null);
+                                                  setSubStrandForm({ name: "", code: "", description: "" });
                                                   setShowSubStrandModal(true);
                                                 }}
                                                 className="px-2 py-1 bg-teal-600 text-white text-xs font-medium border border-teal-700 hover:bg-teal-700"
                                               >
                                                 <Plus className="h-3 w-3 inline mr-1" />
                                                 Add Sub-Strand
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  openEditStrand(strand);
+                                                }}
+                                                className="px-2 py-1 bg-yellow-600 text-white text-xs font-medium border border-yellow-700 hover:bg-yellow-700"
+                                              >
+                                                <Edit2 className="h-3 w-3 inline" />
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  confirmDeleteStrand(strand);
+                                                }}
+                                                className="px-2 py-1 bg-red-600 text-white text-xs font-medium border border-red-700 hover:bg-red-700"
+                                              >
+                                                <Trash2 className="h-3 w-3 inline" />
                                               </button>
                                               {expandedStrands[strand.id] ? (
                                                 <ChevronUp className="h-4 w-4" />
@@ -1561,87 +1924,90 @@ function AcademicManagement() {
 
                                           {expandedStrands[strand.id] && (
                                             <div className="p-4 border-t border-gray-200 bg-gray-50">
-                                              {strand.subStrands?.length ===
-                                              0 ? (
+                                              {strand.subStrands?.length === 0 ? (
                                                 <div className="text-center py-4 text-gray-400">
-                                                  No sub-strands configured.
-                                                  Click "Add Sub-Strand" to add
-                                                  specific topics.
+                                                  No sub-strands configured. Click "Add Sub-Strand" to add specific topics.
                                                 </div>
                                               ) : (
-                                                strand.subStrands?.map(
-                                                  (subStrand) => (
-                                                    <div
-                                                      key={subStrand.id}
-                                                      className="mb-3 border border-gray-200 bg-white"
-                                                    >
-                                                      <div className="px-4 py-2 flex justify-between items-center">
-                                                        <div>
-                                                          <h5 className="font-medium text-gray-800">
-                                                            {subStrand.name}
-                                                          </h5>
-                                                          <p className="text-xs text-gray-500">
-                                                            Code:{" "}
-                                                            {subStrand.code}
-                                                          </p>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                          <button
-                                                            onClick={() => {
-                                                              setSelectedSubStrand(
-                                                                subStrand,
-                                                              );
-                                                              setShowOutcomeModal(
-                                                                true,
-                                                              );
-                                                            }}
-                                                            className="px-2 py-1 bg-purple-600 text-white text-xs font-medium border border-purple-700 hover:bg-purple-700"
-                                                          >
-                                                            <Target className="h-3 w-3 inline mr-1" />
-                                                            Add Learning Outcome
-                                                          </button>
-                                                        </div>
+                                                strand.subStrands?.map((subStrand) => (
+                                                  <div
+                                                    key={subStrand.id}
+                                                    className="mb-3 border border-gray-200 bg-white"
+                                                  >
+                                                    <div className="px-4 py-2 flex justify-between items-center">
+                                                      <div>
+                                                        <h5 className="font-medium text-gray-800">
+                                                          {subStrand.name}
+                                                        </h5>
+                                                        <p className="text-xs text-gray-500">
+                                                          Code: {subStrand.code}
+                                                        </p>
                                                       </div>
-
-                                                      {/* Learning Outcomes */}
-                                                      {subStrand.outcomes
-                                                        ?.length > 0 && (
-                                                        <div className="px-4 pb-3">
-                                                          <p className="text-xs font-bold text-gray-700 mb-2">
-                                                            Learning Outcomes:
-                                                          </p>
-                                                          <ul className="list-disc list-inside space-y-1">
-                                                            {subStrand.outcomes.map(
-                                                              (outcome) => (
-                                                                <li
-                                                                  key={
-                                                                    outcome.id
-                                                                  }
-                                                                  className="text-sm text-gray-600"
-                                                                >
-                                                                  {
-                                                                    outcome.description
-                                                                  }
-                                                                  <span className="ml-2 text-xs text-purple-600">
-                                                                    [
-                                                                    {
-                                                                      outcome.domain
-                                                                    }
-                                                                    ] -
-                                                                    Competencies:{" "}
-                                                                    {outcome.competencies?.join(
-                                                                      ", ",
-                                                                    )}
-                                                                  </span>
-                                                                </li>
-                                                              ),
-                                                            )}
-                                                          </ul>
-                                                        </div>
-                                                      )}
+                                                      <div className="flex gap-2">
+                                                        <button
+                                                          onClick={() => {
+                                                            setSelectedSubStrand(subStrand);
+                                                            setEditingOutcome(null);
+                                                            setOutcomeForm({ description: "", domain: "cognitive", competencies: [] });
+                                                            setShowOutcomeModal(true);
+                                                          }}
+                                                          className="px-2 py-1 bg-purple-600 text-white text-xs font-medium border border-purple-700 hover:bg-purple-700"
+                                                        >
+                                                          <Target className="h-3 w-3 inline mr-1" />
+                                                          Add Learning Outcome
+                                                        </button>
+                                                        <button
+                                                          onClick={() => openEditSubStrand(subStrand)}
+                                                          className="px-2 py-1 bg-yellow-600 text-white text-xs font-medium border border-yellow-700 hover:bg-yellow-700"
+                                                        >
+                                                          <Edit2 className="h-3 w-3 inline" />
+                                                        </button>
+                                                        <button
+                                                          onClick={() => confirmDeleteSubStrand(subStrand)}
+                                                          className="px-2 py-1 bg-red-600 text-white text-xs font-medium border border-red-700 hover:bg-red-700"
+                                                        >
+                                                          <Trash2 className="h-3 w-3 inline" />
+                                                        </button>
+                                                      </div>
                                                     </div>
-                                                  ),
-                                                )
+
+                                                    {/* Learning Outcomes */}
+                                                    {subStrand.outcomes?.length > 0 && (
+                                                      <div className="px-4 pb-3">
+                                                        <p className="text-xs font-bold text-gray-700 mb-2">
+                                                          Learning Outcomes:
+                                                        </p>
+                                                        <ul className="list-disc list-inside space-y-1">
+                                                          {subStrand.outcomes.map((outcome) => (
+                                                            <li key={outcome.id} className="text-sm text-gray-600 flex items-center justify-between">
+                                                              <span>
+                                                                {outcome.description}
+                                                                <span className="ml-2 text-xs text-purple-600">
+                                                                  [{outcome.domain}] - Competencies:{" "}
+                                                                  {outcome.competencies?.join(", ")}
+                                                                </span>
+                                                              </span>
+                                                              <span className="flex gap-1 ml-2">
+                                                                <button
+                                                                  onClick={() => openEditOutcome(outcome)}
+                                                                  className="text-yellow-600 hover:text-yellow-800"
+                                                                >
+                                                                  <Edit2 className="h-3 w-3" />
+                                                                </button>
+                                                                <button
+                                                                  onClick={() => confirmDeleteOutcome(outcome)}
+                                                                  className="text-red-600 hover:text-red-800"
+                                                                >
+                                                                  <Trash2 className="h-3 w-3" />
+                                                                </button>
+                                                              </span>
+                                                            </li>
+                                                          ))}
+                                                        </ul>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                ))
                                               )}
                                             </div>
                                           )}
@@ -1668,13 +2034,25 @@ function AcademicManagement() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Core Competencies */}
           <div className="bg-white border border-gray-300">
-            <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
-              <h2 className="text-md font-bold text-gray-900">
-                Core Competencies (KICD)
-              </h2>
-              <p className="text-sm text-gray-600 mt-0.5">
-                The 7 competencies of the CBC framework
-              </p>
+            <div className="border-b border-gray-300 px-6 py-4 bg-gray-100 flex justify-between items-center">
+              <div>
+                <h2 className="text-md font-bold text-gray-900">
+                  Core Competencies (KICD)
+                </h2>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  The 7 competencies of the CBC framework
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingCompetency(null);
+                  setCompetencyForm({ name: "", code: "", indicators: "" });
+                  setShowCompetencyModal(true);
+                }}
+                className="px-3 py-1 bg-green-700 text-white text-xs font-medium border border-green-800 hover:bg-green-800"
+              >
+                <Plus className="h-3 w-3 inline mr-1" /> Add
+              </button>
             </div>
             <div className="p-4">
               {coreCompetencies.map((comp) => (
@@ -1686,6 +2064,20 @@ function AcademicManagement() {
                     <div>
                       <h3 className="font-bold text-gray-900">{comp.name}</h3>
                       <p className="text-xs text-gray-500">Code: {comp.code}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => openEditCompetency(comp)}
+                        className="p-1 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => confirmDeleteCompetency(comp)}
+                        className="p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
                   </div>
                   <div>
@@ -1707,13 +2099,25 @@ function AcademicManagement() {
 
           {/* Core Values */}
           <div className="bg-white border border-gray-300">
-            <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
-              <h2 className="text-md font-bold text-gray-900">
-                Core Values (KICD)
-              </h2>
-              <p className="text-sm text-gray-600 mt-0.5">
-                The 7 values of the CBC framework
-              </p>
+            <div className="border-b border-gray-300 px-6 py-4 bg-gray-100 flex justify-between items-center">
+              <div>
+                <h2 className="text-md font-bold text-gray-900">
+                  Core Values (KICD)
+                </h2>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  The 7 values of the CBC framework
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingValue(null);
+                  setValueForm({ name: "", indicators: "" });
+                  setShowValueModal(true);
+                }}
+                className="px-3 py-1 bg-green-700 text-white text-xs font-medium border border-green-800 hover:bg-green-800"
+              >
+                <Plus className="h-3 w-3 inline mr-1" /> Add
+              </button>
             </div>
             <div className="p-4">
               {coreValues.map((value) => (
@@ -1723,6 +2127,20 @@ function AcademicManagement() {
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-bold text-gray-900">{value.name}</h3>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => openEditValue(value)}
+                        className="p-1 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => confirmDeleteValue(value)}
+                        className="p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs font-bold text-gray-700 mb-1">
@@ -1865,54 +2283,6 @@ function AcademicManagement() {
         </div>
       )}
 
-      {/* Weight Config Modal */}
-      {showWeightModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowWeightModal(false)}
-        >
-          <div
-            className="bg-white border border-gray-400 max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
-              <h3 className="text-md font-bold text-gray-900">
-                Confirm Weight Configuration
-              </h3>
-              <button
-                onClick={() => setShowWeightModal(false)}
-                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
-              >
-                &times;
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-sm text-gray-800">
-                Are you sure you want to update the weight configuration?
-              </p>
-              <p className="text-xs text-gray-600 mt-2">
-                SBA: {weightConfig.sbaWeight}% | Exam: {weightConfig.examWeight}
-                %
-              </p>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
-              <button
-                onClick={() => setShowWeightModal(false)}
-                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={updateWeightConfig}
-                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* TAB 4: VERSION HISTORY */}
       {activeTab === "versions" && (
         <div className="bg-white border border-gray-300">
@@ -2018,7 +2388,7 @@ function AcademicManagement() {
         </div>
       )}
 
-      {/* TAB 5: GRADE LEVELS - NEW */}
+      {/* TAB 5: GRADE LEVELS */}
       {activeTab === "grade-levels" && (
         <div>
           <div className="flex justify-end mb-4">
@@ -2079,6 +2449,7 @@ function AcademicManagement() {
           </div>
         </div>
       )}
+
       {/* TAB 6: ACADEMIC YEARS */}
       {activeTab === "academic-years" && (
         <div>
@@ -2179,6 +2550,7 @@ function AcademicManagement() {
           </div>
         </div>
       )}
+
       {/* TAB 7: TERMS */}
       {activeTab === "terms" && (
         <div>
@@ -2296,6 +2668,56 @@ function AcademicManagement() {
           </div>
         </div>
       )}
+
+      {/* ================ MODALS ================ */}
+
+      {/* Weight Config Modal */}
+      {showWeightModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowWeightModal(false)}
+        >
+          <div
+            className="bg-white border border-gray-400 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">
+                Confirm Weight Configuration
+              </h3>
+              <button
+                onClick={() => setShowWeightModal(false)}
+                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-800">
+                Are you sure you want to update the weight configuration?
+              </p>
+              <p className="text-xs text-gray-600 mt-2">
+                SBA: {weightConfig.sbaWeight}% | Exam: {weightConfig.examWeight}%
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowWeightModal(false)}
+                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateWeightConfig}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Subject Modal */}
       {showSubjectModal && (
         <div
@@ -2412,20 +2834,30 @@ function AcademicManagement() {
         </div>
       )}
 
-      {/* Strand Modal - FIXED with Grade Level Selector */}
+      {/* Strand Modal */}
       {showStrandModal && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowStrandModal(false)}
+          onClick={() => {
+            setShowStrandModal(false);
+            setEditingStrand(null);
+            setStrandForm({ name: "", code: "", description: "", gradeLevel: "" });
+          }}
         >
           <div
             className="bg-white border border-gray-400 max-w-md w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
-              <h3 className="text-md font-bold text-gray-900">Add Strand</h3>
+              <h3 className="text-md font-bold text-gray-900">
+                {editingStrand ? "Edit Strand" : "Add Strand"}
+              </h3>
               <button
-                onClick={() => setShowStrandModal(false)}
+                onClick={() => {
+                  setShowStrandModal(false);
+                  setEditingStrand(null);
+                  setStrandForm({ name: "", code: "", description: "", gradeLevel: "" });
+                }}
                 className="text-gray-600 hover:text-gray-900 text-xl font-bold"
               >
                 &times;
@@ -2503,16 +2935,20 @@ function AcademicManagement() {
             </div>
             <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
               <button
-                onClick={() => setShowStrandModal(false)}
+                onClick={() => {
+                  setShowStrandModal(false);
+                  setEditingStrand(null);
+                  setStrandForm({ name: "", code: "", description: "", gradeLevel: "" });
+                }}
                 className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
-                onClick={createStrand}
+                onClick={saveStrand}
                 className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
               >
-                Create
+                {editingStrand ? "Update" : "Create"}
               </button>
             </div>
           </div>
@@ -2523,7 +2959,11 @@ function AcademicManagement() {
       {showSubStrandModal && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowSubStrandModal(false)}
+          onClick={() => {
+            setShowSubStrandModal(false);
+            setEditingSubStrand(null);
+            setSubStrandForm({ name: "", code: "", description: "" });
+          }}
         >
           <div
             className="bg-white border border-gray-400 max-w-md w-full mx-4"
@@ -2531,10 +2971,14 @@ function AcademicManagement() {
           >
             <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
               <h3 className="text-md font-bold text-gray-900">
-                Add Sub-Strand
+                {editingSubStrand ? "Edit Sub-Strand" : "Add Sub-Strand"}
               </h3>
               <button
-                onClick={() => setShowSubStrandModal(false)}
+                onClick={() => {
+                  setShowSubStrandModal(false);
+                  setEditingSubStrand(null);
+                  setSubStrandForm({ name: "", code: "", description: "" });
+                }}
                 className="text-gray-600 hover:text-gray-900 text-xl font-bold"
               >
                 &times;
@@ -2593,16 +3037,20 @@ function AcademicManagement() {
             </div>
             <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
               <button
-                onClick={() => setShowSubStrandModal(false)}
+                onClick={() => {
+                  setShowSubStrandModal(false);
+                  setEditingSubStrand(null);
+                  setSubStrandForm({ name: "", code: "", description: "" });
+                }}
                 className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
-                onClick={createSubStrand}
+                onClick={saveSubStrand}
                 className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
               >
-                Create
+                {editingSubStrand ? "Update" : "Create"}
               </button>
             </div>
           </div>
@@ -2613,7 +3061,11 @@ function AcademicManagement() {
       {showOutcomeModal && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowOutcomeModal(false)}
+          onClick={() => {
+            setShowOutcomeModal(false);
+            setEditingOutcome(null);
+            setOutcomeForm({ description: "", domain: "cognitive", competencies: [] });
+          }}
         >
           <div
             className="bg-white border border-gray-400 max-w-lg w-full mx-4"
@@ -2621,10 +3073,14 @@ function AcademicManagement() {
           >
             <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
               <h3 className="text-md font-bold text-gray-900">
-                Add Learning Outcome
+                {editingOutcome ? "Edit Learning Outcome" : "Add Learning Outcome"}
               </h3>
               <button
-                onClick={() => setShowOutcomeModal(false)}
+                onClick={() => {
+                  setShowOutcomeModal(false);
+                  setEditingOutcome(null);
+                  setOutcomeForm({ description: "", domain: "cognitive", competencies: [] });
+                }}
                 className="text-gray-600 hover:text-gray-900 text-xl font-bold"
               >
                 &times;
@@ -2700,16 +3156,523 @@ function AcademicManagement() {
             </div>
             <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
               <button
-                onClick={() => setShowOutcomeModal(false)}
+                onClick={() => {
+                  setShowOutcomeModal(false);
+                  setEditingOutcome(null);
+                  setOutcomeForm({ description: "", domain: "cognitive", competencies: [] });
+                }}
                 className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
-                onClick={createOutcome}
+                onClick={saveOutcome}
                 className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
               >
-                Create
+                {editingOutcome ? "Update" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Competency Modal */}
+      {showCompetencyModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => {
+            setShowCompetencyModal(false);
+            setEditingCompetency(null);
+            setCompetencyForm({ name: "", code: "", indicators: "" });
+          }}
+        >
+          <div
+            className="bg-white border border-gray-400 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">
+                {editingCompetency ? "Edit Competency" : "Add Competency"}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowCompetencyModal(false);
+                  setEditingCompetency(null);
+                  setCompetencyForm({ name: "", code: "", indicators: "" });
+                }}
+                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={competencyForm.name}
+                  onChange={(e) =>
+                    setCompetencyForm({ ...competencyForm, name: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Code *
+                </label>
+                <input
+                  type="text"
+                  value={competencyForm.code}
+                  onChange={(e) =>
+                    setCompetencyForm({ ...competencyForm, code: e.target.value.toUpperCase() })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Indicators (comma separated)
+                </label>
+                <textarea
+                  value={competencyForm.indicators}
+                  onChange={(e) =>
+                    setCompetencyForm({ ...competencyForm, indicators: e.target.value })
+                  }
+                  rows="3"
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  placeholder="Indicator 1, Indicator 2, ..."
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowCompetencyModal(false);
+                  setEditingCompetency(null);
+                  setCompetencyForm({ name: "", code: "", indicators: "" });
+                }}
+                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveCompetency}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
+              >
+                {editingCompetency ? "Update" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Value Modal */}
+      {showValueModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => {
+            setShowValueModal(false);
+            setEditingValue(null);
+            setValueForm({ name: "", indicators: "" });
+          }}
+        >
+          <div
+            className="bg-white border border-gray-400 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">
+                {editingValue ? "Edit Value" : "Add Value"}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowValueModal(false);
+                  setEditingValue(null);
+                  setValueForm({ name: "", indicators: "" });
+                }}
+                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={valueForm.name}
+                  onChange={(e) => setValueForm({ ...valueForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Indicators (comma separated)
+                </label>
+                <textarea
+                  value={valueForm.indicators}
+                  onChange={(e) => setValueForm({ ...valueForm, indicators: e.target.value })}
+                  rows="3"
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  placeholder="Indicator 1, Indicator 2, ..."
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowValueModal(false);
+                  setEditingValue(null);
+                  setValueForm({ name: "", indicators: "" });
+                }}
+                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveValue}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
+              >
+                {editingValue ? "Update" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grade Level Modal */}
+      {showGradeModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowGradeModal(false)}
+        >
+          <div
+            className="bg-white border border-gray-400 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">
+                {editingGrade ? "Edit Grade Level" : "Add Grade Level"}
+              </h3>
+              <button
+                onClick={() => setShowGradeModal(false)}
+                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Level Number *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={gradeForm.level}
+                  onChange={(e) =>
+                    setGradeForm({ ...gradeForm, level: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Grade Name *
+                </label>
+                <input
+                  type="text"
+                  value={gradeForm.name}
+                  onChange={(e) =>
+                    setGradeForm({ ...gradeForm, name: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  placeholder="e.g., Grade 7"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={gradeForm.description}
+                  onChange={(e) =>
+                    setGradeForm({ ...gradeForm, description: e.target.value })
+                  }
+                  rows="2"
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowGradeModal(false)}
+                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={editingGrade ? handleUpdateGrade : handleCreateGrade}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
+              >
+                {editingGrade ? "Update" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Academic Year Modal */}
+      {showAcademicYearModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowAcademicYearModal(false)}
+        >
+          <div
+            className="bg-white border border-gray-400 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">
+                {editingAcademicYear
+                  ? "Edit Academic Year"
+                  : "Add Academic Year"}
+              </h3>
+              <button
+                onClick={() => setShowAcademicYearModal(false)}
+                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Year Code *{" "}
+                  <span className="font-normal text-gray-500">
+                    (e.g. 2024-2025)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={academicYearForm.year_code}
+                  onChange={(e) =>
+                    setAcademicYearForm({
+                      ...academicYearForm,
+                      year_code: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  placeholder="2024-2025"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Year Name *
+                </label>
+                <input
+                  type="text"
+                  value={academicYearForm.year_name}
+                  onChange={(e) =>
+                    setAcademicYearForm({
+                      ...academicYearForm,
+                      year_name: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  placeholder="Academic Year 2024/2025"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Start Date *
+                </label>
+                <input
+                  type="date"
+                  value={academicYearForm.start_date}
+                  onChange={(e) =>
+                    setAcademicYearForm({
+                      ...academicYearForm,
+                      start_date: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  End Date *
+                </label>
+                <input
+                  type="date"
+                  value={academicYearForm.end_date}
+                  onChange={(e) =>
+                    setAcademicYearForm({
+                      ...academicYearForm,
+                      end_date: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={academicYearForm.is_current}
+                    onChange={(e) =>
+                      setAcademicYearForm({
+                        ...academicYearForm,
+                        is_current: e.target.checked,
+                      })
+                    }
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Set as current academic year
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 ml-5">
+                  This will unset any previously current year.
+                </p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowAcademicYearModal(false)}
+                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveAcademicYear}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
+              >
+                {editingAcademicYear ? "Update" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Term Modal */}
+      {showTermModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowTermModal(false)}
+        >
+          <div
+            className="bg-white border border-gray-400 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">
+                {editingTerm ? "Edit Term" : "Add Term"}
+              </h3>
+              <button
+                onClick={() => setShowTermModal(false)}
+                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Academic Year *
+                </label>
+                <select
+                  value={termForm.academic_year}
+                  onChange={(e) =>
+                    setTermForm({ ...termForm, academic_year: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                >
+                  <option value="">Select Year</option>
+                  {academicYears.map((yr) => (
+                    <option key={yr.id} value={yr.id}>
+                      {yr.year_code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Term Number *
+                </label>
+                <select
+                  value={termForm.term}
+                  onChange={(e) =>
+                    setTermForm({ ...termForm, term: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                >
+                  <option value="Term 1">Term 1</option>
+                  <option value="Term 2">Term 2</option>
+                  <option value="Term 3">Term 3</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Start Date *
+                </label>
+                <input
+                  type="date"
+                  value={termForm.start_date}
+                  onChange={(e) =>
+                    setTermForm({ ...termForm, start_date: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  End Date *
+                </label>
+                <input
+                  type="date"
+                  value={termForm.end_date}
+                  onChange={(e) =>
+                    setTermForm({ ...termForm, end_date: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={termForm.is_current}
+                    onChange={(e) =>
+                      setTermForm({ ...termForm, is_current: e.target.checked })
+                    }
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Set as current term for this academic year
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 ml-5">
+                  This will unset any other current term for the same year.
+                </p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowTermModal(false)}
+                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTerm}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
+              >
+                {editingTerm ? "Update" : "Create"}
               </button>
             </div>
           </div>
@@ -2969,338 +3932,6 @@ function AcademicManagement() {
                 className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
               >
                 Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Grade Level Modal */}
-      {showGradeModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowGradeModal(false)}
-        >
-          <div
-            className="bg-white border border-gray-400 max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
-              <h3 className="text-md font-bold text-gray-900">
-                {editingGrade ? "Edit Grade Level" : "Add Grade Level"}
-              </h3>
-              <button
-                onClick={() => setShowGradeModal(false)}
-                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
-              >
-                &times;
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Level Number *
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={gradeForm.level}
-                  onChange={(e) =>
-                    setGradeForm({ ...gradeForm, level: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Grade Name *
-                </label>
-                <input
-                  type="text"
-                  value={gradeForm.name}
-                  onChange={(e) =>
-                    setGradeForm({ ...gradeForm, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                  placeholder="e.g., Grade 7"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={gradeForm.description}
-                  onChange={(e) =>
-                    setGradeForm({ ...gradeForm, description: e.target.value })
-                  }
-                  rows="2"
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                />
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
-              <button
-                onClick={() => setShowGradeModal(false)}
-                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={editingGrade ? handleUpdateGrade : handleCreateGrade}
-                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
-              >
-                {editingGrade ? "Update" : "Create"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Academic Year Modal */}
-      {showAcademicYearModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowAcademicYearModal(false)}
-        >
-          <div
-            className="bg-white border border-gray-400 max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
-              <h3 className="text-md font-bold text-gray-900">
-                {editingAcademicYear
-                  ? "Edit Academic Year"
-                  : "Add Academic Year"}
-              </h3>
-              <button
-                onClick={() => setShowAcademicYearModal(false)}
-                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
-              >
-                &times;
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Year Code *{" "}
-                  <span className="font-normal text-gray-500">
-                    (e.g. 2024-2025)
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  value={academicYearForm.year_code}
-                  onChange={(e) =>
-                    setAcademicYearForm({
-                      ...academicYearForm,
-                      year_code: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                  placeholder="2024-2025"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Year Name *
-                </label>
-                <input
-                  type="text"
-                  value={academicYearForm.year_name}
-                  onChange={(e) =>
-                    setAcademicYearForm({
-                      ...academicYearForm,
-                      year_name: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                  placeholder="Academic Year 2024/2025"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Start Date *
-                </label>
-                <input
-                  type="date"
-                  value={academicYearForm.start_date}
-                  onChange={(e) =>
-                    setAcademicYearForm({
-                      ...academicYearForm,
-                      start_date: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  End Date *
-                </label>
-                <input
-                  type="date"
-                  value={academicYearForm.end_date}
-                  onChange={(e) =>
-                    setAcademicYearForm({
-                      ...academicYearForm,
-                      end_date: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={academicYearForm.is_current}
-                    onChange={(e) =>
-                      setAcademicYearForm({
-                        ...academicYearForm,
-                        is_current: e.target.checked,
-                      })
-                    }
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    Set as current academic year
-                  </span>
-                </label>
-                <p className="text-xs text-gray-500 mt-1 ml-5">
-                  This will unset any previously current year.
-                </p>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
-              <button
-                onClick={() => setShowAcademicYearModal(false)}
-                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveAcademicYear}
-                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
-              >
-                {editingAcademicYear ? "Update" : "Create"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Term Modal */}
-      {showTermModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowTermModal(false)}
-        >
-          <div
-            className="bg-white border border-gray-400 max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
-              <h3 className="text-md font-bold text-gray-900">
-                {editingTerm ? "Edit Term" : "Add Term"}
-              </h3>
-              <button
-                onClick={() => setShowTermModal(false)}
-                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
-              >
-                &times;
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Academic Year *
-                </label>
-                <select
-                  value={termForm.academic_year}
-                  onChange={(e) =>
-                    setTermForm({ ...termForm, academic_year: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                >
-                  <option value="">Select Year</option>
-                  {academicYears.map((yr) => (
-                    <option key={yr.id} value={yr.id}>
-                      {yr.year_code}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Term Number *
-                </label>
-                <select
-                  value={termForm.term}
-                  onChange={(e) =>
-                    setTermForm({ ...termForm, term: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                >
-                  <option value="Term 1">Term 1</option>
-                  <option value="Term 2">Term 2</option>
-                  <option value="Term 3">Term 3</option>
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Start Date *
-                </label>
-                <input
-                  type="date"
-                  value={termForm.start_date}
-                  onChange={(e) =>
-                    setTermForm({ ...termForm, start_date: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  End Date *
-                </label>
-                <input
-                  type="date"
-                  value={termForm.end_date}
-                  onChange={(e) =>
-                    setTermForm({ ...termForm, end_date: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={termForm.is_current}
-                    onChange={(e) =>
-                      setTermForm({ ...termForm, is_current: e.target.checked })
-                    }
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    Set as current term for this academic year
-                  </span>
-                </label>
-                <p className="text-xs text-gray-500 mt-1 ml-5">
-                  This will unset any other current term for the same year.
-                </p>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
-              <button
-                onClick={() => setShowTermModal(false)}
-                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveTerm}
-                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
-              >
-                {editingTerm ? "Update" : "Create"}
               </button>
             </div>
           </div>

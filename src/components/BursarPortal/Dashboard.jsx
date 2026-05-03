@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
 import {
   Users,
@@ -119,11 +119,11 @@ const BursarDashboard = () => {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
   };
 
-  const handleApiError = (error) => {
+  const handleApiError = useCallback((error) => {
     if (error?.status === 401 || error?.message?.includes('Unauthorized')) {
       setShowSessionExpired(true);
     }
-  };
+  }, []);
 
   const handleLogout = () => {
     setShowSessionExpired(false);
@@ -144,7 +144,7 @@ const BursarDashboard = () => {
     setCurrentTime(`${hours}:${minutes} ${ampm}`);
   };
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (!isAuthenticated) return;
     
     setIsLoading(true);
@@ -207,7 +207,7 @@ const BursarDashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [getAuthHeaders, handleApiError, isAuthenticated]);
 
   useEffect(() => {
     updateDateTime();
@@ -218,7 +218,7 @@ const BursarDashboard = () => {
     }
     
     return () => clearInterval(timeInterval);
-  }, [isAuthenticated, timeFrame]);
+  }, [isAuthenticated, timeFrame, fetchDashboardData]);
 
   const formatCurrency = (amount) => {
     return `KSh ${parseFloat(amount || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

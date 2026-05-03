@@ -3,8 +3,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../Authentication/AuthContext";
 import {
   AlertTriangle, CheckCircle, Search, Plus, Trash2, FileText,
-  Target, UserX, MessageSquare, Star, X, Loader2, RefreshCw,
-  ChevronLeft, ChevronRight, BarChart3, Tag
+  Target, UserX, MessageSquare, X, Loader2, RefreshCw,
+  ChevronLeft, ChevronRight, Tag, Edit2, Clock
 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -41,7 +41,7 @@ const LoadingSpinner = () => (
   <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-green-700" /></div>
 );
 
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", loading = false }) => {
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", confirmClass = "bg-red-600 hover:bg-red-700", loading = false }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
@@ -50,7 +50,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
         <div className="p-6"><p className="text-sm text-gray-800">{message}</p></div>
         <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
-          <button onClick={onConfirm} disabled={loading} className="px-4 py-2 bg-red-600 text-white text-sm font-bold border border-red-700 hover:bg-red-700 disabled:opacity-50">
+          <button onClick={onConfirm} disabled={loading} className={`px-4 py-2 text-white text-sm font-bold border border-transparent disabled:opacity-50 ${confirmClass}`}>
             {loading && <Loader2 className="h-4 w-4 animate-spin inline mr-2" />}{confirmText}
           </button>
         </div>
@@ -146,12 +146,20 @@ const Discipline = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [toasts, setToasts] = useState([]);
+
+  // Modal states
   const [showCaseModal, setShowCaseModal] = useState(false);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showInterventionModal, setShowInterventionModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showSuspensionModal, setShowSuspensionModal] = useState(false);
+  const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
+  const [showEditSuspensionModal, setShowEditSuspensionModal] = useState(false);
+
+  // Confirm dialogs
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, id: null, name: "" });
   const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState({ isOpen: false, id: null, name: "" });
+  const [deleteSuspensionConfirm, setDeleteSuspensionConfirm] = useState({ isOpen: false, id: null, name: "" });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -160,16 +168,29 @@ const Discipline = () => {
 
   const [cases, setCases] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [conductRecords, setConductRecords] = useState([]);
   const [interventions, setInterventions] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [suspensions, setSuspensions] = useState([]);
   const [stats, setStats] = useState({ totalCases: 0, activeCases: 0, resolvedCases: 0, totalInterventions: 0, activeSuspensions: 0, totalCounseling: 0 });
 
+  // Forms
   const [caseForm, setCaseForm] = useState({ student_id: "", category_id: "", description: "", location: "" });
   const [sessionForm, setSessionForm] = useState({ student_id: "", session_type: "Personal Counseling", session_date: "", session_time: "", notes: "" });
   const [interventionForm, setInterventionForm] = useState({ program_name: "", program_type: "Behavioral", description: "", duration_weeks: 4, facilitator: "", start_date: "" });
   const [categoryForm, setCategoryForm] = useState({ category_name: "", severity_level: "Medium", default_points: 5 });
+  const [editCategoryData, setEditCategoryData] = useState(null);
+
+  const [suspensionForm, setSuspensionForm] = useState({
+    student_id: "",
+    incident_id: "",
+    suspension_type: "In-School",
+    start_date: "",
+    end_date: "",
+    reason: "",
+    notes: "",
+    parent_notified: false,
+  });
+  const [editSuspensionData, setEditSuspensionData] = useState(null);
 
   const showToast = (message, type = "info") => {
     const id = Date.now();
@@ -186,6 +207,7 @@ const Discipline = () => {
     return data;
   }, [getAuthHeaders]);
 
+  // Data fetching
   const fetchCases = useCallback(async () => {
     try {
       const params = new URLSearchParams();
@@ -207,13 +229,6 @@ const Discipline = () => {
       const data = await apiRequest("/api/deputyadmin/discipline/categories/");
       if (data.success) setCategories(data.data || []);
     } catch (err) { console.error("Categories:", err); }
-  }, [apiRequest]);
-
-  const fetchConductRecords = useCallback(async () => {
-    try {
-      const data = await apiRequest("/api/deputyadmin/discipline/conduct/");
-      if (data.success) setConductRecords(data.data || []);
-    } catch (err) { console.error(err); }
   }, [apiRequest]);
 
   const fetchInterventions = useCallback(async () => {
@@ -246,11 +261,12 @@ const Discipline = () => {
 
   const refreshAllData = async () => {
     setRefreshing(true);
-    await Promise.all([fetchCases(), fetchCategories(), fetchConductRecords(), fetchInterventions(), fetchSessions(), fetchSuspensions(), fetchStats()]);
+    await Promise.all([fetchCases(), fetchCategories(), fetchInterventions(), fetchSessions(), fetchSuspensions(), fetchStats()]);
     setRefreshing(false);
     showToast("Data refreshed", "success");
   };
 
+  // Handlers
   const handleCreateCase = async () => {
     if (!caseForm.student_id || !caseForm.category_id || !caseForm.description) {
       showToast("Please select a student, category and fill in the description", "error");
@@ -270,7 +286,7 @@ const Discipline = () => {
         showToast("Case created successfully", "success");
         setShowCaseModal(false);
         setCaseForm({ student_id: "", category_id: "", description: "", location: "" });
-        fetchCases(); fetchStats();
+        fetchCases(); fetchStats(); fetchSuspensions(); // refresh suspensions (auto‑suspension may appear)
       }
     } catch (err) { showToast(err.message || "Failed to create case", "error"); }
     finally { setLoading(false); }
@@ -294,18 +310,37 @@ const Discipline = () => {
     finally { setLoading(false); }
   };
 
+  const handleUpdateCategory = async () => {
+    if (!editCategoryData || !editCategoryData.category_name) {
+      showToast("Category name is required", "error");
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await apiRequest(`/api/deputyadmin/discipline/categories/${editCategoryData.id}/`, {
+        method: "PUT",
+        body: JSON.stringify(editCategoryData),
+      });
+      if (data.success) {
+        showToast("Category updated", "success");
+        setShowEditCategoryModal(false);
+        setEditCategoryData(null);
+        fetchCategories();
+      }
+    } catch (err) { showToast(err.message || "Failed to update category", "error"); }
+    finally { setLoading(false); }
+  };
+
   const handleDeleteCategory = async () => {
     setLoading(true);
     try {
-      // FIXED: Use the standard REST destroy URL (no /delete/ suffix)
       const data = await apiRequest(`/api/deputyadmin/discipline/categories/${deleteCategoryConfirm.id}/`, { method: "DELETE" });
       if (data.success) {
         showToast("Category deleted", "success");
         fetchCategories();
       }
-    } catch (err) {
-      showToast(err.message || "Failed to delete category", "error");
-    } finally {
+    } catch (err) { showToast(err.message || "Failed to delete category", "error"); }
+    finally {
       setLoading(false);
       setDeleteCategoryConfirm({ isOpen: false, id: null, name: "" });
     }
@@ -354,6 +389,72 @@ const Discipline = () => {
     finally { setLoading(false); }
   };
 
+  // Suspension handlers
+  const handleCreateSuspension = async () => {
+    if (!suspensionForm.student_id || !suspensionForm.start_date || !suspensionForm.end_date) {
+      showToast("Please fill student, start date and end date", "error");
+      return;
+    }
+    setLoading(true);
+    try {
+      const payload = { ...suspensionForm, student: suspensionForm.student_id };
+      delete payload.student_id;
+      if (suspensionForm.incident_id) payload.incident = suspensionForm.incident_id;
+      else delete payload.incident_id;
+      const data = await apiRequest("/api/deputyadmin/discipline/suspensions/create/", { method: "POST", body: JSON.stringify(payload) });
+      if (data.success) {
+        showToast("Suspension created", "success");
+        setShowSuspensionModal(false);
+        setSuspensionForm({
+          student_id: "", incident_id: "", suspension_type: "In-School",
+          start_date: "", end_date: "", reason: "", notes: "", parent_notified: false,
+        });
+        fetchSuspensions(); fetchStats();
+      }
+    } catch (err) { showToast(err.message || "Failed to create suspension", "error"); }
+    finally { setLoading(false); }
+  };
+
+  const handleUpdateSuspension = async () => {
+    if (!editSuspensionData) return;
+    setLoading(true);
+    try {
+      const payload = { ...editSuspensionData };
+      // If status is changed to Active, ensure dates are valid
+      if (payload.status === "Active" && (!payload.start_date || !payload.end_date)) {
+        showToast("Start and end dates are required to activate", "error");
+        setLoading(false);
+        return;
+      }
+      const data = await apiRequest(`/api/deputyadmin/discipline/suspensions/${editSuspensionData.id}/`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      if (data.success) {
+        showToast("Suspension updated", "success");
+        setShowEditSuspensionModal(false);
+        setEditSuspensionData(null);
+        fetchSuspensions(); fetchStats();
+      }
+    } catch (err) { showToast(err.message || "Failed to update suspension", "error"); }
+    finally { setLoading(false); }
+  };
+
+  const handleDeleteSuspension = async () => {
+    setLoading(true);
+    try {
+      const data = await apiRequest(`/api/deputyadmin/discipline/suspensions/${deleteSuspensionConfirm.id}/`, { method: "DELETE" });
+      if (data.success) {
+        showToast("Suspension deleted", "success");
+        fetchSuspensions(); fetchStats();
+      }
+    } catch (err) { showToast(err.message || "Failed to delete", "error"); }
+    finally {
+      setLoading(false);
+      setDeleteSuspensionConfirm({ isOpen: false, id: null, name: "" });
+    }
+  };
+
   const handleDeleteCase = async () => {
     setLoading(true);
     try {
@@ -372,21 +473,42 @@ const Discipline = () => {
     finally { setLoading(false); }
   };
 
+  // Open edit/approve modal
+  const openApproveSuspension = (suspension) => {
+    let data = { ...suspension };
+    // If dates are missing, suggest today and 3 days later
+    if (!data.start_date) data.start_date = new Date().toISOString().split("T")[0];
+    if (!data.end_date) {
+      let d = new Date();
+      d.setDate(d.getDate() + 3);
+      data.end_date = d.toISOString().split("T")[0];
+    }
+    setEditSuspensionData(data);
+    setShowEditSuspensionModal(true);
+  };
+
   useEffect(() => { if (isAuthenticated) refreshAllData(); }, [isAuthenticated]);
   useEffect(() => { if (isAuthenticated) fetchCases(); }, [searchTerm, filterStatus, filterSeverity, pagination.page]);
 
   const getSeverityColor = (s) => ({ High: "bg-red-100 text-red-800 border-red-200", Medium: "bg-yellow-100 text-yellow-800 border-yellow-200", Low: "bg-green-100 text-green-800 border-green-200", Critical: "bg-purple-100 text-purple-800 border-purple-200" }[s] || "bg-gray-100 text-gray-800 border-gray-200");
-  const getStatusColor = (s) => ({ "Under Investigation": "bg-orange-100 text-orange-800 border-orange-200", "Pending Review": "bg-yellow-100 text-yellow-800 border-yellow-200", Resolved: "bg-green-100 text-green-800 border-green-200", Closed: "bg-gray-100 text-gray-800 border-gray-200", Scheduled: "bg-blue-100 text-blue-800 border-blue-200", "In Progress": "bg-purple-100 text-purple-800 border-purple-200", Active: "bg-green-100 text-green-800 border-green-200", Reported: "bg-orange-100 text-orange-800 border-orange-200" }[s] || "bg-gray-100 text-gray-800 border-gray-200");
-  const getConductBadge = (g) => ({ A: "bg-green-100 text-green-800 border-green-200", B: "bg-blue-100 text-blue-800 border-blue-200", C: "bg-yellow-100 text-yellow-800 border-yellow-200", D: "bg-orange-100 text-orange-800 border-orange-200", F: "bg-red-100 text-red-800 border-red-200" }[g] || "bg-gray-100 text-gray-800 border-gray-200");
+  const getStatusColor = (s) => ({
+    "Under Investigation": "bg-orange-100 text-orange-800 border-orange-200",
+    "Pending Review": "bg-yellow-100 text-yellow-800 border-yellow-200",
+    Resolved: "bg-green-100 text-green-800 border-green-200",
+    Closed: "bg-gray-100 text-gray-800 border-gray-200",
+    Scheduled: "bg-blue-100 text-blue-800 border-blue-200",
+    "In Progress": "bg-purple-100 text-purple-800 border-purple-200",
+    Active: "bg-green-100 text-green-800 border-green-200",
+    Reported: "bg-orange-100 text-orange-800 border-orange-200",
+    Pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  }[s] || "bg-gray-100 text-gray-800 border-gray-200");
 
   const tabs = [
     { id: "cases", name: "Discipline Cases", icon: <AlertTriangle size={16} />, count: stats.activeCases },
-    { id: "conduct", name: "Conduct Records", icon: <Star size={16} />, count: conductRecords.length },
     { id: "interventions", name: "Interventions", icon: <Target size={16} />, count: stats.totalInterventions },
     { id: "counseling", name: "Counseling", icon: <MessageSquare size={16} />, count: stats.totalCounseling },
     { id: "suspensions", name: "Suspensions", icon: <UserX size={16} />, count: stats.activeSuspensions },
     { id: "categories", name: "Categories", icon: <Tag size={16} /> },
-    { id: "reports", name: "Reports & Analytics", icon: <BarChart3 size={16} /> },
   ];
 
   if (!isAuthenticated) {
@@ -410,7 +532,6 @@ const Discipline = () => {
 
       <ConfirmModal isOpen={deleteConfirm.isOpen} onClose={() => setDeleteConfirm({ isOpen: false, id: null, name: "" })}
         onConfirm={handleDeleteCase} title="Delete Case" message={`Delete case "${deleteConfirm.name}"? This action cannot be undone.`} loading={loading} />
-
       <ConfirmModal
         isOpen={deleteCategoryConfirm.isOpen}
         onClose={() => setDeleteCategoryConfirm({ isOpen: false, id: null, name: "" })}
@@ -419,13 +540,23 @@ const Discipline = () => {
         message={`Delete category "${deleteCategoryConfirm.name}"? This cannot be undone.`}
         loading={loading}
       />
+      <ConfirmModal
+        isOpen={deleteSuspensionConfirm.isOpen}
+        onClose={() => setDeleteSuspensionConfirm({ isOpen: false, id: null, name: "" })}
+        onConfirm={handleDeleteSuspension}
+        title="Revoke Suspension"
+        message={`This will permanently delete the suspension record. Continue?`}
+        confirmText="Revoke"
+        confirmClass="bg-red-600 hover:bg-red-700"
+        loading={loading}
+      />
 
       {/* Header */}
       <div className="bg-gradient-to-r from-green-800 to-green-700 p-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Discipline Management</h1>
-            <p className="text-green-100 mt-1">Track cases, conduct records, interventions, and counseling</p>
+            <p className="text-green-100 mt-1">Track cases, interventions, counseling, and suspensions</p>
           </div>
           <div className="flex gap-3 flex-wrap">
             <button onClick={refreshAllData} disabled={refreshing} className="px-4 py-2 bg-white/10 text-white text-sm font-medium border border-white/20 hover:bg-white/20 flex items-center gap-2 rounded">
@@ -550,35 +681,6 @@ const Discipline = () => {
               </div>
             )}
 
-            {/* Conduct Records Tab */}
-            {activeTab === "conduct" && !refreshing && (
-              <div className="overflow-x-auto">
-                {conductRecords.length === 0 ? (
-                  <div className="text-center py-12"><Star className="h-12 w-12 text-gray-400 mx-auto mb-3" /><p className="text-gray-500">No conduct records found</p></div>
-                ) : (
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="bg-gray-100 border-b border-gray-300">
-                        {["Student", "Grade", "Conduct Grade", "Merits", "Demerits", "Status"].map(h => <th key={h} className="px-4 py-3 text-left font-bold text-gray-700">{h}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {conductRecords.map((record) => (
-                        <tr key={record.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium text-gray-900">{record.student_name}</td>
-                          <td className="px-4 py-3">{record.grade}</td>
-                          <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium border rounded ${getConductBadge(record.conduct_grade)}`}>{record.conduct_grade}</span></td>
-                          <td className="px-4 py-3 text-green-600 font-bold">{record.merits}</td>
-                          <td className="px-4 py-3 text-red-600 font-bold">{record.demerits}</td>
-                          <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium border rounded ${getStatusColor(record.status)}`}>{record.status}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            )}
-
             {/* Interventions Tab */}
             {activeTab === "interventions" && !refreshing && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -631,30 +733,61 @@ const Discipline = () => {
               </div>
             )}
 
-            {/* Suspensions Tab */}
+            {/* Suspensions Tab - With Approval/Revoke */}
             {activeTab === "suspensions" && !refreshing && (
-              <div className="overflow-x-auto">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-bold text-gray-800">Suspension Records</h2>
+                  <button onClick={() => setShowSuspensionModal(true)} className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800 rounded flex items-center gap-2">
+                    <Plus className="h-4 w-4" /> New Suspension
+                  </button>
+                </div>
                 {suspensions.length === 0 ? (
                   <div className="text-center py-12"><UserX className="h-12 w-12 text-gray-400 mx-auto mb-3" /><p className="text-gray-500">No suspensions found</p></div>
                 ) : (
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="bg-gray-100 border-b border-gray-300">
-                        {["Student", "Reason", "Duration", "Type", "Status"].map(h => <th key={h} className="px-4 py-3 text-left font-bold text-gray-700">{h}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {suspensions.map((sus) => (
-                        <tr key={sus.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium">{sus.student_name}<div className="text-xs text-gray-500">{sus.grade}</div></td>
-                          <td className="px-4 py-3">{sus.reason}</td>
-                          <td className="px-4 py-3">{sus.start_date} to {sus.end_date}<div className="text-xs">{sus.total_days} days</div></td>
-                          <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium border rounded ${sus.suspension_type === "Out-of-School" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{sus.suspension_type}</span></td>
-                          <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium border rounded ${getStatusColor(sus.status)}`}>{sus.status}</span></td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100 border-b border-gray-300">
+                          {["Student", "Reason", "Duration", "Type", "Status", "Actions"].map(h => <th key={h} className="px-4 py-3 text-left font-bold text-gray-700">{h}</th>)}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {suspensions.map((sus) => (
+                          <tr key={sus.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-medium">{sus.student_name}<div className="text-xs text-gray-500">{sus.grade}</div></td>
+                            <td className="px-4 py-3">{sus.reason}</td>
+                            <td className="px-4 py-3">
+                              {sus.start_date ? `${sus.start_date} to ${sus.end_date}` : "—"}
+                              {sus.total_days > 0 && <div className="text-xs">{sus.total_days} days</div>}
+                            </td>
+                            <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium border rounded ${sus.suspension_type === "Out-of-School" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{sus.suspension_type}</span></td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs font-medium border rounded ${getStatusColor(sus.status)}`}>
+                                {sus.status === 'Pending' && <Clock className="h-3 w-3 inline mr-1" />}
+                                {sus.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                {sus.status === 'Pending' ? (
+                                  <>
+                                    <button onClick={() => openApproveSuspension(sus)} className="p-1.5 bg-green-600 text-white rounded hover:bg-green-700" title="Approve"><CheckCircle className="h-3.5 w-3.5" /></button>
+                                    <button onClick={() => setDeleteSuspensionConfirm({ isOpen: true, id: sus.id, name: sus.student_name })} className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700" title="Revoke"><Trash2 className="h-3.5 w-3.5" /></button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button onClick={() => { setEditSuspensionData(sus); setShowEditSuspensionModal(true); }} className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"><Edit2 className="h-3.5 w-3.5" /></button>
+                                    <button onClick={() => setDeleteSuspensionConfirm({ isOpen: true, id: sus.id, name: sus.student_name })} className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"><Trash2 className="h-3.5 w-3.5" /></button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
@@ -664,19 +797,12 @@ const Discipline = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <p className="text-sm text-gray-500">{categories.length} categories found</p>
-                  <button
-                    onClick={() => setShowCategoryModal(true)}
-                    className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800 rounded flex items-center gap-2"
-                  >
+                  <button onClick={() => setShowCategoryModal(true)} className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800 rounded flex items-center gap-2">
                     <Plus className="h-4 w-4" /> New Category
                   </button>
                 </div>
-
                 {categories.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Tag className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500">No categories defined yet</p>
-                  </div>
+                  <div className="text-center py-12"><Tag className="h-12 w-12 text-gray-400 mx-auto mb-3" /><p className="text-gray-500">No categories defined yet</p></div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
@@ -692,27 +818,14 @@ const Discipline = () => {
                           <tr key={cat.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3 font-mono text-green-700">{cat.category_code}</td>
                             <td className="px-4 py-3 font-medium text-gray-900">{cat.category_name}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-1 text-xs font-medium border rounded ${getSeverityColor(cat.severity_level)}`}>
-                                {cat.severity_level}
-                              </span>
-                            </td>
+                            <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium border rounded ${getSeverityColor(cat.severity_level)}`}>{cat.severity_level}</span></td>
                             <td className="px-4 py-3 font-bold">{cat.default_points}</td>
+                            <td className="px-4 py-3">{cat.is_active ? <CheckCircle className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-red-600" />}</td>
                             <td className="px-4 py-3">
-                              {cat.is_active ? (
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <X className="h-4 w-4 text-red-600" />
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <button
-                                onClick={() => setDeleteCategoryConfirm({ isOpen: true, id: cat.id, name: cat.category_name })}
-                                className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"
-                                title="Delete category"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
+                              <div className="flex gap-2">
+                                <button onClick={() => { setEditCategoryData(cat); setShowEditCategoryModal(true); }} className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"><Edit2 className="h-3.5 w-3.5" /></button>
+                                <button onClick={() => setDeleteCategoryConfirm({ isOpen: true, id: cat.id, name: cat.category_name })} className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"><Trash2 className="h-3.5 w-3.5" /></button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -720,14 +833,6 @@ const Discipline = () => {
                     </table>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Reports Tab */}
-            {activeTab === "reports" && !refreshing && (
-              <div className="text-center py-12">
-                <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Reports & Analytics coming soon</p>
               </div>
             )}
           </div>
@@ -799,10 +904,7 @@ const Discipline = () => {
                 <label className="block text-sm font-bold text-gray-700 mb-1">Severity Level *</label>
                 <select className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded" value={categoryForm.severity_level}
                   onChange={(e) => setCategoryForm({ ...categoryForm, severity_level: e.target.value })}>
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                  <option value="Critical">Critical</option>
+                  <option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option><option value="Critical">Critical</option>
                 </select>
               </div>
               <div>
@@ -816,6 +918,48 @@ const Discipline = () => {
               <button onClick={handleCreateCategory} disabled={loading || !categoryForm.category_name}
                 className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800 disabled:opacity-50 rounded">
                 {loading && <Loader2 className="h-4 w-4 animate-spin inline mr-2" />}Create Category
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Category Modal ── */}
+      {showEditCategoryModal && editCategoryData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowEditCategoryModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-md w-full flex flex-col rounded" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center rounded-t">
+              <h3 className="text-md font-bold text-gray-900">Edit Discipline Category</h3>
+              <button onClick={() => setShowEditCategoryModal(false)} className="text-gray-600 hover:text-gray-900"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Category Name *</label>
+                <input type="text" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded"
+                  value={editCategoryData.category_name} onChange={(e) => setEditCategoryData({ ...editCategoryData, category_name: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Severity Level *</label>
+                <select className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded" value={editCategoryData.severity_level}
+                  onChange={(e) => setEditCategoryData({ ...editCategoryData, severity_level: e.target.value })}>
+                  <option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option><option value="Critical">Critical</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Default Points</label>
+                <input type="number" min="1" max="100" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded"
+                  value={editCategoryData.default_points} onChange={(e) => setEditCategoryData({ ...editCategoryData, default_points: parseInt(e.target.value) || 1 })} />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={editCategoryData.is_active} onChange={(e) => setEditCategoryData({ ...editCategoryData, is_active: e.target.checked })} />
+                <span className="text-sm">Active</span>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3 rounded-b">
+              <button onClick={() => setShowEditCategoryModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 rounded">Cancel</button>
+              <button onClick={handleUpdateCategory} disabled={loading || !editCategoryData.category_name}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800 disabled:opacity-50 rounded">
+                {loading && <Loader2 className="h-4 w-4 animate-spin inline mr-2" />}Update Category
               </button>
             </div>
           </div>
@@ -920,6 +1064,139 @@ const Discipline = () => {
               <button onClick={handleCreateIntervention} disabled={loading || !interventionForm.program_name || !interventionForm.start_date}
                 className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800 disabled:opacity-50 rounded">
                 {loading && <Loader2 className="h-4 w-4 animate-spin inline mr-2" />}Create Program
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create Suspension Modal ── */}
+      {showSuspensionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowSuspensionModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-lg w-full max-h-[90vh] flex flex-col rounded" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center rounded-t">
+              <h3 className="text-md font-bold text-gray-900">New Suspension</h3>
+              <button onClick={() => setShowSuspensionModal(false)} className="text-gray-600 hover:text-gray-900"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              <StudentSelector value={suspensionForm.student_id} onChange={(id) => setSuspensionForm({ ...suspensionForm, student_id: id })} apiRequest={apiRequest} />
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Related Incident (optional)</label>
+                <select className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded" value={suspensionForm.incident_id}
+                  onChange={(e) => setSuspensionForm({ ...suspensionForm, incident_id: e.target.value })}>
+                  <option value="">— None —</option>
+                  {cases.filter(c => c.status !== 'Resolved' && c.status !== 'Closed').map(c => (
+                    <option key={c.id} value={c.id}>{c.incident_code} - {c.student_name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Suspension Type</label>
+                <select className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded" value={suspensionForm.suspension_type}
+                  onChange={(e) => setSuspensionForm({ ...suspensionForm, suspension_type: e.target.value })}>
+                  <option>In-School</option><option>Out-of-School</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Start Date *</label>
+                  <input type="date" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded"
+                    value={suspensionForm.start_date} onChange={(e) => setSuspensionForm({ ...suspensionForm, start_date: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">End Date *</label>
+                  <input type="date" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded"
+                    value={suspensionForm.end_date} onChange={(e) => setSuspensionForm({ ...suspensionForm, end_date: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Reason</label>
+                <textarea rows="2" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded" placeholder="Reason for suspension…"
+                  value={suspensionForm.reason} onChange={(e) => setSuspensionForm({ ...suspensionForm, reason: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Notes</label>
+                <textarea rows="2" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded" placeholder="Additional notes…"
+                  value={suspensionForm.notes} onChange={(e) => setSuspensionForm({ ...suspensionForm, notes: e.target.value })} />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={suspensionForm.parent_notified} onChange={(e) => setSuspensionForm({ ...suspensionForm, parent_notified: e.target.checked })} />
+                <span className="text-sm">Parent Notified</span>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3 rounded-b">
+              <button onClick={() => setShowSuspensionModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 rounded">Cancel</button>
+              <button onClick={handleCreateSuspension} disabled={loading || !suspensionForm.student_id || !suspensionForm.start_date || !suspensionForm.end_date}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800 disabled:opacity-50 rounded">
+                {loading && <Loader2 className="h-4 w-4 animate-spin inline mr-2" />}Create Suspension
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit / Approve Suspension Modal ── */}
+      {showEditSuspensionModal && editSuspensionData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowEditSuspensionModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-lg w-full max-h-[90vh] flex flex-col rounded" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center rounded-t">
+              <h3 className="text-md font-bold text-gray-900">
+                {editSuspensionData.status === 'Pending' ? 'Approve Suspension' : 'Edit Suspension'}
+              </h3>
+              <button onClick={() => setShowEditSuspensionModal(false)} className="text-gray-600 hover:text-gray-900"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Student</label>
+                <input type="text" className="w-full px-3 py-2 border border-gray-300 text-sm bg-gray-100 rounded" value={editSuspensionData.student_name} disabled />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Suspension Type</label>
+                <select className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded" value={editSuspensionData.suspension_type}
+                  onChange={(e) => setEditSuspensionData({ ...editSuspensionData, suspension_type: e.target.value })}>
+                  <option>In-School</option><option>Out-of-School</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Start Date</label>
+                  <input type="date" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded"
+                    value={editSuspensionData.start_date || ""} onChange={(e) => setEditSuspensionData({ ...editSuspensionData, start_date: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">End Date</label>
+                  <input type="date" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded"
+                    value={editSuspensionData.end_date || ""} onChange={(e) => setEditSuspensionData({ ...editSuspensionData, end_date: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Status</label>
+                <select className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded" value={editSuspensionData.status}
+                  onChange={(e) => setEditSuspensionData({ ...editSuspensionData, status: e.target.value })}>
+                  <option>Pending</option><option>Active</option><option>Completed</option><option>Revoked</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Reason</label>
+                <textarea rows="2" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded"
+                  value={editSuspensionData.reason} onChange={(e) => setEditSuspensionData({ ...editSuspensionData, reason: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Notes</label>
+                <textarea rows="2" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white rounded"
+                  value={editSuspensionData.notes || ""} onChange={(e) => setEditSuspensionData({ ...editSuspensionData, notes: e.target.value })} />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={editSuspensionData.parent_notified} onChange={(e) => setEditSuspensionData({ ...editSuspensionData, parent_notified: e.target.checked })} />
+                <span className="text-sm">Parent Notified</span>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3 rounded-b">
+              <button onClick={() => setShowEditSuspensionModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 rounded">Cancel</button>
+              <button onClick={handleUpdateSuspension} disabled={loading}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800 disabled:opacity-50 rounded">
+                {loading && <Loader2 className="h-4 w-4 animate-spin inline mr-2" />}
+                {editSuspensionData.status === 'Pending' ? 'Approve & Activate' : 'Update Suspension'}
               </button>
             </div>
           </div>

@@ -7,7 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
-
+import { MessageCircle } from 'lucide-react';
 const FinanceSidebarData = [
   
   {
@@ -45,6 +45,11 @@ const FinanceSidebarData = [
   //   icon: <HelpIcon />,
   //   link: "/FinancePortal/HelpSupport"
   // },
+  {
+    title: "Messages",
+    icon: <MessageCircle />,
+    link: "/FinancePortal/Messages"
+  },
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
