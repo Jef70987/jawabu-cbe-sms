@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   FiPlus, 
   FiTrash2, 
@@ -110,16 +110,6 @@ const ExpenseManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
 
-  // Statistics state
-  const [stats, setStats] = useState({
-    totalExpenses: 0,
-    approvedExpenses: 0,
-    pendingExpenses: 0,
-    cancelledExpenses: 0,
-    monthlyBudget: 500000,
-    categoriesBreakdown: {}
-  });
-
   // Categories
   const expenseCategories = [
     "Academic Supplies",
@@ -143,7 +133,7 @@ const ExpenseManagement = () => {
   const paymentMethods = ["Cash", "MPESA", "Bank Transfer", "Cheque", "Credit Card"];
 
   // Calculate statistics
-  useEffect(() => {
+  const stats = useMemo(() => {
     const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
     const approvedExpenses = expenses
       .filter(expense => expense.status === "approved")
@@ -161,14 +151,14 @@ const ExpenseManagement = () => {
       categoriesBreakdown[expense.category] = (categoriesBreakdown[expense.category] || 0) + expense.amount;
     });
 
-    setStats({
+    return {
       totalExpenses,
       approvedExpenses,
       pendingExpenses,
       cancelledExpenses,
       monthlyBudget: 500000,
       categoriesBreakdown
-    });
+    };
   }, [expenses]);
 
   // Add new expense

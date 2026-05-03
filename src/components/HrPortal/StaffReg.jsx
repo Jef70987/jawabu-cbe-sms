@@ -6,64 +6,8 @@ import {
 } from 'lucide-react';
 
 const StaffRegistration = () => {
-  const [formData, setFormData] = useState({
-    // Personal Information
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    dateOfBirth: '',
-    gender: '',
-    maritalStatus: '',
-    personalEmail: '',
-    personalPhone: '',
-    
-    // Emergency Contact
-    emergencyContact: '',
-    emergencyContactName: '',
-    emergencyRelation: '',
-    
-    // Address
-    permanentAddress: '',
-    temporaryAddress: '',
-    city: '',
-    country: 'Kenya',
-    
-    // Identification
-    nationalId: '',
-    kraPin: '',
-    nssfNo: '',
-    nhifNo: '',
-    
-    // Employment Details
-    employmentType: '',
-    employmentDate: '',
-    department: '',
-    designation: '',
-    
-    // Education
-    highestQualification: '',
-    specialization: '',
-    university: '',
-    yearOfGraduation: '',
-    
-    // Bank Details
-    bankName: '',
-    bankBranch: '',
-    accountName: '',
-    accountNumber: '',
-    
-    // Salary
-    basicSalary: '',
-    salaryCurrency: 'KES',
-    paymentMode: '',
-    
-    // Documents
-    photo: null,
-    documents: []
-  });
-
   const [currentStep, setCurrentStep] = useState(1);
-  const [approvedByAdmin, setApprovedByAdmin] = useState(true);
+  const [approvedByAdmin] = useState(true);
 
   const steps = [
     { id: 1, title: 'Personal Info' },

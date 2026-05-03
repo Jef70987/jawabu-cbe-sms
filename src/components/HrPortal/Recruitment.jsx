@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Search, Filter, UserPlus, FileText, CheckCircle,
   XCircle, Clock, Eye, Download, Send, Users,
@@ -6,23 +6,13 @@ import {
 } from 'lucide-react';
 
 const Recruitment = () => {
-  const [applications, setApplications] = useState([
+  const [applications] = useState([
     { id: 1, name: 'Michael Njoroge', position: 'Mathematics Teacher', appliedDate: '2024-03-25', status: 'Pending Approval', stage: 'Admin Review', experience: '5 years', qualification: 'MSc Mathematics' },
     { id: 2, name: 'Grace Wanjiru', position: 'Science Teacher', appliedDate: '2024-03-20', status: 'Approved', stage: 'HR Processing', experience: '3 years', qualification: 'BSc Education' },
     { id: 3, name: 'Paul Ochieng', position: 'Accountant', appliedDate: '2024-03-18', status: 'Rejected', stage: 'Screening', experience: '7 years', qualification: 'CPA K' },
     { id: 4, name: 'Susan Muthoni', position: 'IT Technician', appliedDate: '2024-03-15', status: 'Pending Approval', stage: 'Admin Review', experience: '4 years', qualification: 'Diploma IT' },
     { id: 5, name: 'Brian Kibet', position: 'Sports Coach', appliedDate: '2024-03-10', status: 'Approved', stage: 'Offer Sent', experience: '6 years', qualification: 'Diploma Sports' }
   ]);
-
-  const [newRecruitment, setNewRecruitment] = useState({
-    position: '',
-    department: '',
-    employmentType: '',
-    requiredQualification: '',
-    experienceRequired: '',
-    salaryRange: '',
-    deadline: ''
-  });
 
   const [activeTab, setActiveTab] = useState('applications');
   const [showNewForm, setShowNewForm] = useState(false);
