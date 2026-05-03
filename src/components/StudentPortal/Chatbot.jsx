@@ -209,6 +209,23 @@ const CAREER_FALLBACK_MESSAGE = 'I do not have personalized career pathway recom
 
 const normalizeMessageText = (message) => (typeof message === 'string' ? message.toLowerCase().trim() : '');
 
+const sanitizeMlErrorMessage = (error) => {
+  const raw = typeof error === 'string' ? error : error?.message;
+  const normalized = String(raw || '')
+    .replace(/\s+/g, ' ')
+    .replace(/^TypeError:\s*/i, '')
+    .trim();
+
+  if (!normalized) return 'ML insight unavailable';
+  if (normalized.toLowerCase().includes('failed to fetch')) {
+    return 'ML insight unavailable: Unable to reach ML services right now. Please try again.';
+  }
+
+  const clipped = normalized.slice(0, 180);
+  if (clipped.toLowerCase().startsWith('ml insight unavailable')) return clipped;
+  return `ML insight unavailable: ${clipped}`;
+};
+
 const detectMlIntent = (message) => {
   const content = normalizeMessageText(message);
   if (!content) return null;
@@ -797,9 +814,7 @@ const Chatbot = () => {
         }
       } catch (err) {
         if (err?.name === 'AbortError') return;
-        setMlError(err?.message || 'Unable to load ML insight.');
-        setMlInsight(null);
-        setMlLastUpdated(null);
+        setMlError(sanitizeMlErrorMessage(err));
       } finally {
         if (!controller.signal.aborted) {
           setMlLoading(false);
@@ -913,9 +928,7 @@ const Chatbot = () => {
   const isInsightStale = isMlInsightStale(mlLastUpdated || mlInsight?.lastUpdated);
   const missingMlFields = predictionDisplay === 'Prediction unavailable'
     || confidenceDisplay === 'Confidence unavailable';
-  const mlErrorDisplay = analyticsError && analyticsError !== 'ML insight unavailable'
-    ? `ML insight unavailable: ${analyticsError}`
-    : analyticsError;
+  const mlErrorDisplay = analyticsError ? sanitizeMlErrorMessage(analyticsError) : null;
   const explainabilityFactors = Array.isArray(mlInsight?.factors) ? mlInsight.factors : [];
   const mlRecommendations = Array.isArray(mlInsight?.recommendations) ? mlInsight.recommendations : [];
 

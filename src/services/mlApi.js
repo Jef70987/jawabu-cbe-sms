@@ -41,6 +41,18 @@ const FEATURE_LABELS = {
   final_internal_value: "Final performance score",
 };
 
+const DEFAULT_UNAVAILABLE_INSIGHT = {
+  studentId: null,
+  prediction: null,
+  riskLevel: "unknown",
+  confidence: null,
+  confidenceBand: "unknown",
+  recommendations: [],
+  factors: [],
+  source: "unavailable",
+  lastUpdated: null,
+};
+
 function asNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
@@ -66,6 +78,17 @@ function extractData(payload) {
     return payload.data;
   }
   return payload;
+}
+
+function sanitizeTimestamp(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return String(value);
+}
+
+function isAbortError(error) {
+  return error?.name === "AbortError";
 }
 
 function pickFirstNonNull(obj, fields) {
@@ -213,8 +236,13 @@ async function fetchJson(url, { token, signal } = {}) {
       payload && typeof payload === "object"
         ? payload.error || payload.detail || payload.message || null
         : null;
-    const detail = apiMessage || (typeof payload === "string" ? payload : "No response body");
-    throw new Error(`ML API request failed (${response.status} ${response.statusText}): ${detail}`);
+    const detailSource = apiMessage || (typeof payload === "string" ? payload : "");
+    const detail = String(detailSource || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 180);
+    const safeDetail = detail || "Please try again.";
+    throw new Error(`ML insight unavailable (${response.status}): ${safeDetail}`);
   }
 
   return payload;
@@ -248,7 +276,7 @@ function normalizeFactors(payload, source = "model") {
 
   return asArray(factorList).map((factor) => {
     const feature = factor?.feature || factor?.name || factor?.key || "";
-    const impact = asNumber(factor?.impact ?? factor?.weight ?? factor?.score ?? factor?.value) ?? 0;
+    const impact = asNumber(factor?.impact ?? factor?.weight ?? factor?.score ?? factor?.value);
     const direction = normalizeFactorDirection(factor?.direction ?? factor?.trend, impact);
     const explanation =
       factor?.explanation ||
@@ -309,6 +337,7 @@ export function normalizePredictionPayload(payload) {
     null;
 
   const lastUpdatedRaw = pickFirstNonNull(rootObj, TIMESTAMP_FIELDS);
+  const lastUpdated = sanitizeTimestamp(lastUpdatedRaw);
 
   return {
     studentId,
@@ -316,7 +345,7 @@ export function normalizePredictionPayload(payload) {
     riskLevel,
     confidence: confidenceRaw,
     confidenceBand: confidenceBandFromValue(confidenceRaw),
-    lastUpdated: lastUpdatedRaw ? String(lastUpdatedRaw) : null,
+    lastUpdated,
     raw: payload,
   };
 }
@@ -367,6 +396,13 @@ export function normalizeMLInsight(payload) {
   let source = looksLikeChatbotPayload ? "chatbot_api" : "ml_api";
   if (prediction.prediction === null && !recommendations.length && !factors.length) {
     source = "unavailable";
+  }
+
+  if (source === "unavailable") {
+    return {
+      ...DEFAULT_UNAVAILABLE_INSIGHT,
+      raw: payload,
+    };
   }
 
   return {
@@ -435,17 +471,29 @@ export async function fetchStudentMLInsight({ studentId, token, signal } = {}) {
     factors.length === 0 &&
     !dashboardPayload;
 
+  const allRejected =
+    predictionResult.status === "rejected" &&
+    recommendationResult.status === "rejected" &&
+    dashboardResult.status === "rejected";
+
+  if (allRejected) {
+    const rejectedReasons = [predictionResult, recommendationResult, dashboardResult]
+      .filter((result) => result.status === "rejected")
+      .map((result) => result.reason);
+
+    const abortReason = rejectedReasons.find((reason) => isAbortError(reason));
+    if (abortReason) throw abortReason;
+
+    const firstMessage = rejectedReasons
+      .map((reason) => reason?.message || String(reason || ""))
+      .find((message) => message && message.trim());
+
+    throw new Error(firstMessage || "ML insight unavailable. Please try again.");
+  }
+
   if (allMissing) {
     return {
-      studentId: studentId ?? null,
-      prediction: null,
-      riskLevel: "unknown",
-      confidence: null,
-      confidenceBand: "unknown",
-      recommendations: [],
-      factors: [],
-      source: "unavailable",
-      lastUpdated: null,
+      ...DEFAULT_UNAVAILABLE_INSIGHT,
       raw: {
         predictionError:
           predictionResult.status === "rejected" ? predictionResult.reason?.message || String(predictionResult.reason) : null,
