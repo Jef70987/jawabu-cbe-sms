@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
 import {
   User,
@@ -318,17 +318,17 @@ const StudentDashboard = () => {
     return () => clearInterval(iv);
   }, []);
 
-  const showToast = (message, type = 'info') => {
+  const showToast = useCallback((message, type = 'info') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
-  };
+  }, []);
 
-  const handleApiError = error => {
+  const handleApiError = useCallback((error) => {
     if (error?.status === 401 || error?.message?.includes('Unauthorized')) {
       setShowSessionExpired(true);
     }
-  };
+  }, []);
 
   const handleLogout = () => {
     setShowSessionExpired(false);
@@ -344,7 +344,7 @@ const StudentDashboard = () => {
   const formatTime = date =>
     date.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
     setLoading(true);
     try {
@@ -416,7 +416,7 @@ const StudentDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAuthHeaders, handleApiError, isAuthenticated, showToast]);
 
   const refreshData = () => { fetchDashboardData(); showToast('Dashboard refreshed', 'success'); };
   const navigateTo = path => { window.location.href = path; };
@@ -424,7 +424,7 @@ const StudentDashboard = () => {
   useEffect(() => {
     if (isAuthenticated && user?.role === 'student') fetchDashboardData();
     else setLoading(false);
-  }, [isAuthenticated]);
+  }, [fetchDashboardData, isAuthenticated, user?.role]);
 
   if (!isAuthenticated) {
     return (

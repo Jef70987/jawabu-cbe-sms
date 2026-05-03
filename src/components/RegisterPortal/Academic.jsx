@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
 import {
   BookOpen,
@@ -299,31 +299,16 @@ function AcademicManagement() {
   const [expandedSubjects, setExpandedSubjects] = useState({});
   const [expandedStrands, setExpandedStrands] = useState({});
 
-  const addNotification = (type, message) => {
+  const addNotification = useCallback((type, message) => {
     const id = Date.now();
     setNotifications((prev) => [...prev, { id, type, message }]);
-  };
+  }, []);
 
   const removeNotification = (id) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
-  const fetchAllData = async () => {
-    setIsLoading(true);
-    await Promise.all([
-      fetchCurriculum(),
-      fetchVersions(),
-      fetchGradeLevels(),
-      fetchCoreCompetencies(),
-      fetchCoreValues(),
-      fetchWeightConfig(),
-      fetchAcademicYears(),
-      fetchTerms(),
-    ]);
-    setIsLoading(false);
-  };
-
-  const fetchCurriculum = async () => {
+  const fetchCurriculum = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/curriculum/`,
@@ -343,9 +328,9 @@ function AcademicManagement() {
     } catch (error) {
       addNotification("error", "Failed to load curriculum data");
     }
-  };
+  }, [addNotification, getAuthHeaders, selectedGrade]);
 
-  const fetchVersions = async () => {
+  const fetchVersions = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/curriculum/versions/`,
@@ -363,9 +348,9 @@ function AcademicManagement() {
       console.error("Error fetching versions:", error);
       addNotification("error", "Failed to load versions");
     }
-  };
+  }, [addNotification, getAuthHeaders]);
 
-  const fetchTerms = async () => {
+  const fetchTerms = useCallback(async () => {
     try {
       let url = `${API_BASE_URL}/api/registrar/academic/terms/`;
       if (termAcademicYearFilter) {
@@ -378,7 +363,7 @@ function AcademicManagement() {
     } catch {
       addNotification("error", "Failed to load terms");
     }
-  };
+  }, [addNotification, getAuthHeaders, termAcademicYearFilter]);
 
   const handleSaveTerm = async () => {
     if (
@@ -462,7 +447,7 @@ function AcademicManagement() {
     setShowTermModal(true);
   };
 
-  const fetchGradeLevels = async () => {
+  const fetchGradeLevels = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/grade-levels/`,
@@ -482,9 +467,9 @@ function AcademicManagement() {
     } catch (error) {
       console.error("Error fetching grade levels:", error);
     }
-  };
+  }, [getAuthHeaders]);
 
-  const fetchCoreCompetencies = async () => {
+  const fetchCoreCompetencies = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/core-competencies/`,
@@ -499,9 +484,9 @@ function AcademicManagement() {
     } catch (error) {
       console.error("Error fetching core competencies:", error);
     }
-  };
+  }, [getAuthHeaders]);
 
-  const fetchCoreValues = async () => {
+  const fetchCoreValues = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/core-values/`,
@@ -516,9 +501,9 @@ function AcademicManagement() {
     } catch (error) {
       console.error("Error fetching core values:", error);
     }
-  };
+  }, [getAuthHeaders]);
 
-  const fetchWeightConfig = async () => {
+  const fetchWeightConfig = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/weight-config/`,
@@ -536,9 +521,9 @@ function AcademicManagement() {
     } catch (error) {
       console.error("Error fetching weight config:", error);
     }
-  };
+  }, [getAuthHeaders]);
 
-  const fetchAcademicYears = async () => {
+  const fetchAcademicYears = useCallback(async () => {
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/registrar/academic/academic-years/`,
@@ -549,7 +534,31 @@ function AcademicManagement() {
     } catch {
       addNotification("error", "Failed to load academic years");
     }
-  };
+  }, [addNotification, getAuthHeaders]);
+
+  const fetchAllData = useCallback(async () => {
+    setIsLoading(true);
+    await Promise.all([
+      fetchCurriculum(),
+      fetchVersions(),
+      fetchGradeLevels(),
+      fetchCoreCompetencies(),
+      fetchCoreValues(),
+      fetchWeightConfig(),
+      fetchAcademicYears(),
+      fetchTerms(),
+    ]);
+    setIsLoading(false);
+  }, [
+    fetchAcademicYears,
+    fetchCoreCompetencies,
+    fetchCoreValues,
+    fetchCurriculum,
+    fetchGradeLevels,
+    fetchTerms,
+    fetchVersions,
+    fetchWeightConfig,
+  ]);
 
   const handleSaveAcademicYear = async () => {
     if (
@@ -1524,11 +1533,11 @@ function AcademicManagement() {
       return;
     }
     fetchAllData();
-  }, [isAuthenticated]);
+  }, [addNotification, fetchAllData, isAuthenticated]);
 
   useEffect(() => {
     fetchTerms();
-  }, [termAcademicYearFilter]);
+  }, [fetchTerms]);
 
   // Authentication check
   if (!isAuthenticated) {

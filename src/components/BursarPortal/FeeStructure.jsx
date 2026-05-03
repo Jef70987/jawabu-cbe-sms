@@ -186,18 +186,18 @@ const FeeStructure = () => {
     }
   }, [getAuthHeaders]);
 
-  const fetchFeeStructures = useCallback(async () => {
+  const fetchFeeStructures = useCallback(async (activeFilters) => {
     if (!isAuthenticated) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filters.academic_year)
-        params.append("academic_year", filters.academic_year);
-      if (filters.term && filters.term !== "all")
-        params.append("term", filters.term);
-      if (filters.class_id) params.append("class_id", filters.class_id);
-      if (filters.is_active !== "all")
-        params.append("is_active", filters.is_active);
+      if (activeFilters.academic_year)
+        params.append("academic_year", activeFilters.academic_year);
+      if (activeFilters.term && activeFilters.term !== "all")
+        params.append("term", activeFilters.term);
+      if (activeFilters.class_id) params.append("class_id", activeFilters.class_id);
+      if (activeFilters.is_active !== "all")
+        params.append("is_active", activeFilters.is_active);
 
       const res = await fetch(
         `${API_BASE_URL}/api/accountant/fees/structures/?${params}`,
@@ -221,7 +221,7 @@ const FeeStructure = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, filters, getAuthHeaders]);
+  }, [isAuthenticated, getAuthHeaders]);
 
   const fetchStructureDetails = async (id) => {
     try {
@@ -252,9 +252,9 @@ const FeeStructure = () => {
   useEffect(() => {
     if (isAuthenticated) {
       fetchFilterOptions();
-      fetchFeeStructures();
+      fetchFeeStructures(filters);
     }
-  }, [isAuthenticated]);
+  }, [fetchFeeStructures, fetchFilterOptions, filters, isAuthenticated]);
 
   const clearFilters = () =>
     setFilters({ academic_year: "", term: "", class_id: "", is_active: "all" });
@@ -507,7 +507,7 @@ const FeeStructure = () => {
                     </button>
                     <button
                       onClick={() => {
-                        fetchFeeStructures();
+                        fetchFeeStructures(filters);
                         setShowFilters(false);
                       }}
                       className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 text-sm"

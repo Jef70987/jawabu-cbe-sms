@@ -130,26 +130,14 @@ function ClassManagement() {
 
   const navigate = useNavigate();
 
-  const addToast = (type, message) => {
+  const addToast = useCallback((type, message) => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, type, message }]);
-  };
+  }, []);
 
   const removeToast = (id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      addToast('error', 'Please login to access class management');
-      return;
-    }
-    fetchInitialData();
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-      fetchSubjects();
-    }, []);
 
     // Fetch with timeout
   const fetchWithTimeout = useCallback(async (url, options, timeout = 8000) => {
@@ -172,27 +160,7 @@ function ClassManagement() {
     }
   }, []);
 
-  const fetchInitialData = async () => {
-    if (!isAuthenticated) return;
-    
-    setActionLoading(prev => ({ ...prev, fetchData: true }));
-    
-    try {
-      setLoading({ classes: true, teachers: true, streams: true, levels: true });
-      await fetchStreams();
-      await fetchNumericLevels();
-      await fetchClasses();
-      await fetchTeachers();
-    } catch (error) {
-      console.error('Initial fetch error:', error);
-      addToast('error', 'Error fetching initial data. Please refresh the page.');
-    } finally {
-      setLoading({ classes: false, teachers: false, streams: false, levels: false });
-      setActionLoading(prev => ({ ...prev, fetchData: false }));
-    }
-  };
-
-  const fetchStreams = async () => {
+  const fetchStreams = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/registrar/classes/streams/`, { headers: getAuthHeaders() });
       if (response.ok) {
@@ -205,9 +173,9 @@ function ClassManagement() {
     } finally {
       setLoading(prev => ({ ...prev, streams: false }));
     }
-  };
+  }, [addToast, getAuthHeaders]);
 
-  const fetchNumericLevels = async () => {
+  const fetchNumericLevels = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/registrar/classes/numeric-levels/`, { headers: getAuthHeaders() });
       if (response.ok) {
@@ -220,9 +188,9 @@ function ClassManagement() {
     } finally {
       setLoading(prev => ({ ...prev, levels: false }));
     }
-  };
+  }, [addToast, getAuthHeaders]);
 
-  const fetchClasses = async () => {
+  const fetchClasses = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/registrar/classes/`, { headers: getAuthHeaders() });
       if (!response.ok) {
@@ -241,9 +209,9 @@ function ClassManagement() {
     } finally {
       setLoading(prev => ({ ...prev, classes: false }));
     }
-  };
+  }, [addToast, getAuthHeaders, navigate]);
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     try {
       const data = await fetchWithTimeout(
         `${API_BASE_URL}/api/registrar/classes/subjects/`,
@@ -259,9 +227,9 @@ function ClassManagement() {
     } finally {
       setLoading(prev => ({ ...prev, subjects: false }));
     }
-  };
+  }, [addToast, fetchWithTimeout, getAuthHeaders]);
 
-  const fetchTeachers = async () => {
+  const fetchTeachers = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/registrar/classes/teachers/`, { headers: getAuthHeaders() });
       if (response.ok) {
@@ -273,7 +241,35 @@ function ClassManagement() {
     } finally {
       setLoading(prev => ({ ...prev, teachers: false }));
     }
-  };
+  }, [addToast, getAuthHeaders]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      addToast('error', 'Please login to access class management');
+      return;
+    }
+    const loadInitialData = async () => {
+      setActionLoading(prev => ({ ...prev, fetchData: true }));
+      try {
+        setLoading({ classes: true, teachers: true, streams: true, levels: true });
+        await fetchStreams();
+        await fetchNumericLevels();
+        await fetchClasses();
+        await fetchTeachers();
+      } catch (error) {
+        console.error('Initial fetch error:', error);
+        addToast('error', 'Error fetching initial data. Please refresh the page.');
+      } finally {
+        setLoading({ classes: false, teachers: false, streams: false, levels: false });
+        setActionLoading(prev => ({ ...prev, fetchData: false }));
+      }
+    };
+    loadInitialData();
+  }, [addToast, fetchClasses, fetchNumericLevels, fetchStreams, fetchTeachers, isAuthenticated]);
+
+  useEffect(() => {
+    fetchSubjects();
+  }, [fetchSubjects]);
 
   // Grade Levels Configuration based on Kenyan system
   const gradeLevels = [
