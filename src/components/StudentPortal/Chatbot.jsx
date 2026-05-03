@@ -195,6 +195,13 @@ const getRecommendationSourceLabel = (source) => {
   return 'Recommendation';
 };
 
+const isMlInsightStale = (timestamp) => {
+  if (!timestamp) return false;
+  const updatedAt = new Date(timestamp).getTime();
+  if (Number.isNaN(updatedAt)) return false;
+  return Date.now() - updatedAt > 60 * 60 * 1000;
+};
+
 const ML_INSIGHT_UNAVAILABLE_MESSAGE = 'ML insight is not available yet. I can still give general study guidance, but personalized prediction-based advice requires the latest ML insight to load.';
 const LOW_CONFIDENCE_CAVEAT = 'This estimate may be incomplete because model confidence is low or unavailable.';
 const IMPROVEMENT_EMPTY_RECOMMENDATIONS = 'No personalized recommendations are available yet. Review your recent performance, attendance, and competency gaps with a teacher or advisor.';
@@ -894,6 +901,8 @@ const Chatbot = () => {
   const handleInputChange = useCallback((e) => setInputValue(e.target.value), []);
 
   const studentName = analyticsData?.student_name || user?.first_name || 'Student';
+  const isChatOpen = !isMobile || isMobileChatOpen;
+  const canRefreshMlInsight = isAuthenticated && isChatOpen && !mlLoading;
 
   const riskDisplay = formatRiskLevel(mlInsight?.riskLevel);
   const predictionDisplay = formatPredictionValue(mlInsight?.prediction);
@@ -901,6 +910,7 @@ const Chatbot = () => {
   const confidenceBandDisplay = formatConfidenceBand(mlInsight?.confidenceBand);
   const sourceDisplay = formatMlSource(mlInsight?.source);
   const lastUpdatedDisplay = formatLastUpdated(mlLastUpdated || mlInsight?.lastUpdated);
+  const isInsightStale = isMlInsightStale(mlLastUpdated || mlInsight?.lastUpdated);
   const missingMlFields = predictionDisplay === 'Prediction unavailable'
     || confidenceDisplay === 'Confidence unavailable';
   const mlErrorDisplay = analyticsError && analyticsError !== 'ML insight unavailable'
@@ -911,9 +921,24 @@ const Chatbot = () => {
 
   const mlSummaryPanel = (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Activity className="w-4 h-4 text-green-700" />
-        <h3 className="font-semibold text-gray-800">ML Insight Summary</h3>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-green-700" />
+          <h3 className="font-semibold text-gray-800">ML Insight Summary</h3>
+          {mlLoading && (
+            <span className="text-xs text-blue-600">Updating...</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={refreshMlInsight}
+          disabled={!canRefreshMlInsight}
+          title="Refresh ML insight"
+          aria-label="Refresh ML insight"
+          className="self-start md:self-auto px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {mlLoading ? 'Refreshing...' : 'Refresh ML insight'}
+        </button>
       </div>
 
       {analyticsLoading && (
@@ -928,6 +953,10 @@ const Chatbot = () => {
 
       {missingMlFields && !analyticsLoading && (
         <p className="text-xs text-gray-500 mb-3">Some ML fields are missing.</p>
+      )}
+
+      {isInsightStale && !mlLoading && (
+        <p className="text-xs text-amber-700 mb-3">Insight may be out of date</p>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -1045,7 +1074,7 @@ const Chatbot = () => {
     </div>
   );
 
-  if (analyticsLoading) {
+  if (analyticsLoading && !mlInsight) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
