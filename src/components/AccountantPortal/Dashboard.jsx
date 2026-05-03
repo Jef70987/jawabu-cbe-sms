@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bar, Line, Pie } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -117,11 +117,11 @@ const Dashboard = () => {
   const [dailyCollection, setDailyCollection] = useState([]);
   const [topStudents, setTopStudents] = useState([]);
 
-  const handleApiError = (error) => {
+  const handleApiError = useCallback((error) => {
     if (error?.status === 401 || error?.message?.includes('Unauthorized')) {
       setShowSessionExpired(true);
     }
-  };
+  }, []);
 
   const handleLogout = () => {
     setShowSessionExpired(false);
@@ -148,7 +148,7 @@ const Dashboard = () => {
     setCurrentTime(`${hours}:${minutes} ${ampm}`);
   };
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (!isAuthenticated) return;
     
     try {
@@ -202,7 +202,29 @@ const Dashboard = () => {
         });
       } else {
         // Fallback to calculating from transactions
-        await calculateStatsFromTransactions();
+        try {
+          const headers = getAuthHeaders();
+          const res = await fetchData(`${API_BASE_URL}/api/accountant/fees/transactions/?limit=1000`, headers);
+          if (res.success && res.data) {
+            const transactions = res.data.data || res.data;
+            const total_collected = transactions
+              .filter(t => t.status === 'COMPLETED')
+              .reduce((sum, t) => sum + (t.amount_kes || 0), 0);
+            const today = new Date().toISOString().split('T')[0];
+            const today_collection = transactions
+              .filter(t => t.status === 'COMPLETED' && t.payment_date?.split('T')[0] === today)
+              .reduce((sum, t) => sum + (t.amount_kes || 0), 0);
+            
+            setDashboardStats(prev => ({
+              ...prev,
+              total_collected,
+              today_collection,
+              collection_rate: total_collected > 0 ? 75 : 0
+            }));
+          }
+        } catch (calcErr) {
+          console.error("Error calculating stats:", calcErr);
+        }
       }
 
       // Process recent transactions
@@ -235,34 +257,7 @@ const Dashboard = () => {
     } finally {
       setLoading(prev => ({ ...prev, stats: false }));
     }
-  };
-
-  // Fallback: Calculate stats from transactions if stats endpoint not available
-  const calculateStatsFromTransactions = async () => {
-    try {
-      const headers = getAuthHeaders();
-      const res = await fetchData(`${API_BASE_URL}/api/accountant/fees/transactions/?limit=1000`, headers);
-      if (res.success && res.data) {
-        const transactions = res.data.data || res.data;
-        const total_collected = transactions
-          .filter(t => t.status === 'COMPLETED')
-          .reduce((sum, t) => sum + (t.amount_kes || 0), 0);
-        const today = new Date().toISOString().split('T')[0];
-        const today_collection = transactions
-          .filter(t => t.status === 'COMPLETED' && t.payment_date?.split('T')[0] === today)
-          .reduce((sum, t) => sum + (t.amount_kes || 0), 0);
-        
-        setDashboardStats(prev => ({
-          ...prev,
-          total_collected,
-          today_collection,
-          collection_rate: total_collected > 0 ? 75 : 0
-        }));
-      }
-    } catch (err) {
-      console.error("Error calculating stats:", err);
-    }
-  };
+  }, [getAuthHeaders, handleApiError, isAuthenticated]);
 
   useEffect(() => { 
     if (isAuthenticated) {
@@ -274,7 +269,7 @@ const Dashboard = () => {
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [refreshKey, isAuthenticated]);
+  }, [refreshKey, isAuthenticated, fetchDashboardData]);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);

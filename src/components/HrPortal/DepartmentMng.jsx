@@ -234,7 +234,7 @@ const DepartmentManagement = () => {
   };
   
   // API Request Helper
-  const apiRequest = async (endpoint, options = {}) => {
+  const apiRequest = useCallback(async (endpoint, options = {}) => {
     const defaultOptions = {
       headers: {
         'Content-Type': 'application/json',
@@ -250,7 +250,7 @@ const DepartmentManagement = () => {
     }
     
     return data;
-  };
+  }, [getAuthHeaders]);
   
   // Fetch Departments with Staff Assignments
   const fetchDepartments = useCallback(async () => {
@@ -269,7 +269,7 @@ const DepartmentManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedType]);
+  }, [apiRequest, selectedType]);
   
   // Fetch Unassigned Staff
   const fetchUnassignedStaff = useCallback(async () => {
@@ -281,7 +281,7 @@ const DepartmentManagement = () => {
     } catch (err) {
       console.error('Error fetching unassigned staff:', err);
     }
-  }, []);
+  }, [apiRequest]);
   
   // Create Department
   const handleCreateDepartment = async () => {
