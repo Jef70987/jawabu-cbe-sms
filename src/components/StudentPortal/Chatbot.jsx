@@ -50,6 +50,51 @@ const barColor = (pct) =>
 const getTimestamp = () =>
   new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+const formatRiskLevel = (level) => {
+  const normalized = typeof level === 'string' ? level.toLowerCase() : 'unknown';
+  if (normalized === 'high') return 'High risk';
+  if (normalized === 'medium') return 'Medium risk';
+  if (normalized === 'low') return 'Low risk';
+  return 'Risk unknown';
+};
+
+const formatPredictionValue = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'Prediction unavailable';
+  if (value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
+  return `${Math.round(value)}`;
+};
+
+const formatConfidenceValue = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'Confidence unavailable';
+  if (value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
+  if (value > 1 && value <= 100) return `${Math.round(value)}%`;
+  return `${Math.round(value)}`;
+};
+
+const formatConfidenceBand = (band) => {
+  const normalized = typeof band === 'string' ? band.toLowerCase() : 'unknown';
+  if (normalized === 'high') return 'High confidence';
+  if (normalized === 'medium') return 'Medium confidence';
+  if (normalized === 'low') return 'Low confidence';
+  return 'Confidence band unknown';
+};
+
+const formatMlSource = (source) => {
+  const normalized = typeof source === 'string' ? source.toLowerCase() : 'unknown';
+  if (normalized === 'ml_api') return 'ML API';
+  if (normalized === 'chatbot_api') return 'Chatbot API';
+  if (normalized === 'fallback') return 'Fallback data';
+  if (normalized === 'unavailable') return 'Unavailable';
+  return 'Unknown source';
+};
+
+const formatLastUpdated = (value) => {
+  if (!value) return 'Not updated yet';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Not updated yet';
+  return date.toLocaleString();
+};
+
 // ─── Bot message formatter (bold, italic, lists, paragraphs) ─────────────────
 const formatBotMessage = (text) => {
   if (!text) return null;
@@ -554,12 +599,74 @@ const Chatbot = () => {
 
   const studentName = analyticsData?.student_name || user?.first_name || 'Student';
 
+  const riskDisplay = formatRiskLevel(mlInsight?.riskLevel);
+  const predictionDisplay = formatPredictionValue(mlInsight?.prediction);
+  const confidenceDisplay = formatConfidenceValue(mlInsight?.confidence);
+  const confidenceBandDisplay = formatConfidenceBand(mlInsight?.confidenceBand);
+  const sourceDisplay = formatMlSource(mlInsight?.source);
+  const lastUpdatedDisplay = formatLastUpdated(mlLastUpdated || mlInsight?.lastUpdated);
+  const missingMlFields = predictionDisplay === 'Prediction unavailable'
+    || confidenceDisplay === 'Confidence unavailable';
+  const mlErrorDisplay = analyticsError && analyticsError !== 'ML insight unavailable'
+    ? `ML insight unavailable: ${analyticsError}`
+    : analyticsError;
+
+  const mlSummaryPanel = (
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Activity className="w-4 h-4 text-green-700" />
+        <h3 className="font-semibold text-gray-800">ML Insight Summary</h3>
+      </div>
+
+      {analyticsLoading && (
+        <p className="text-xs text-gray-500 mb-3">Loading ML insights...</p>
+      )}
+
+      {mlErrorDisplay && (
+        <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-700">
+          {mlErrorDisplay}
+        </div>
+      )}
+
+      {missingMlFields && !analyticsLoading && (
+        <p className="text-xs text-gray-500 mb-3">Some ML fields are missing.</p>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div>
+          <p className="text-xs text-gray-500">Risk estimate</p>
+          <p className="font-medium text-gray-800">{riskDisplay}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Prediction</p>
+          <p className="font-medium text-gray-800">{predictionDisplay}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Prediction confidence</p>
+          <p className="font-medium text-gray-800">{confidenceDisplay}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Confidence band</p>
+          <p className="font-medium text-gray-800">{confidenceBandDisplay}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">ML source</p>
+          <p className="font-medium text-gray-800">{sourceDisplay}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Last updated</p>
+          <p className="font-medium text-gray-800">{lastUpdatedDisplay}</p>
+        </div>
+      </div>
+    </div>
+  );
+
   if (analyticsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading CBC Analytics Dashboard...</p>
+          <p className="text-gray-600">Loading ML insights...</p>
         </div>
       </div>
     );
@@ -611,10 +718,12 @@ const Chatbot = () => {
 
             {analyticsError && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
-                Analytics data could not be loaded: {analyticsError}
+                {mlErrorDisplay || 'ML insight unavailable'}
                 <button onClick={refreshMlInsight} className="ml-3 underline text-amber-800 font-medium">Retry</button>
               </div>
             )}
+
+            {mlSummaryPanel}
 
             {/* Overall Competency */}
             <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -736,10 +845,12 @@ const Chatbot = () => {
 
         {analyticsError && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
-            {analyticsError}
+            {mlErrorDisplay || 'ML insight unavailable'}
             <button onClick={refreshMlInsight} className="ml-2 underline font-medium">Retry</button>
           </div>
         )}
+
+        {mlSummaryPanel}
 
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
