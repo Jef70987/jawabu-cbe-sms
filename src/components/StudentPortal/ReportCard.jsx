@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
+import { API_BASE_URL } from '../../services/apiBase';
 import {
   Loader2, Printer, Award, BookOpen, Hash,
   ClipboardList, ChevronDown, Calendar,
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // ── Grade colour helper ───────────────────────────────────────────────────────
 const gradeColor = (code) => {
@@ -104,7 +103,7 @@ const StudentReportCard = () => {
     setError(null);
     try {
       const res = await fetch(
-        `${API_BASE_URL}/api/student/report-card/?term_id=${encodeURIComponent(tid)}`,
+        `${API_BASE_URL}/student/report-card/?term_id=${encodeURIComponent(tid)}`,
         { headers: getAuthHeaders() }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

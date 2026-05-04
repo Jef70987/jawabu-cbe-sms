@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
 import { fetchStudentMLInsight, getMLInsightUnavailable } from '../../services/mlApi';
+import { API_BASE_URL } from '../../services/apiBase';
 import {
   User,
   GraduationCap,
@@ -38,8 +39,6 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const formatMlPrediction = (value) => {
   if (typeof value !== 'number' || Number.isNaN(value)) return 'Prediction unavailable';
@@ -384,7 +383,7 @@ const StudentDashboard = () => {
     setLoading(true);
     try {
       // ── Profile ──────────────────────────────────────────────────────────
-      const profileRes = await fetch(`${API_BASE_URL}/api/student/profile/`, { headers: getAuthHeaders() });
+      const profileRes = await fetch(`${API_BASE_URL}/student/profile/`, { headers: getAuthHeaders() });
       if (profileRes.status === 401) { handleApiError({ status: 401 }); setLoading(false); return; }
       if (profileRes.ok) {
         const d = await profileRes.json();
@@ -392,7 +391,7 @@ const StudentDashboard = () => {
       }
 
       // ── Fees ─────────────────────────────────────────────────────────────
-      const feeRes = await fetch(`${API_BASE_URL}/api/student/dashboard/fees/summary/`, { headers: getAuthHeaders() });
+      const feeRes = await fetch(`${API_BASE_URL}/student/dashboard/fees/summary/`, { headers: getAuthHeaders() });
       if (feeRes.ok) {
         const d = await feeRes.json();
         if (d.success && d.data) {
@@ -412,7 +411,7 @@ const StudentDashboard = () => {
       }
 
       // ── Attendance ────────────────────────────────────────────────────────
-      const attRes = await fetch(`${API_BASE_URL}/api/student/attendance/recent/?limit=5`, { headers: getAuthHeaders() });
+      const attRes = await fetch(`${API_BASE_URL}/student/attendance/recent/?limit=5`, { headers: getAuthHeaders() });
       if (attRes.ok) {
         const d = await attRes.json();
         if (d.success) {
@@ -428,7 +427,7 @@ const StudentDashboard = () => {
       }
 
       // ── Discipline ────────────────────────────────────────────────────────
-      const discRes = await fetch(`${API_BASE_URL}/api/student/discipline/`, { headers: getAuthHeaders() });
+      const discRes = await fetch(`${API_BASE_URL}/student/discipline/`, { headers: getAuthHeaders() });
       if (discRes.ok) {
         const d = await discRes.json();
         if (d.success) setDisciplineRecords(d.data || []);
@@ -437,7 +436,7 @@ const StudentDashboard = () => {
       // ── Recent published exams ────────────────────────────────────────────
       // Uses the new endpoint that returns per-exam cards (not per-subject aggregates)
       const examRes = await fetch(
-        `${API_BASE_URL}/api/student/exams/published/recent/?limit=10`,
+        `${API_BASE_URL}/student/exams/published/recent/?limit=10`,
         { headers: getAuthHeaders() }
       );
       if (examRes.ok) {

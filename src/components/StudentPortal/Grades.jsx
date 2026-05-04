@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../Authentication/AuthContext";
+import { API_BASE_URL } from "../../services/apiBase";
 import {
   Award,
   BookOpen,
@@ -13,8 +14,6 @@ import {
   FileText,
   Percent,
 } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const LEGEND_4POINT = [
   {
@@ -328,7 +327,7 @@ const Grades = () => {
       setLoadingResults(true);
       setError(null);
       const url =
-        `${API_BASE_URL}/api/student/results/preview/` +
+        `${API_BASE_URL}/student/results/preview/` +
         `?student_id=${profileId}&term_id=${termId}&window_id=${windowId}`;
       const res = await apiFetch(url);
       if (res?.success) setResults(res.data);
@@ -351,7 +350,7 @@ const Grades = () => {
       lastFetchRef.current.key = null;
 
       const res = await apiFetch(
-        `${API_BASE_URL}/api/student/results/assessments/?term_id=${termId}`,
+        `${API_BASE_URL}/student/results/assessments/?term_id=${termId}`,
       );
       let firstWindowId = "";
       if (res?.success && res.data?.length > 0) {
@@ -372,8 +371,8 @@ const Grades = () => {
     (async () => {
       setLoadingInit(true);
       const [profileRes, termsRes] = await Promise.all([
-        apiFetch(`${API_BASE_URL}/api/student/profile/`),
-        apiFetch(`${API_BASE_URL}/api/student/results/terms/`),
+        apiFetch(`${API_BASE_URL}/student/profile/`),
+        apiFetch(`${API_BASE_URL}/student/results/terms/`),
       ]);
       if (cancelled) return;
       const resolvedProfile = profileRes?.success ? profileRes.data : null;

@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
+import { API_BASE_URL } from '../../services/apiBase';
 import {
   DollarSign,
   CreditCard,
@@ -43,8 +44,6 @@ import {
   Pie,
   Cell
 } from 'recharts';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Toast Component
 const Toast = ({ message, type, onClose }) => {
@@ -682,7 +681,7 @@ const StudentFeeManagement = () => {
     setLoading(true);
     try {
       // 1. Fetch student profile
-      const profileRes = await fetch(`${API_BASE_URL}/api/student/profile/`, {
+      const profileRes = await fetch(`${API_BASE_URL}/student/profile/`, {
         headers: getAuthHeaders()
       });
       if (profileRes.ok) {
@@ -693,7 +692,7 @@ const StudentFeeManagement = () => {
       }
       
       // 2. Fetch fee summary
-      const summaryRes = await fetch(`${API_BASE_URL}/api/student/fees/summary/`, {
+      const summaryRes = await fetch(`${API_BASE_URL}/student/fees/summary/`, {
         headers: getAuthHeaders()
       });
       
@@ -721,7 +720,7 @@ const StudentFeeManagement = () => {
       }
       
       // 3. Fetch invoices
-      const invoicesRes = await fetch(`${API_BASE_URL}/api/student/fees/invoices/`, {
+      const invoicesRes = await fetch(`${API_BASE_URL}/student/fees/invoices/`, {
         headers: getAuthHeaders()
       });
       
@@ -733,7 +732,7 @@ const StudentFeeManagement = () => {
       }
       
       // 4. Fetch transactions
-      const transactionsRes = await fetch(`${API_BASE_URL}/api/student/fees/transactions/`, {
+      const transactionsRes = await fetch(`${API_BASE_URL}/student/fees/transactions/`, {
         headers: getAuthHeaders()
       });
       
@@ -771,7 +770,7 @@ const StudentFeeManagement = () => {
       }
       
       // 5. Fetch fee structure
-      const structureRes = await fetch(`${API_BASE_URL}/api/student/fees/structure/`, {
+      const structureRes = await fetch(`${API_BASE_URL}/student/fees/structure/`, {
         headers: getAuthHeaders()
       });
       

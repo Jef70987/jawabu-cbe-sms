@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
+import { API_BASE_URL } from '../../services/apiBase';
 import { 
   User, Mail, Phone, MapPin, Calendar, Heart, Users, 
   GraduationCap, Globe, Home, Camera, Edit2, Check, X, 
@@ -10,8 +11,6 @@ import {
   Briefcase, FileText, Activity, BookOpen, Award, ChevronRight,
   Building, Shield
 } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const Toast = ({ message, type, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
@@ -398,7 +397,7 @@ export default function StudentProfile() {
 
     setLoading(true);
     try {
-      const profileResponse = await fetch(`${API_BASE_URL}/api/student/profile/`, {
+      const profileResponse = await fetch(`${API_BASE_URL}/student/profile/`, {
         headers: getAuthHeaders()
       });
 
@@ -415,7 +414,7 @@ export default function StudentProfile() {
         }
       }
 
-      const userResponse = await fetch(`${API_BASE_URL}/api/auth/user/`, {
+      const userResponse = await fetch(`${API_BASE_URL}/auth/user/`, {
         headers: getAuthHeaders()
       });
 
@@ -436,7 +435,7 @@ export default function StudentProfile() {
 
   const updateField = async (fieldName, value) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/student/profile/update/`, {
+      const response = await fetch(`${API_BASE_URL}/student/profile/update/`, {
         method: 'PATCH',
         headers: {
           ...getAuthHeaders(),
@@ -470,7 +469,7 @@ export default function StudentProfile() {
 
   const handleChangePassword = async (currentPassword, newPassword) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/student/profile/change-password/`, {
+      const response = await fetch(`${API_BASE_URL}/student/profile/change-password/`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
@@ -517,7 +516,7 @@ export default function StudentProfile() {
 
     setUploadingImage(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/student/profile/image/`, {
+      const response = await fetch(`${API_BASE_URL}/student/profile/image/`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: formData
