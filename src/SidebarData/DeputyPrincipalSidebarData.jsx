@@ -38,11 +38,6 @@ const DeputyPrincipalSidebarData = [
         link: "/DeputyPortal/Assignments"
     },
     {
-        title: "Messages",
-        icon: <MessageCircle />,
-        link: "/DeputyPortal/Messages"
-    },
-    {
         title: "LogOut",
         icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
         link: "/Logout"

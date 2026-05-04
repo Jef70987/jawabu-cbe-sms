@@ -7,6 +7,50 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// ── Print styles injected into <head> once ────────────────────────────────────
+const PRINT_STYLE_ID = 'report-card-print-styles';
+
+function injectPrintStyles() {
+  if (document.getElementById(PRINT_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = PRINT_STYLE_ID;
+  style.innerHTML = `
+    @media print {
+      /* Hide EVERYTHING on the page first */
+      body > * {
+        display: none !important;
+      }
+
+      /* Then show only the report card portal root */
+      #report-card-print-root,
+      #report-card-print-root * {
+        display: revert !important;
+      }
+
+      /* Flatten layout so the card fills the page */
+      #report-card-print-root {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 99999 !important;
+        background: white !important;
+        overflow: visible !important;
+      }
+
+      /* Remove screen-only chrome */
+      .print\\:hidden { display: none !important; }
+      .print\\:shadow-none { box-shadow: none !important; }
+      .print\\:bg-white { background-color: white !important; }
+      .print\\:bg-gray-200 { background-color: #e5e7eb !important; }
+      .print\\:text-black { color: black !important; }
+      .print\\:text-gray-600 { color: #4b5563 !important; }
+      .print\\:p-0 { padding: 0 !important; }
+      .print\\:rounded-none { border-radius: 0 !important; }
+      .print\\:text-xs { font-size: 0.75rem !important; line-height: 1rem !important; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 // ── Grade colour helper ───────────────────────────────────────────────────────
 const gradeColor = (code) => {
   if (!code) return 'bg-gray-100 text-gray-700';
@@ -19,20 +63,22 @@ const gradeColor = (code) => {
 
 // ── Subject table ─────────────────────────────────────────────────────────────
 const SubjectTable = ({ title, icon, iconColor, results, emptyMsg }) => {
-  const IconComponent = icon; // capitalised for JSX usage
+  const IconComponent = icon;
 
   return (
     <div className="mb-2">
       <div className="flex items-center gap-2 mb-3">
         {IconComponent && <IconComponent className={`w-5 h-5 ${iconColor}`} />}
         <h2 className="text-base font-semibold text-gray-800">{title}</h2>
-        <span className="ml-auto text-xs text-gray-400">{results.length} subject{results.length !== 1 ? 's' : ''}</span>
+        <span className="ml-auto text-xs text-gray-400">
+          {results.length} subject{results.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {results.length === 0 ? (
         <p className="text-sm text-gray-400 italic py-3">{emptyMsg}</p>
       ) : (
-        <div className="overflow-x-auto  border border-gray-200">
+        <div className="overflow-x-auto border border-gray-200">
           <table className="w-full text-sm print:text-xs">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -78,7 +124,7 @@ const TermSelector = ({ terms, currentTermId, onChange }) => {
         <select
           value={currentTermId}
           onChange={(e) => onChange(e.target.value)}
-          className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-gray-300  bg-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
+          className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
         >
           {terms.map((t) => (
             <option key={t.term_id} value={t.term_id}>{t.label}</option>
@@ -93,11 +139,16 @@ const TermSelector = ({ terms, currentTermId, onChange }) => {
 // ── Main component ────────────────────────────────────────────────────────────
 const StudentReportCard = () => {
   const { getAuthHeaders, isAuthenticated } = useAuth();
-  const [report,   setReport]   = useState(null);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
-  const [termId,   setTermId]   = useState('');
+  const [report,  setReport]  = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
+  const [termId,  setTermId]  = useState('');
   const printRef = useRef();
+
+  // Inject print styles once on mount
+  useEffect(() => {
+    injectPrintStyles();
+  }, []);
 
   const fetchReport = useCallback(async (tid = '') => {
     setLoading(true);
@@ -107,6 +158,10 @@ const StudentReportCard = () => {
         `${API_BASE_URL}/api/student/report-card/?term_id=${encodeURIComponent(tid)}`,
         { headers: getAuthHeaders() }
       );
+      if (res.status === 404) {
+        setReport({ __empty: true });
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) {
@@ -114,6 +169,8 @@ const StudentReportCard = () => {
         if (!tid && json.data.current_term_id) {
           setTermId(json.data.current_term_id);
         }
+      } else if (!json.success && json.data == null) {
+        setReport({ __empty: true });
       } else {
         setError(json.error || 'Failed to load report card');
       }
@@ -129,8 +186,21 @@ const StudentReportCard = () => {
     fetchReport(termId);
   }, [isAuthenticated, termId, fetchReport]);
 
-  const handleTermChange = (newTermId) => {
-    setTermId(newTermId);
+  const handlePrint = () => {
+    // Wrap the card in a known root id so the print CSS can isolate it
+    const card = printRef.current;
+    if (!card) { window.print(); return; }
+
+    // Create an isolated wrapper at body level
+    const wrapper = document.createElement('div');
+    wrapper.id = 'report-card-print-root';
+    wrapper.innerHTML = card.outerHTML;
+    document.body.appendChild(wrapper);
+
+    window.print();
+
+    // Clean up after the print dialog closes
+    document.body.removeChild(wrapper);
   };
 
   if (loading) {
@@ -144,11 +214,11 @@ const StudentReportCard = () => {
     );
   }
 
-  if (error || !report) {
+  if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-red-600 font-medium mb-4">{error || 'No report data available.'}</p>
+          <p className="text-red-600 font-medium mb-4">{error}</p>
           <button
             onClick={() => fetchReport(termId)}
             className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm hover:bg-green-800"
@@ -160,13 +230,28 @@ const StudentReportCard = () => {
     );
   }
 
+  if (!report || report.__empty) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+            <ClipboardList className="w-8 h-8 text-gray-400" />
+          </div>
+          <p className="text-gray-700 font-semibold text-lg mb-1">No Results Available</p>
+          <p className="text-gray-400 text-sm">No report card results have been published for this term yet.</p>
+        </div>
+      </div>
+    );
+  }
+
   const summativeResults = report.summative_results || report.formal_results     || [];
   const sbaResults       = report.sba_results       || report.assessment_results || [];
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 print:p-0 print:bg-white">
+      {/* This div is cloned into an isolated wrapper before printing */}
       <div
-        className="w-full bg-white shadow-lg  overflow-hidden print:shadow-none print:rounded-none"
+        className="w-full bg-white shadow-lg overflow-hidden print:shadow-none print:rounded-none"
         ref={printRef}
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -177,7 +262,7 @@ const StudentReportCard = () => {
                 <img
                   src={report.student.photo_url}
                   alt="student"
-                  className="w-16 h-16  object-cover border-2 border-white flex-shrink-0"
+                  className="w-16 h-16 object-cover border-2 border-white flex-shrink-0"
                 />
               )}
               <div>
@@ -187,14 +272,15 @@ const StudentReportCard = () => {
                 </p>
               </div>
             </div>
+            {/* Print button — hidden when printing */}
             <div className="flex items-center gap-3 print:hidden">
               <TermSelector
                 terms={report.available_terms}
                 currentTermId={termId || report.current_term_id}
-                onChange={handleTermChange}
+                onChange={setTermId}
               />
               <button
-                onClick={() => window.print()}
+                onClick={handlePrint}
                 className="flex items-center gap-2 px-4 py-2 bg-white text-green-700 rounded-lg font-medium text-sm hover:bg-green-50"
               >
                 <Printer className="w-4 h-4" /> Print / Save PDF
@@ -230,10 +316,10 @@ const StudentReportCard = () => {
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">CBC Grading Scale</p>
           <div className="flex flex-wrap gap-2 text-xs">
             {[
-              { code: 'EE / EE1', label: 'Exceeding / Exceptional', cls: 'bg-emerald-100 text-emerald-800' },
-              { code: 'ME / ME1', label: 'Meeting / Good',          cls: 'bg-blue-100 text-blue-800'       },
-              { code: 'AE / AE1', label: 'Approaching / Needs Imp.', cls: 'bg-yellow-100 text-yellow-800' },
-              { code: 'BE / BE2', label: 'Below / Minimal',          cls: 'bg-red-100 text-red-800'        },
+              { code: 'EE / EE1', label: 'Exceeding / Exceptional',  cls: 'bg-emerald-100 text-emerald-800' },
+              { code: 'ME / ME1', label: 'Meeting / Good',            cls: 'bg-blue-100 text-blue-800'       },
+              { code: 'AE / AE1', label: 'Approaching / Needs Imp.',  cls: 'bg-yellow-100 text-yellow-800'   },
+              { code: 'BE / BE2', label: 'Below / Minimal',           cls: 'bg-red-100 text-red-800'         },
             ].map((g) => (
               <span key={g.code} className={`px-2 py-1 rounded font-semibold ${g.cls}`}>
                 {g.code} — {g.label}

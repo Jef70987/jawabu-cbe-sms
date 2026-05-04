@@ -657,10 +657,10 @@ const StudentDashboard = () => {
             {/* ── Quick Links ──────────────────────────────────────────────────── */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { path: '/student/fees',       icon: DollarSign, label: 'Fee Details' },
-                { path: '/student/attendance',  icon: Calendar,   label: 'Attendance' },
-                { path: '/student/results',     icon: BookOpen,   label: 'Results' },
-                { path: '/student/profile',     icon: User,       label: 'Profile' },
+                { path: '/#/StudentPortal/Finance',       icon: DollarSign, label: 'Fee Details' },
+                { path: '/#/StudentPortal/Attendance',  icon: Calendar,   label: 'Attendance' },
+                { path: '/#/StudentPortal/chat',     icon: BookOpen,   label: 'Analytics' },
+                { path: '/#/StudentPortal/Profile',     icon: User,       label: 'Profile' },
               ].map(({ path, icon: Icon, label }) => (
                 <button key={path} onClick={() => navigateTo(path)}
                   className="p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center">
