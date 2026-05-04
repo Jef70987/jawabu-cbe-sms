@@ -31,18 +31,22 @@ const MARKER_VISIBLE_STATUSES = new Set(['scheduled', 'live', 'marking', 'modera
 
 // ── Filter exam types based on selected grade level ──────────────────────────
 const getAvailableExamTypes = (gradeLevelId, gradeLevels) => {
-  // Match by id (UUID) OR by level string — handles both create and edit
-  const gradeObj = gradeLevels.find(
-    gl => String(gl.id) === String(gradeLevelId) || String(gl.level) === String(gradeLevelId)
-  );
+  const gradeObj = gradeLevels.find(gl => String(gl.id) === String(gradeLevelId));
 
-  const numericGrade = gradeObj ? Number(gradeObj.level) : null;
+  let numericGrade = null;
+  if (gradeObj) {
+    // Parse "Grade 6" / "Grade 9" from name — NOT gl.level which counts PP1/PP2
+    const raw = gradeObj.display_name || gradeObj.name || '';
+    const match = raw.match(/grade\s*(\d+)/i);
+    if (match) numericGrade = parseInt(match[1], 10);
+  }
 
   let available = EXAM_TYPES.filter(t => !['kpsea', 'kjsea'].includes(t.value));
   if (numericGrade === 6) available.push(EXAM_TYPES.find(t => t.value === 'kpsea'));
   if (numericGrade === 9) available.push(EXAM_TYPES.find(t => t.value === 'kjsea'));
   return available;
 };
+
 
 function ExamManagement() {
   const { getAuthHeaders, isAuthenticated } = useAuth();
