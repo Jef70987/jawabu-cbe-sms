@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Chart } from 'chart.js/auto';
 import { useAuth } from '../Authentication/AuthContext';
 import { useNavigate } from 'react-router';
+import MLMonitoringPanel from '../CommonService/MLMonitoringPanel';
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const notificationColors = {
@@ -19,6 +20,15 @@ function Dashboard() {
   const [currentTime, setCurrentTime] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const monitoringToken = getAuthHeaders()?.Authorization || null;
+  const canViewMonitoring = [
+    'admin',
+    'administrator',
+    'registrar',
+    'principal',
+    'staff',
+    'teacher'
+  ].includes(String(user?.role || '').toLowerCase());
   const navigate = useNavigate();
   // Dashboard data state - all real data
   const [students, setStudents] = useState([]);
@@ -439,6 +449,10 @@ function Dashboard() {
             color="border-purple-500" 
             trend="Total streams available" 
           />
+        </div>
+
+        <div className="mb-8">
+          <MLMonitoringPanel token={monitoringToken} canViewMonitoring={canViewMonitoring} />
         </div>
 
         {/* Charts Section */}

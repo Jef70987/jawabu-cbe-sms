@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../Authentication/AuthContext";
+import MLMonitoringPanel from "../CommonService/MLMonitoringPanel";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
@@ -12,7 +13,7 @@ import {
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const PrincipalDashboard = () => {
-  const { getAuthHeaders, isAuthenticated } = useAuth();
+  const { user, getAuthHeaders, isAuthenticated } = useAuth();
 
   const [stats, setStats] = useState(null);
   const [performance, setPerformance] = useState([]);
@@ -20,6 +21,17 @@ const PrincipalDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const monitoringToken = getAuthHeaders()?.Authorization || null;
+  const canViewMonitoring = [
+    "admin",
+    "administrator",
+    "registrar",
+    "principal",
+    "staff",
+    "teacher",
+    "deputy_principal",
+    "hr_manager",
+  ].includes(String(user?.role || "").toLowerCase());
 
   const apiRequest = useCallback(
     async (endpoint) => {
@@ -147,6 +159,8 @@ const PrincipalDashboard = () => {
           </div>
         ))}
       </div>
+
+      <MLMonitoringPanel token={monitoringToken} canViewMonitoring={canViewMonitoring} />
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

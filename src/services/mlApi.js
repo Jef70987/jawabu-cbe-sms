@@ -60,6 +60,20 @@ const DEFAULT_UNAVAILABLE_INSIGHT = {
   raw: null,
 };
 
+const DEFAULT_UNAVAILABLE_MONITORING = {
+  source: "unavailable",
+  modelVersion: null,
+  latestPredictionRun: null,
+  predictionCount: null,
+  averageConfidence: null,
+  driftStatus: "unknown",
+  activeAlertCount: null,
+  latestEvaluation: null,
+  lastUpdated: null,
+  errors: [],
+  raw: null,
+};
+
 function asNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
@@ -524,4 +538,140 @@ export async function fetchStudentMLInsight({ studentId, token, signal } = {}) {
       "ML insight is unavailable right now. Please try again."
     );
   }
+}
+
+export function getMLMonitoringUnavailable() {
+  return { ...DEFAULT_UNAVAILABLE_MONITORING };
+}
+
+export function normalizeMLMonitoringSummary(payload) {
+  const body = payload?.data ?? payload ?? {};
+  const data = body?.data ?? body ?? {};
+
+  const driftStatusRaw =
+    data?.drift_status ??
+    data?.driftStatus ??
+    data?.drift_state ??
+    data?.monitoring?.drift_status ??
+    "unknown";
+
+  const driftStatus = String(driftStatusRaw || "unknown").toLowerCase();
+
+  const sourceRaw = data?.source ?? body?.source ?? "ml_monitoring_api";
+  const source = String(sourceRaw || "ml_monitoring_api").toLowerCase();
+
+  return {
+    source: source === "unavailable" ? "unavailable" : "ml_monitoring_api",
+    modelVersion:
+      data?.model_version ??
+      data?.modelVersion ??
+      data?.latest_model_version ??
+      data?.model?.version ??
+      null,
+    latestPredictionRun:
+      data?.latest_prediction_run ??
+      data?.latestPredictionRun ??
+      data?.last_prediction_run ??
+      data?.prediction_timestamp ??
+      null,
+    predictionCount:
+      asNumber(data?.prediction_count) ??
+      asNumber(data?.predictionCount) ??
+      asNumber(data?.total_predictions) ??
+      asNumber(data?.stats?.prediction_count) ??
+      null,
+    averageConfidence:
+      asNumber(data?.average_confidence) ??
+      asNumber(data?.averageConfidence) ??
+      asNumber(data?.stats?.average_confidence) ??
+      null,
+    driftStatus: driftStatus || "unknown",
+    activeAlertCount:
+      asNumber(data?.active_alert_count) ??
+      asNumber(data?.activeAlertCount) ??
+      asNumber(data?.alert_count) ??
+      asNumber(data?.alerts?.active_count) ??
+      null,
+    latestEvaluation:
+      data?.latest_evaluation ??
+      data?.latestEvaluation ??
+      data?.metrics ??
+      data?.evaluation ??
+      null,
+    lastUpdated:
+      sanitizeTimestamp(data?.last_updated) ??
+      sanitizeTimestamp(data?.lastUpdated) ??
+      sanitizeTimestamp(data?.updated_at) ??
+      sanitizeTimestamp(body?.updated_at) ??
+      null,
+    errors: Array.isArray(data?.errors)
+      ? data.errors
+      : Array.isArray(body?.errors)
+        ? body.errors
+        : [],
+    raw: payload,
+  };
+}
+
+export async function fetchMLMonitoringSummary({ token, signal } = {}) {
+  const endpoints = [
+    `${API_BASE_URL}/ml/monitoring/`,
+    `${API_BASE_URL}/ml/observability/`,
+    `${API_BASE_URL}/ml/dashboard/`,
+  ];
+
+  let lastError = null;
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: buildAuthHeaders(token),
+        signal,
+      });
+
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        return {
+          ...getMLMonitoringUnavailable(),
+          errors: ["You are not permitted to view ML monitoring data."],
+        };
+      }
+
+      if (response.status === 429) {
+        return {
+          ...getMLMonitoringUnavailable(),
+          errors: ["ML monitoring is temporarily rate-limited. Try again shortly."],
+        };
+      }
+
+      if (!response.ok || payload?.status === "error") {
+        lastError = payload?.error || `Monitoring endpoint failed: ${endpoint}`;
+        continue;
+      }
+
+      const normalized = normalizeMLMonitoringSummary(payload);
+      if (normalized.source === "unavailable") {
+        return {
+          ...normalized,
+          errors: normalized.errors?.length ? normalized.errors : ["No model health data available yet."],
+        };
+      }
+      return normalized;
+    } catch (error) {
+      if (isAbortError(error)) throw error;
+      lastError = error?.message || `Monitoring endpoint failed: ${endpoint}`;
+    }
+  }
+
+  return {
+    ...getMLMonitoringUnavailable(),
+    errors: lastError ? [String(lastError)] : ["ML monitoring is unavailable."],
+  };
 }
