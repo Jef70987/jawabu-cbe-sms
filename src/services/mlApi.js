@@ -56,6 +56,8 @@ const DEFAULT_UNAVAILABLE_INSIGHT = {
   factors: [],
   source: "unavailable",
   lastUpdated: null,
+  error: null,
+  raw: null,
 };
 
 function asNumber(value) {
@@ -388,39 +390,58 @@ export function normalizeRecommendationsPayload(payload) {
 }
 
 export function normalizeMLInsight(payload) {
-  const prediction = normalizePredictionPayload(payload);
-  const recommendations = normalizeRecommendationsPayload(payload);
-  const factors = normalizeFactors(payload, "model");
+  const body = payload && typeof payload === "object" ? payload : {};
+  const data = body?.data && typeof body.data === "object" ? body.data : body;
 
-  const container = extractData(payload);
-  const looksLikeChatbotPayload =
-    container &&
-    typeof container === "object" &&
-    (container.risks || container.career_pathways || container.overall_competency);
+  const recommendations = asArray(data?.recommendations).map((item) => ({
+    id: item?.id ?? item?.recommendation_id ?? null,
+    title: String(item?.title || "Recommendation"),
+    description: String(item?.description || item?.content || ""),
+    priority: normalizePriority(item?.priority),
+    type: normalizeRecommendationType(item?.type || item?.category),
+    source: normalizeRecommendationSource(item?.source),
+    createdAt: sanitizeTimestamp(item?.created_at ?? item?.createdAt),
+  }));
 
-  let source = looksLikeChatbotPayload ? "chatbot_api" : "ml_api";
-  if (prediction.prediction === null && !recommendations.length && !factors.length) {
-    source = "unavailable";
-  }
+  const factors = normalizeFactors(data, "model");
 
-  if (source === "unavailable") {
-    return {
-      ...DEFAULT_UNAVAILABLE_INSIGHT,
-      raw: payload,
-    };
-  }
-
-  return {
-    studentId: prediction.studentId,
-    prediction: prediction.prediction,
-    riskLevel: prediction.riskLevel,
-    confidence: prediction.confidence,
-    confidenceBand: prediction.confidenceBand,
+  const insight = {
+    ...DEFAULT_UNAVAILABLE_INSIGHT,
+    studentId: data?.student_id ?? data?.studentId ?? null,
+    prediction: asNumber(data?.prediction ?? data?.risk_probability ?? data?.risk_score),
+    riskLevel: normalizeRiskLevel(data?.risk_level ?? data?.riskLevel),
+    confidence: asNumber(data?.confidence ?? data?.risk_confidence ?? data?.confidence_score),
+    confidenceBand:
+      String((data?.confidence_band ?? data?.confidenceBand) || "").toLowerCase() ||
+      confidenceBandFromValue(asNumber(data?.confidence ?? data?.risk_confidence ?? data?.confidence_score)),
     recommendations,
     factors,
-    source,
-    lastUpdated: prediction.lastUpdated,
+    source: String(data?.source || "unavailable").toLowerCase(),
+    lastUpdated: sanitizeTimestamp(data?.last_updated ?? data?.lastUpdated),
+    error: body?.error || null,
     raw: payload,
+  };
+
+  if (!["high", "medium", "low"].includes(insight.riskLevel)) {
+    insight.riskLevel = "unknown";
+  }
+
+  if (!["high", "medium", "low", "unknown"].includes(insight.confidenceBand)) {
+    insight.confidenceBand = confidenceBandFromValue(insight.confidence);
+  }
+
+  if (!["ml_api", "unavailable"].includes(insight.source)) {
+    insight.source = "unavailable";
+  }
+
+  return insight;
+}
+
+export function getMLInsightUnavailable(studentId, error = null) {
+  return {
+    ...DEFAULT_UNAVAILABLE_INSIGHT,
+    studentId: studentId ?? null,
+    error,
   };
 }
 
@@ -440,102 +461,67 @@ export async function fetchStudentRecommendations({ studentId, token, signal } =
   return normalizeRecommendationsPayload(payload);
 }
 
-async function fetchStudentDashboard({ studentId, token, signal } = {}) {
-  const url = withQuery(`${API_BASE_URL}/ml/dashboard/`, {
-    student_id: studentId ?? undefined,
-  });
-  return fetchJson(url, { token, signal });
-}
-
 export async function fetchStudentMLInsight({ studentId, token, signal } = {}) {
-  const [predictionResult, recommendationResult, dashboardResult] = await Promise.allSettled([
-    fetchJson(
-      withQuery(`${API_BASE_URL}/ml/predictions/`, { student_id: studentId ?? undefined }),
-      { token, signal }
-    ),
-    fetchJson(
-      withQuery(`${API_BASE_URL}/ml/recommendations/`, { student_id: studentId ?? undefined }),
-      { token, signal }
-    ),
-    fetchStudentDashboard({ studentId, token, signal }),
-  ]);
-
-  const predictionPayload = predictionResult.status === "fulfilled" ? predictionResult.value : null;
-  const recommendationPayload = recommendationResult.status === "fulfilled" ? recommendationResult.value : null;
-  const dashboardPayload = dashboardResult.status === "fulfilled" ? dashboardResult.value : null;
-
-  const normalizedPrediction = predictionPayload ? normalizePredictionPayload(predictionPayload) : null;
-  const normalizedRecommendations = recommendationPayload
-    ? normalizeRecommendationsPayload(recommendationPayload)
-    : [];
-  const factors = dashboardPayload ? normalizeFactors(dashboardPayload, "model") : [];
-
-  const allMissing =
-    !normalizedPrediction &&
-    normalizedRecommendations.length === 0 &&
-    factors.length === 0 &&
-    !dashboardPayload;
-
-  const allRejected =
-    predictionResult.status === "rejected" &&
-    recommendationResult.status === "rejected" &&
-    dashboardResult.status === "rejected";
-
-  if (allRejected) {
-    const rejectedReasons = [predictionResult, recommendationResult, dashboardResult]
-      .filter((result) => result.status === "rejected")
-      .map((result) => result.reason);
-
-    const abortReason = rejectedReasons.find((reason) => isAbortError(reason));
-    if (abortReason) throw abortReason;
-
-    const firstMessage = rejectedReasons
-      .map((reason) => reason?.message || String(reason || ""))
-      .find((message) => message && message.trim());
-
-    throw new Error(firstMessage || "ML insight unavailable. Please try again.");
+  if (!studentId) {
+    return getMLInsightUnavailable(studentId);
   }
 
-  if (allMissing) {
-    return {
-      ...DEFAULT_UNAVAILABLE_INSIGHT,
-      raw: {
-        predictionError:
-          predictionResult.status === "rejected" ? predictionResult.reason?.message || String(predictionResult.reason) : null,
-        recommendationError:
-          recommendationResult.status === "rejected"
-            ? recommendationResult.reason?.message || String(recommendationResult.reason)
-            : null,
-        dashboardError:
-          dashboardResult.status === "rejected" ? dashboardResult.reason?.message || String(dashboardResult.reason) : null,
-      },
-    };
-  }
+  const url = withQuery(`${API_BASE_URL}/ml/student-insight/`, {
+    student_id: studentId,
+  });
 
-  return {
-    studentId: normalizedPrediction?.studentId ?? studentId ?? null,
-    prediction: normalizedPrediction?.prediction ?? null,
-    riskLevel: normalizedPrediction?.riskLevel || "unknown",
-    confidence: normalizedPrediction?.confidence ?? null,
-    confidenceBand: normalizedPrediction?.confidenceBand || "unknown",
-    recommendations: normalizedRecommendations,
-    factors,
-    source: "ml_api",
-    lastUpdated: normalizedPrediction?.lastUpdated ?? null,
-    raw: {
-      predictions: predictionPayload,
-      recommendations: recommendationPayload,
-      dashboard: dashboardPayload,
-      errors: {
-        predictions:
-          predictionResult.status === "rejected" ? predictionResult.reason?.message || String(predictionResult.reason) : null,
-        recommendations:
-          recommendationResult.status === "rejected"
-            ? recommendationResult.reason?.message || String(recommendationResult.reason)
-            : null,
-        dashboard:
-          dashboardResult.status === "rejected" ? dashboardResult.reason?.message || String(dashboardResult.reason) : null,
-      },
-    },
-  };
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: buildAuthHeaders(token),
+      signal,
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      return getMLInsightUnavailable(studentId, "You are not permitted to view this ML insight.");
+    }
+
+    if (response.status === 429) {
+      return getMLInsightUnavailable(
+        studentId,
+        "ML insight is temporarily rate-limited. Please try again shortly."
+      );
+    }
+
+    if (!response.ok || payload?.status === "error") {
+      const apiError = payload && typeof payload === "object" ? String(payload.error || "").toLowerCase() : "";
+      if (apiError.includes("not permitted")) {
+        return getMLInsightUnavailable(studentId, "You are not permitted to view this ML insight.");
+      }
+      if (apiError.includes("rate-limited") || apiError.includes("rate limited")) {
+        return getMLInsightUnavailable(
+          studentId,
+          "ML insight is temporarily rate-limited. Please try again shortly."
+        );
+      }
+      if (apiError.includes("student_id is required") || apiError.includes("invalid student_id")) {
+        return getMLInsightUnavailable(studentId, "ML insight is unavailable for this student right now.");
+      }
+      return getMLInsightUnavailable(studentId, "ML insight is unavailable right now.");
+    }
+
+    const normalized = normalizeMLInsight(payload);
+    if (normalized.source === "unavailable" && !normalized.error) {
+      return getMLInsightUnavailable(studentId, "ML insight is not available yet.");
+    }
+    return normalized;
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    return getMLInsightUnavailable(
+      studentId,
+      "ML insight is unavailable right now. Please try again."
+    );
+  }
 }

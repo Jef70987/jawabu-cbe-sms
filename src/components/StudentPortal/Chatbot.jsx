@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../Authentication/AuthContext";
-import { fetchStudentMLInsight } from "../../services/mlApi";
+import { fetchStudentMLInsight, getMLInsightUnavailable } from "../../services/mlApi";
 import {
   MessageCircle,
   Send,
@@ -270,8 +270,15 @@ const sanitizeMlErrorMessage = (error) => {
     .trim();
 
   if (!normalized) return 'ML insight unavailable';
-  if (normalized.toLowerCase().includes('failed to fetch')) {
+  const lowered = normalized.toLowerCase();
+  if (lowered.includes('failed to fetch')) {
     return 'ML insight unavailable: Unable to reach ML services right now. Please try again.';
+  }
+  if (lowered.includes('not permitted')) {
+    return 'ML insight unavailable: You are not permitted to view this ML insight.';
+  }
+  if (lowered.includes('rate-limited') || lowered.includes('rate limited')) {
+    return 'ML insight unavailable: ML insight is temporarily rate-limited. Please try again shortly.';
   }
 
   const clipped = normalized.slice(0, 180);
@@ -396,6 +403,7 @@ const buildMlAwareResponse = (intent, insight) => {
     } else {
       sections.push('Factor details are not available yet, so this estimate should be reviewed with your teacher or advisor.');
     }
+    sections.push('This insight supports review and planning with your teacher or advisor.');
     if (confidenceNote) sections.push(confidenceNote);
     return sections.join('\n\n');
   }
@@ -410,6 +418,7 @@ const buildMlAwareResponse = (intent, insight) => {
     if (factors.length > 0) {
       sections.push(`Signals to review with your teacher:\n${factors.map((factor, index) => `${index + 1}. ${factor}`).join('\n')}`);
     }
+    sections.push('This insight supports review and planning with your teacher or advisor.');
     sections.push('Review these actions with a teacher or advisor before making major study changes.');
     if (ruleBasedNote) sections.push(ruleBasedNote);
     if (confidenceNote) sections.push(confidenceNote);
@@ -429,7 +438,12 @@ const buildMlAwareResponse = (intent, insight) => {
     }
 
     const planFromRecommendations = `Study plan based on available recommendations:\n${recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`).join('\n')}`;
-    return [planFromRecommendations, ruleBasedNote, confidenceNote].filter(Boolean).join('\n\n');
+    return [
+      planFromRecommendations,
+      'This insight supports review and planning with your teacher or advisor.',
+      ruleBasedNote,
+      confidenceNote,
+    ].filter(Boolean).join('\n\n');
   }
 
   if (intent === 'career') {
@@ -444,6 +458,7 @@ const buildMlAwareResponse = (intent, insight) => {
     const careerSummary = summarizeRecommendationsForMessage(careerRecommendations, 3);
     const responseSections = [
       `Career-related suggestions from your current insight:\n${careerSummary.map((item, index) => `${index + 1}. ${item}`).join('\n')}`,
+      'This insight supports review and planning with your teacher or advisor.',
       'Review these options with a teacher or career advisor before choosing a pathway.',
     ];
     if (ruleBasedNote) responseSections.push(ruleBasedNote);
@@ -945,7 +960,7 @@ const Chatbot = () => {
   useEffect(() => {
     if (!isChatOpen) return;
     if (!isAuthenticated) {
-      setMlInsight(null);
+      setMlInsight(getMLInsightUnavailable(studentId));
       setMlError(null);
       setMlLoading(false);
       return;
@@ -962,14 +977,20 @@ const Chatbot = () => {
           signal: controller.signal,
         });
         if (controller.signal.aborted) return;
-        setMlInsight(insight);
-        setMlLastUpdated(insight?.lastUpdated || new Date().toISOString());
-        if (insight?.source === "unavailable") {
-          setMlError("ML insight unavailable");
+        const normalizedInsight = insight || getMLInsightUnavailable(studentId);
+        setMlInsight(normalizedInsight);
+        setMlLastUpdated(normalizedInsight?.lastUpdated || null);
+        if (normalizedInsight?.error) {
+          setMlError(normalizedInsight.error);
+        } else if (normalizedInsight?.source === "unavailable") {
+          setMlError("ML insight is not available yet.");
+        } else {
+          setMlError(null);
         }
       } catch (err) {
         if (err?.name === "AbortError") return;
-        setMlError(sanitizeMlErrorMessage(err));
+        setMlInsight(getMLInsightUnavailable(studentId));
+        setMlError("ML insight is unavailable right now. Please try again.");
       } finally {
         if (!controller.signal.aborted) {
           setMlLoading(false);
@@ -1106,6 +1127,10 @@ const Chatbot = () => {
 
       {missingMlFields && !analyticsLoading && (
         <p className="text-xs text-gray-500 mb-3">Some ML fields are missing.</p>
+      )}
+
+      {mlInsight?.source === 'unavailable' && !mlLoading && (
+        <p className="text-xs text-gray-500 mb-3">ML insight unavailable</p>
       )}
 
       {isInsightStale && !mlLoading && (
