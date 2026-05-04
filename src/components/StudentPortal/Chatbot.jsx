@@ -29,7 +29,12 @@ import {
   ShieldX,
 } from "lucide-react";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const RAW_API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const NORMALIZED_API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
+const API_ORIGIN = NORMALIZED_API_BASE_URL.endsWith("/api")
+  ? NORMALIZED_API_BASE_URL.slice(0, -4)
+  : NORMALIZED_API_BASE_URL;
+const API_BASE_URL = `${API_ORIGIN}/api`;
 
 const META = {
   EE1: { label: "Exceptional",       badge: "bg-emerald-100 text-emerald-800 border-emerald-200", bar: "bg-emerald-600" },
@@ -921,7 +926,7 @@ const Chatbot = () => {
     setAnalyticsLoading(true);
     setAnalyticsError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/student/chatbot/analytics/`, {
+      const res = await fetch(`${API_BASE_URL}/student/chatbot/analytics/`, {
         headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
@@ -1021,7 +1026,7 @@ const Chatbot = () => {
         admission_no: user?.admission_no || "",
         student_role: user?.role || "student",
       };
-      const res = await fetch(`${API_BASE_URL}/api/student/chatbot/message/`, {
+      const res = await fetch(`${API_BASE_URL}/student/chatbot/message/`, {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -9,10 +9,14 @@ import {
 } from "lucide-react";
 import { useAuth } from "../Authentication/AuthContext";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-const WS_BASE_URL  = API_BASE_URL
-  .replace(/^http/, "ws")
-  .replace(/^https/, "wss")
+const RAW_API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const NORMALIZED_API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
+const API_BASE_URL = NORMALIZED_API_BASE_URL.endsWith("/api")
+  ? NORMALIZED_API_BASE_URL
+  : `${NORMALIZED_API_BASE_URL}/api`;
+const WS_BASE_URL = API_BASE_URL
+  .replace(/^http:\/\//, "ws://")
+  .replace(/^https:\/\//, "wss://")
   .replace(/\/api$/, "");
 
 const BROADCAST_ROLES = ["registrar"];

@@ -1,4 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const RAW_API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const NORMALIZED_API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
+const API_ORIGIN = NORMALIZED_API_BASE_URL.endsWith("/api")
+  ? NORMALIZED_API_BASE_URL.slice(0, -4)
+  : NORMALIZED_API_BASE_URL;
+const API_BASE_URL = `${API_ORIGIN}/api`;
 
 const PREDICTION_FIELDS = [
   "risk_score",
@@ -420,7 +425,7 @@ export function normalizeMLInsight(payload) {
 }
 
 export async function fetchStudentPredictions({ studentId, token, signal } = {}) {
-  const url = withQuery(`${API_BASE_URL}/api/ml/predictions/`, {
+  const url = withQuery(`${API_BASE_URL}/ml/predictions/`, {
     student_id: studentId ?? undefined,
   });
   const payload = await fetchJson(url, { token, signal });
@@ -428,7 +433,7 @@ export async function fetchStudentPredictions({ studentId, token, signal } = {})
 }
 
 export async function fetchStudentRecommendations({ studentId, token, signal } = {}) {
-  const url = withQuery(`${API_BASE_URL}/api/ml/recommendations/`, {
+  const url = withQuery(`${API_BASE_URL}/ml/recommendations/`, {
     student_id: studentId ?? undefined,
   });
   const payload = await fetchJson(url, { token, signal });
@@ -436,7 +441,7 @@ export async function fetchStudentRecommendations({ studentId, token, signal } =
 }
 
 async function fetchStudentDashboard({ studentId, token, signal } = {}) {
-  const url = withQuery(`${API_BASE_URL}/api/ml/dashboard/`, {
+  const url = withQuery(`${API_BASE_URL}/ml/dashboard/`, {
     student_id: studentId ?? undefined,
   });
   return fetchJson(url, { token, signal });
@@ -445,11 +450,11 @@ async function fetchStudentDashboard({ studentId, token, signal } = {}) {
 export async function fetchStudentMLInsight({ studentId, token, signal } = {}) {
   const [predictionResult, recommendationResult, dashboardResult] = await Promise.allSettled([
     fetchJson(
-      withQuery(`${API_BASE_URL}/api/ml/predictions/`, { student_id: studentId ?? undefined }),
+      withQuery(`${API_BASE_URL}/ml/predictions/`, { student_id: studentId ?? undefined }),
       { token, signal }
     ),
     fetchJson(
-      withQuery(`${API_BASE_URL}/api/ml/recommendations/`, { student_id: studentId ?? undefined }),
+      withQuery(`${API_BASE_URL}/ml/recommendations/`, { student_id: studentId ?? undefined }),
       { token, signal }
     ),
     fetchStudentDashboard({ studentId, token, signal }),
