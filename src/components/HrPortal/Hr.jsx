@@ -10,8 +10,8 @@ import Payroll from "./PayrollMngmt";
 import Recruitment from "./Recruitment";
 import StaffManagement from "./StaffMngnt";
 import DepartmentManagement from "./DepartmentMng";
-import StaffMessaging from "../CommonService/StaffMessaging";
-import Logout from "../Authentication/Logout";
+import Messages from "../CommonService/StaffMessaging";
+
 const Hr = () => {
     return(
         <div style={{ display: "flex", height: "100vh", overflow: "hidden",gap:"2px" }}>
@@ -38,7 +38,7 @@ const Hr = () => {
                     <Route path="/StaffMngnt" element={<StaffManagement/>}/>
                     <Route path="/Messages" element={<StaffMessaging/>}/>
                     <Route path="/HelpSupport" element={<HelpSupport/>}/>
-                    <Route path="/Logout" element={<Logout/>}/>
+                    <Route path="/Messages" element={<Messages/>}/>
                     <Route path="/Settings" element={<Settings/>}/>
                 </Routes>
             </div>

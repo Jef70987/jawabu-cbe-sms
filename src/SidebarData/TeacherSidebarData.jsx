@@ -16,7 +16,8 @@ import {
   PenBoxIcon, 
   TimerIcon, 
   ClipboardCheckIcon,
-  LayoutGridIcon
+  LayoutGridIcon,
+  MessageCircle
 } from 'lucide-react';
 
 const TeacherSidebarData = [
@@ -88,6 +89,11 @@ const TeacherSidebarData = [
   //   icon: <SettingsIcon />,
   //   link: "/TeacherPortal/Settings"
   // },
+  {
+    title: "Messages",
+    icon: <MessageCircle />, // For new messages or updates
+    link: "/TeacherPortal/Messages"
+  },
   {
     title: "LogOut",
     icon: <LogoutIcon sx={{ color: '#ef4444', fontSize: 28 }} />,

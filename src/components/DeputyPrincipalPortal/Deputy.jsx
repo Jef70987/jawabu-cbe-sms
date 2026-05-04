@@ -5,8 +5,10 @@ import DeputyPrincipalDashboard from "./DeputyPrincipalDashboard";
 import Discipline from "./DeputyDiscipline";
 import Login from "../Authentication/Login";
 import Logout from "../Authentication/Logout";
+import Messages from "../CommonService/StaffMessaging";
 import TeacherAssignment from "./TeacherAssign";
 import Messages from "../CommonService/StaffMessaging";
+
 
 
 const DeputyPrincipal = () => {
@@ -30,6 +32,8 @@ const DeputyPrincipal = () => {
                     <Route path="/" element={<DeputyPrincipalDashboard />} />
                     <Route path="/dashboard" element={<DeputyPrincipalDashboard />} />
                     <Route path="/discipline" element={<Discipline />} />
+                    <Route path="/student-affairs/" element={<DeputyStudentAffairs />} />
+                    <Route path="/messages" element={<Messages />} />
                     <Route path="/Assignments" element={<TeacherAssignment/>}/>
                     <Route path="/messages" element={<Messages />} />
 

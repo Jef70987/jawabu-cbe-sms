@@ -53,6 +53,12 @@ export const PrincipalSidebarData = [
     role: "principal",
   },
   {
+    title: "Messages",
+    path: "/PrincipalPortal/messages",
+    icon: <MessageCircle size={20} />,
+    role: "principal",
+  },
+  {
     title: "LogOut",
     path: "/PrincipalPortal/logout",
     icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
