@@ -45,13 +45,6 @@ export const PrincipalSidebarData = [
       { title: "Overview", path: "/PrincipalPortal/finance/overview" },
     ]
   },
-
-  {
-    title: "Messages",
-    path: "/PrincipalPortal/messages",
-    icon: <MessageCircle size={20} />,
-    role: "principal",
-  },
   {
     title: "Messages",
     path: "/PrincipalPortal/messages",

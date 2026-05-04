@@ -10,10 +10,6 @@ import Login from "../Authentication/Login";
 import Logout from "../Authentication/Logout";
 
 
-// Analytics and Calendar
-import PrincipalAnalytics from "./PrincipalAnalytics";
-import PrincipalCalendar from "./PrincipalCalendar";
-import PrincipalNotifications from "./PrincipalNotifications";
 import PrincipalMessages from "../CommonService/StaffMessaging";
 
 const Principal = () => {
@@ -49,13 +45,6 @@ const Principal = () => {
 
                     
                     
-                    {/* Settings Routes */}
-                    <Route path="/settings" element={<PrincipalSettings />} />
-                    <Route path="/settings/profile" element={<PrincipalSettings />} />
-                    {/* <Route path="/settings/school" element={<PrincipalSettings />} />
-                    <Route path="/settings/preferences" element={<PrincipalSettings />} />
-                    <Route path="/settings/security" element={<PrincipalSettings />} />
-                    <Route path="/settings/system" element={<PrincipalSettings />} /> */}
 
                     <Route path="/messages" element={<PrincipalMessages />} />
                     
