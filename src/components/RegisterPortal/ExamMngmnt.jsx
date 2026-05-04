@@ -31,15 +31,12 @@ const MARKER_VISIBLE_STATUSES = new Set(['scheduled', 'live', 'marking', 'modera
 
 // ── Filter exam types based on selected grade level ──────────────────────────
 const getAvailableExamTypes = (gradeLevelId, gradeLevels) => {
-  const gradeObj = gradeLevels.find(gl => String(gl.id) === String(gradeLevelId));
-  let numericGrade = null;
-  if (gradeObj) {
-    if (gradeObj.level !== undefined) numericGrade = Number(gradeObj.level);
-    else if (gradeObj.name) {
-      const match = gradeObj.name.match(/(\d+)/);
-      if (match) numericGrade = parseInt(match[1]);
-    }
-  }
+  // Match by id (UUID) OR by level string — handles both create and edit
+  const gradeObj = gradeLevels.find(
+    gl => String(gl.id) === String(gradeLevelId) || String(gl.level) === String(gradeLevelId)
+  );
+
+  const numericGrade = gradeObj ? Number(gradeObj.level) : null;
 
   let available = EXAM_TYPES.filter(t => !['kpsea', 'kjsea'].includes(t.value));
   if (numericGrade === 6) available.push(EXAM_TYPES.find(t => t.value === 'kpsea'));
@@ -821,21 +818,8 @@ function ExamManagement() {
                   <input type="text" value={editFormData.title} onChange={e => setEditFormData({...editFormData, title: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white rounded" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Exam Type *</label>
-                  {/* ── Dynamic exam types based on grade level ── */}
-                  <select
-                    value={editFormData.exam_type}
-                    onChange={e => setEditFormData({...editFormData, exam_type: e.target.value})}
-                    className="w-full px-3 py-2 text-sm border border-gray-400 bg-white rounded"
-                  >
-                    <option value="">Select Type</option>
-                    {getAvailableExamTypes(editFormData.grade_level, gradeLevels).map(t => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Grade Level *</label>
+                  {/* Grade Level select in modal */}
                   <select
                     value={editFormData.grade_level}
                     onChange={e => {
@@ -852,10 +836,27 @@ function ExamManagement() {
                   >
                     <option value="">Select Grade</option>
                     {gradeLevels.map(gl => (
-                      <option key={gl.id} value={gl.id}>{gl.display_name}</option>
+                      <option key={gl.id} value={String(gl.level)}> {/* ← was gl.id, now gl.level */}
+                        {gl.display_name}
+                      </option>
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Exam Type *</label>
+                  {/* ── Dynamic exam types based on grade level ── */}
+                  <select
+                    value={editFormData.exam_type}
+                    onChange={e => setEditFormData({...editFormData, exam_type: e.target.value})}
+                    className="w-full px-3 py-2 text-sm border border-gray-400 bg-white rounded"
+                  >
+                    <option value="">Select Type</option>
+                    {getAvailableExamTypes(editFormData.grade_level, gradeLevels).map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Academic Year</label>
                   <input type="number" value={editFormData.academic_year} onChange={e => setEditFormData({...editFormData, academic_year: parseInt(e.target.value)})} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white rounded" />
