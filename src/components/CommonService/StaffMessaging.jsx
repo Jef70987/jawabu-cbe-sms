@@ -32,7 +32,7 @@ import {
 import { useAuth } from "../Authentication/AuthContext";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+  import.meta.env.VITE_API_URL/api || "http://localhost:8000/api";
 const WS_BASE_URL = API_BASE_URL.replace(/^http/, "ws")
   .replace(/^https/, "wss")
   .replace(/\/api$/, "");
