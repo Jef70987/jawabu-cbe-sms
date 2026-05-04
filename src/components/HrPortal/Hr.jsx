@@ -36,6 +36,7 @@ const Hr = () => {
                     <Route path="/Payroll" element={<Payroll/>}/>
                     <Route path="/Recruitment" element={<Recruitment/>}/>
                     <Route path="/StaffMngnt" element={<StaffManagement/>}/>
+                    <Route path="/Messages" element={<StaffMessaging/>}/>
                     <Route path="/HelpSupport" element={<HelpSupport/>}/>
                     <Route path="/Messages" element={<Messages/>}/>
                     <Route path="/Settings" element={<Settings/>}/>

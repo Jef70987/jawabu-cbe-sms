@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../Authentication/AuthContext';
 
@@ -113,29 +113,16 @@ function StudentManagement() {
     );
   };
 
-  const addNotification = (type, message) => {
+  const addNotification = useCallback((type, message) => {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, type, message }]);
-  };
+  }, []);
 
   const removeNotification = (id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  // Fetch data
-  useEffect(() => {
-    if (!isAuthenticated) {
-      addNotification('error', 'Please login to access student management');
-      return;
-    }
-    fetchData();
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    applyFilters();
-  }, [students, searchTerm, selectedClass, selectedStatus, selectedGender, selectedBoarding]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const studentsRes = await fetch(`${API_BASE_URL}/api/registrar/students/`, {
@@ -144,7 +131,6 @@ function StudentManagement() {
       const studentsData = await studentsRes.json();
       if (studentsData.success) {
         setStudents(studentsData.data);
-        updateStats(studentsData.data);
       } else if (studentsData.error === 'Unauthorized' || studentsData.code === 'token_not_valid') {
         addNotification('error', 'Session expired. Please login again.');
         logout();
@@ -164,9 +150,9 @@ function StudentManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [addNotification, getAuthHeaders, logout]);
 
-  const updateStats = (studentsData) => {
+  const updateStats = useCallback((studentsData) => {
     const total = studentsData.length;
     const active = studentsData.filter(s => s.status === 'Active').length;
     const male = studentsData.filter(s => s.gender === 'Male').length;
@@ -202,15 +188,9 @@ function StudentManagement() {
     });
 
     setStats({ total, active, male, female, boarding, day, earlyYears, lowerPrimary, upperPrimary, junior });
-  };
-
-  useEffect(() => {
-    if (students.length > 0 && classes.length > 0) {
-      updateStats(students);
-    }
   }, [classes]);
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...students];
 
     if (searchTerm) {
@@ -246,7 +226,26 @@ function StudentManagement() {
 
     setFilteredStudents(filtered);
     setCurrentPage(1);
-  };
+  }, [searchTerm, selectedClass, selectedStatus, selectedGender, selectedBoarding, students]);
+
+  // Fetch data
+  useEffect(() => {
+    if (!isAuthenticated) {
+      addNotification('error', 'Please login to access student management');
+      return;
+    }
+    fetchData();
+  }, [addNotification, fetchData, isAuthenticated]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  useEffect(() => {
+    if (students.length > 0 && classes.length > 0) {
+      updateStats(students);
+    }
+  }, [classes, students, updateStats]);
 
   const clearFilters = () => {
     setSearchTerm('');

@@ -3,11 +3,11 @@ import { Routes, Route } from "react-router-dom";
 import DeputyPrincipalSidebar from "../../sidebars/DeputyPrincipalSidebar";
 import DeputyPrincipalDashboard from "./DeputyPrincipalDashboard";
 import Discipline from "./DeputyDiscipline";
-import DeputyStudentAffairs from "./DeputyStudentAffairs";
 import Login from "../Authentication/Login";
 import Logout from "../Authentication/Logout";
 import Messages from "../CommonService/StaffMessaging";
 import TeacherAssignment from "./TeacherAssign";
+import Messages from "../CommonService/StaffMessaging";
 
 
 const DeputyPrincipal = () => {
@@ -34,6 +34,8 @@ const DeputyPrincipal = () => {
                     <Route path="/student-affairs/" element={<DeputyStudentAffairs />} />
                     <Route path="/messages" element={<Messages />} />
                     <Route path="/Assignments" element={<TeacherAssignment/>}/>
+                    <Route path="/messages" element={<Messages />} />
+
                     <Route path="/login" element={<Login />} />
                     <Route path="/Logout" element={<Logout/>}/>
 

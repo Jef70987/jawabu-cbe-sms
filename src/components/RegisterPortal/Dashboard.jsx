@@ -502,12 +502,9 @@ function Dashboard() {
         {/* Recent Students & Notifications */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Recent Students - Real Data */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="lg:col-span-2 bg-white rounded-l shadow-sm border border-green-500 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-800">Recently Admitted Students</h3>
-              <a href="/registrar/students" className="text-sm text-blue-600 hover:text-blue-800">
-                View All <i className="fas fa-arrow-right ml-1"></i>
-              </a>
             </div>
             
             <div className="divide-y divide-gray-200">

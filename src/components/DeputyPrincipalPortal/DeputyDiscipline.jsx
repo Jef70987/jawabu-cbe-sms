@@ -42,6 +42,7 @@ const LoadingSpinner = () => (
 );
 
 const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", loading = false }) => {
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", confirmClass = "bg-red-600 hover:bg-red-700", loading = false }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
@@ -50,7 +51,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
         <div className="p-6"><p className="text-sm text-gray-800">{message}</p></div>
         <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
-          <button onClick={onConfirm} disabled={loading} className="px-4 py-2 bg-red-600 text-white text-sm font-bold border border-red-700 hover:bg-red-700 disabled:opacity-50">
+          <button onClick={onConfirm} disabled={loading} className={`px-4 py-2 text-white text-sm font-bold border border-transparent disabled:opacity-50 ${confirmClass}`}>
             {loading && <Loader2 className="h-4 w-4 animate-spin inline mr-2" />}{confirmText}
           </button>
         </div>
@@ -146,6 +147,8 @@ const Discipline = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [toasts, setToasts] = useState([]);
+
+  // Modal states
   const [showCaseModal, setShowCaseModal] = useState(false);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showInterventionModal, setShowInterventionModal] = useState(false);
@@ -209,7 +212,7 @@ const Discipline = () => {
     } catch (err) { console.error("Categories:", err); }
   }, [apiRequest]);
 
-  const fetchConductRecords = useCallback(async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const data = await apiRequest("/api/deputyadmin/discipline/conduct/");
       if (data.success) setConductRecords(data.data || []);
@@ -363,7 +366,7 @@ const Discipline = () => {
     finally { setLoading(false); setDeleteConfirm({ isOpen: false, id: null, name: "" }); }
   };
 
-  const handleResolveCase = async (caseId) => {
+  const handleDeleteSuspension = async () => {
     setLoading(true);
     try {
       const data = await apiRequest(`/api/deputyadmin/discipline/cases/${caseId}/resolve/`, { method: "PUT" });
@@ -425,7 +428,7 @@ const Discipline = () => {
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Discipline Management</h1>
-            <p className="text-green-100 mt-1">Track cases, conduct records, interventions, and counseling</p>
+            <p className="text-green-100 mt-1">Track cases, interventions, counseling, and suspensions</p>
           </div>
           <div className="flex gap-3 flex-wrap">
             <button onClick={refreshAllData} disabled={refreshing} className="px-4 py-2 bg-white/10 text-white text-sm font-medium border border-white/20 hover:bg-white/20 flex items-center gap-2 rounded">
@@ -652,9 +655,43 @@ const Discipline = () => {
                           <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium border rounded ${sus.suspension_type === "Out-of-School" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{sus.suspension_type}</span></td>
                           <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium border rounded ${getStatusColor(sus.status)}`}>{sus.status}</span></td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {suspensions.map((sus) => (
+                          <tr key={sus.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-medium">{sus.student_name}<div className="text-xs text-gray-500">{sus.grade}</div></td>
+                            <td className="px-4 py-3">{sus.reason}</td>
+                            <td className="px-4 py-3">
+                              {sus.start_date ? `${sus.start_date} to ${sus.end_date}` : "—"}
+                              {sus.total_days > 0 && <div className="text-xs">{sus.total_days} days</div>}
+                            </td>
+                            <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium border rounded ${sus.suspension_type === "Out-of-School" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{sus.suspension_type}</span></td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs font-medium border rounded ${getStatusColor(sus.status)}`}>
+                                {sus.status === 'Pending' && <Clock className="h-3 w-3 inline mr-1" />}
+                                {sus.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                {sus.status === 'Pending' ? (
+                                  <>
+                                    <button onClick={() => openApproveSuspension(sus)} className="p-1.5 bg-green-600 text-white rounded hover:bg-green-700" title="Approve"><CheckCircle className="h-3.5 w-3.5" /></button>
+                                    <button onClick={() => setDeleteSuspensionConfirm({ isOpen: true, id: sus.id, name: sus.student_name })} className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700" title="Revoke"><Trash2 className="h-3.5 w-3.5" /></button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button onClick={() => { setEditSuspensionData(sus); setShowEditSuspensionModal(true); }} className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"><Edit2 className="h-3.5 w-3.5" /></button>
+                                    <button onClick={() => setDeleteSuspensionConfirm({ isOpen: true, id: sus.id, name: sus.student_name })} className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"><Trash2 className="h-3.5 w-3.5" /></button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}

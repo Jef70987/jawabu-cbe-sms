@@ -1,86 +1,269 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from 'react';
-import * as XLSX from 'xlsx';
-import { 
-  FileText, Download, Printer, TrendingUp, Users, BookOpen, 
-  BarChart3, PieChart, AlertCircle, CheckCircle, X, Loader2,
-  Eye, Calendar, Filter, ChevronDown, ChevronUp, School,
-  Award, Target, Activity, RefreshCw, Upload, FileSpreadsheet,
-  Settings, UserCheck, ClipboardList, GraduationCap, Star,
-  Clock, MessageSquare, DollarSign, Percent, ArrowUp, ArrowDown
-} from 'lucide-react';
-import { useAuth } from '../Authentication/AuthContext';
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, { useState, useEffect, useRef } from "react";
+import * as XLSX from "xlsx";
+import {
+  FileText,
+  Printer,
+  TrendingUp,
+  Users,
+  BarChart3,
+  AlertCircle,
+  CheckCircle,
+  X,
+  Loader2,
+  Eye,
+  RefreshCw,
+  Upload,
+  GraduationCap,
+  Download,
+} from "lucide-react";
+import { useAuth } from "../Authentication/AuthContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// CBC/CBE Grading Schemes
-const FOUR_POINT_SCALE = [
-  { level: 4, label: 'Exceeding Expectations (EE)', short: 'EE', description: 'Exceptional mastery independently', color: 'bg-green-100 text-green-800' },
-  { level: 3, label: 'Meeting Expectations (ME)', short: 'ME', description: 'Performs correctly and independently', color: 'bg-blue-100 text-blue-800' },
-  { level: 2, label: 'Approaching Expectations (AE)', short: 'AE', description: 'Progress with occasional support', color: 'bg-yellow-100 text-yellow-800' },
-  { level: 1, label: 'Below Expectations (BE)', short: 'BE', description: 'Requires significant intervention', color: 'bg-red-100 text-red-800' }
-];
+// JSS SCALE (Grades 7-9) - 8 Level KNEC Achievement Scale
+const JSS_SCALE = {
+  EE1: {
+    min: 90,
+    max: 100,
+    points: 8,
+    label: "Exceptional",
+    color: "bg-purple-100 text-purple-800",
+    borderColor: "border-purple-500",
+    bgProgress: "bg-purple-600",
+  },
+  EE2: {
+    min: 75,
+    max: 89,
+    points: 7,
+    label: "Very Good",
+    color: "bg-green-100 text-green-800",
+    borderColor: "border-green-500",
+    bgProgress: "bg-green-600",
+  },
+  ME1: {
+    min: 58,
+    max: 74,
+    points: 6,
+    label: "Good",
+    color: "bg-blue-100 text-blue-800",
+    borderColor: "border-blue-500",
+    bgProgress: "bg-blue-600",
+  },
+  ME2: {
+    min: 41,
+    max: 57,
+    points: 5,
+    label: "Fair",
+    color: "bg-cyan-100 text-cyan-800",
+    borderColor: "border-cyan-500",
+    bgProgress: "bg-cyan-600",
+  },
+  AE1: {
+    min: 31,
+    max: 40,
+    points: 4,
+    label: "Needs Improvement",
+    color: "bg-yellow-100 text-yellow-800",
+    borderColor: "border-yellow-500",
+    bgProgress: "bg-yellow-600",
+  },
+  AE2: {
+    min: 21,
+    max: 30,
+    points: 3,
+    label: "Below Average",
+    color: "bg-orange-100 text-orange-800",
+    borderColor: "border-orange-500",
+    bgProgress: "bg-orange-600",
+  },
+  BE1: {
+    min: 11,
+    max: 20,
+    points: 2,
+    label: "Well Below Average",
+    color: "bg-red-100 text-red-800",
+    borderColor: "border-red-500",
+    bgProgress: "bg-red-600",
+  },
+  BE2: {
+    min: 0,
+    max: 10,
+    points: 1,
+    label: "Minimal",
+    color: "bg-red-200 text-red-900",
+    borderColor: "border-red-700",
+    bgProgress: "bg-red-700",
+  },
+};
 
-const EIGHT_POINT_SCALE = [
-  { points: 8, level: 'EE 1', original: 'Exceeding Expectations', percentage: '90-100%', color: 'bg-green-100 text-green-800' },
-  { points: 7, level: 'EE 2', original: 'Exceeding Expectations', percentage: '75-89%', color: 'bg-green-100 text-green-800' },
-  { points: 6, level: 'ME 1', original: 'Meeting Expectations', percentage: '58-74%', color: 'bg-blue-100 text-blue-800' },
-  { points: 5, level: 'ME 2', original: 'Meeting Expectations', percentage: '41-57%', color: 'bg-blue-100 text-blue-800' },
-  { points: 4, level: 'AE 1', original: 'Approaching Expectations', percentage: '31-40%', color: 'bg-yellow-100 text-yellow-800' },
-  { points: 3, level: 'AE 2', original: 'Approaching Expectations', percentage: '21-30%', color: 'bg-yellow-100 text-yellow-800' },
-  { points: 2, level: 'BE 1', original: 'Below Expectations', percentage: '11-20%', color: 'bg-red-100 text-red-800' },
-  { points: 1, level: 'BE 2', original: 'Below Expectations', percentage: '0-10%', color: 'bg-red-100 text-red-800' }
-];
+const getAchievementLevel = (percentage) => {
+  if (percentage === null || percentage === undefined) return null;
+  for (const [key, level] of Object.entries(JSS_SCALE)) {
+    if (percentage >= level.min && percentage <= level.max)
+      return { ...level, code: key };
+  }
+  return { ...JSS_SCALE.BE2, code: "BE2" };
+};
 
-const CBC_COMPETENCIES = [
-  'Communication and Collaboration',
-  'Critical Thinking and Problem Solving',
-  'Creativity and Imagination',
-  'Citizenship',
-  'Digital Literacy',
-  'Learning to Learn',
-  'Self-Efficacy'
-];
+// ── Weighted display helpers ───────────────────────────────────────────────────
+// Returns the SBA contribution (raw_sba × 0.40), formatted to 2 dp
+const sbaWeighted = (sba_score) =>
+  sba_score !== null && sba_score !== undefined
+    ? (sba_score * 0.4).toFixed(2)
+    : "0.00";
 
-const CBC_VALUES = [
-  'Love', 'Responsibility', 'Respect', 'Unity', 'Peace', 'Patriotism', 'Integrity'
-];
+// Returns the summative contribution (raw_summative × 0.60), formatted to 2 dp
+const summativeWeighted = (summative_score) =>
+  (summative_score * 0.6).toFixed(2);
 
-// Notification Component
-const Notification = ({ type, message, onClose, duration = 5000 }) => {
+// Progress Bar Component
+const ProgressBar = ({ percentage, label }) => {
+  const level = getAchievementLevel(percentage);
+  const width = Math.min(100, Math.max(0, percentage));
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between items-center mb-1">
+        <span className="text-xs font-medium text-gray-700">{label}</span>
+        <span className="text-xs font-bold text-gray-900">{percentage}%</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div
+          className={`h-2 rounded-full ${level?.bgProgress || "bg-blue-600"}`}
+          style={{ width: `${width}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+// Circular Ribbon Component for Competencies
+const CircularRibbon = ({ percentage, label, code, assessed }) => {
+  const level = getAchievementLevel(percentage);
+  const radius = 35;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  if (!assessed) {
+    return (
+      <div className="flex flex-col items-center p-3">
+        <div className="relative w-24 h-24">
+          <div className="w-full h-full rounded-full bg-gray-100 border-2 border-gray-300 flex items-center justify-center">
+            <span className="text-gray-400 text-xs">N/A</span>
+          </div>
+        </div>
+        <p className="text-xs font-medium text-gray-700 mt-2 text-center">
+          {label}
+        </p>
+        <p className="text-xs text-gray-400">{code}</p>
+      </div>
+    );
+  }
+
+  const getRingColor = () => {
+    if (percentage >= 90) return "stroke-purple-600";
+    if (percentage >= 75) return "stroke-green-600";
+    if (percentage >= 58) return "stroke-blue-600";
+    if (percentage >= 41) return "stroke-cyan-600";
+    if (percentage >= 31) return "stroke-yellow-600";
+    if (percentage >= 21) return "stroke-orange-600";
+    if (percentage >= 11) return "stroke-red-600";
+    return "stroke-red-700";
+  };
+
+  return (
+    <div className="flex flex-col items-center p-3">
+      <div className="relative w-24 h-24">
+        <svg className="transform -rotate-90 w-full h-full">
+          <circle
+            cx="48"
+            cy="48"
+            r={radius}
+            stroke="#e5e7eb"
+            strokeWidth="6"
+            fill="none"
+          />
+          <circle
+            cx="48"
+            cy="48"
+            r={radius}
+            stroke="currentColor"
+            strokeWidth="6"
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            className={getRingColor()}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span
+            className={`text-lg font-bold ${level?.color.split(" ")[1] || "text-blue-600"}`}
+          >
+            {percentage}%
+          </span>
+        </div>
+      </div>
+      <p className="text-xs font-medium text-gray-700 mt-2 text-center">
+        {label}
+      </p>
+      <p className="text-xs text-gray-500">{code}</p>
+      {level && (
+        <span className={`text-xs px-2 py-0.5 rounded mt-1 ${level.color}`}>
+          {level.code}
+        </span>
+      )}
+    </div>
+  );
+};
+
+const Notification = ({ type, message, onClose }) => {
   const [visible, setVisible] = useState(true);
-
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisible(false);
       setTimeout(() => onClose?.(), 300);
-    }, duration);
+    }, 5000);
     return () => clearTimeout(timer);
-  }, [duration, onClose]);
-
-  const getStyles = () => {
-    switch (type) {
-      case 'success': return 'bg-green-50 border-green-300 text-green-800';
-      case 'error': return 'bg-red-50 border-red-300 text-red-800';
-      case 'warning': return 'bg-yellow-50 border-yellow-300 text-yellow-800';
-      default: return 'bg-blue-50 border-blue-300 text-blue-800';
-    }
-  };
-
+  }, [onClose]);
   if (!visible) return null;
-
+  const styles = {
+    success: "bg-green-50 border-green-300 text-green-800",
+    error: "bg-red-50 border-red-300 text-red-800",
+    warning: "bg-yellow-50 border-yellow-300 text-yellow-800",
+    info: "bg-blue-50 border-blue-300 text-blue-800",
+  };
   return (
-    <div className={`fixed top-4 right-4 z-50 max-w-md w-full md:w-auto ${getStyles()} border p-4 shadow-lg`}>
+    <div
+      className={`fixed top-4 right-4 z-50 max-w-md w-full border p-4 rounded shadow-lg ${styles[type]}`}
+    >
       <div className="flex items-start">
-        {type === 'success' && <CheckCircle className="h-5 w-5 text-green-600 mr-3" />}
-        {type === 'error' && <AlertCircle className="h-5 w-5 text-red-600 mr-3" />}
-        {type === 'warning' && <AlertCircle className="h-5 w-5 text-yellow-600 mr-3" />}
-        {(type === 'info' || !type) && <AlertCircle className="h-5 w-5 text-blue-600 mr-3" />}
+        {type === "success" && (
+          <CheckCircle className="h-5 w-5 text-green-600 mr-3 flex-shrink-0" />
+        )}
+        {type === "error" && (
+          <AlertCircle className="h-5 w-5 text-red-600 mr-3 flex-shrink-0" />
+        )}
         <div className="flex-1">
-          <p className="text-sm font-bold">{type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information'}</p>
+          <p className="text-sm font-semibold">
+            {type === "success"
+              ? "Success"
+              : type === "error"
+                ? "Error"
+                : type === "warning"
+                  ? "Warning"
+                  : "Info"}
+          </p>
           <p className="text-sm mt-1">{message}</p>
         </div>
-        <button onClick={() => { setVisible(false); setTimeout(() => onClose?.(), 300); }} className="ml-4 text-gray-500 hover:text-gray-700">
+        <button
+          onClick={() => {
+            setVisible(false);
+            setTimeout(() => onClose?.(), 300);
+          }}
+          className="ml-4 text-gray-500 hover:text-gray-700"
+        >
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -88,354 +271,465 @@ const Notification = ({ type, message, onClose, duration = 5000 }) => {
   );
 };
 
+const LoadingSpinner = ({ message = "Loading..." }) => (
+  <div className="flex flex-col items-center justify-center p-8">
+    <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+    <p className="mt-3 text-gray-600 text-sm">{message}</p>
+  </div>
+);
+
 function ResultsReporting() {
   const { getAuthHeaders, isAuthenticated } = useAuth();
-  const [results, setResults] = useState([]);
-  const [exams, setExams] = useState([]);
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
+  const [exams, setExams] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  
-  // UI State
-  const [activeTab, setActiveTab] = useState('analytics');
-  const [selectedExam, setSelectedExam] = useState('');
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedStream, setSelectedStream] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  
-  // Modal States
+
+  const [activeTab, setActiveTab] = useState("analytics");
+  const [selectedClass, setSelectedClass] = useState("");
+
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
-  const [showPerformanceModal, setShowPerformanceModal] = useState(false);
-  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [reportData, setReportData] = useState(null);
-  const [performanceData, setPerformanceData] = useState(null);
-  
-  // Bulk Generation
-  const [bulkGeneration, setBulkGeneration] = useState({
-    examId: '',
-    classIds: [],
-    format: 'pdf',
-    includeCompetencies: true,
-    includeValues: true
-  });
-  
-  // File Upload
+  const [studentReport, setStudentReport] = useState(null);
   const [uploadFile, setUploadFile] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  
-  // Analytics Data
+  const [uploading, setUploading] = useState(false);
+
+  const [bulkGeneration, setBulkGeneration] = useState({
+    classIds: [],
+    fileFormat: "pdf",
+    examId: "",
+  });
+
   const [analytics, setAnalytics] = useState({
-    schoolPerformance: {
-      averageScore: 0,
-      passRate: 0,
-      totalStudents: 0,
-      totalExams: 0,
-      topPerformer: null,
-      bottomPerformer: null,
-      gradeDistribution: {}
-    },
-    classPerformance: [],
-    subjectPerformance: [],
-    trendData: [],
-    comparisonData: {}
+    total_results: 0,
+    average_score: 0,
+    pass_rate: 0,
+    total_students: 0,
+    grade_distribution: {},
+    top_performers: [],
+    subject_performance: [],
+    class_performance: [],
   });
 
   const printRef = useRef();
 
   const addNotification = (type, message) => {
     const id = Date.now();
-    setNotifications(prev => [...prev, { id, type, message }]);
+    setNotifications((prev) => [...prev, { id, type, message }]);
+    setTimeout(
+      () => setNotifications((prev) => prev.filter((n) => n.id !== id)),
+      5000,
+    );
   };
-
-  const removeNotification = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  // Grade Levels Configuration
-  const gradeLevels = [
-    { id: 'pp1', name: 'Pre-Primary 1', code: 'PP1', levelType: 'early-years', order: 1, numericLevel: 0 },
-    { id: 'pp2', name: 'Pre-Primary 2', code: 'PP2', levelType: 'early-years', order: 2, numericLevel: 0 },
-    { id: '1', name: 'Grade 1', code: 'G1', levelType: 'early-years', order: 3, numericLevel: 1 },
-    { id: '2', name: 'Grade 2', code: 'G2', levelType: 'early-years', order: 4, numericLevel: 2 },
-    { id: '3', name: 'Grade 3', code: 'G3', levelType: 'early-years', order: 5, numericLevel: 3 },
-    { id: '4', name: 'Grade 4', code: 'G4', levelType: 'primary', order: 6, numericLevel: 4 },
-    { id: '5', name: 'Grade 5', code: 'G5', levelType: 'primary', order: 7, numericLevel: 5 },
-    { id: '6', name: 'Grade 6', code: 'G6', levelType: 'primary', order: 8, numericLevel: 6 },
-    { id: '7', name: 'Grade 7', code: 'G7', levelType: 'junior', order: 9, numericLevel: 7 },
-    { id: '8', name: 'Grade 8', code: 'G8', levelType: 'junior', order: 10, numericLevel: 8 },
-    { id: '9', name: 'Grade 9', code: 'G9', levelType: 'junior', order: 11, numericLevel: 9 }
-  ];
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      addNotification('error', 'Please login to access results');
-      return;
-    }
-    fetchData();
+    if (!isAuthenticated) return;
+    fetchInitialData();
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (results.length > 0 && exams.length > 0) {
-      calculateAnalytics();
-    }
-  }, [results, exams, selectedExam, selectedClass, selectedStream, selectedSubject]);
+    if (isAuthenticated) fetchAnalytics();
+  }, [selectedClass, isAuthenticated]);
 
-  const fetchData = async () => {
+  const fetchInitialData = async () => {
     setIsLoading(true);
     try {
-      const [resultsRes, examsRes, classesRes, studentsRes, teachersRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/registrar/results/`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}/api/registrar/exams/`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}/api/registrar/classes/`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}/api/registrar/students/`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE_URL}/api/registrar/teachers/`, { headers: getAuthHeaders() })
+      const [classesRes, studentsRes, examsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/registrar/classes/`, {
+          headers: getAuthHeaders(),
+        }),
+        fetch(`${API_BASE_URL}/api/registrar/students/`, {
+          headers: getAuthHeaders(),
+        }),
+        fetch(`${API_BASE_URL}/api/registrar/exams/`, {
+          headers: getAuthHeaders(),
+        }),
       ]);
-
-      const resultsData = await resultsRes.json();
-      const examsData = await examsRes.json();
       const classesData = await classesRes.json();
       const studentsData = await studentsRes.json();
-      const teachersData = await teachersRes.json();
+      const examsData = await examsRes.json();
 
-      if (resultsData.success) setResults(resultsData.data);
-      if (examsData.success) setExams(examsData.data.filter(e => e.status === 'published'));
-      if (classesData.success) setClasses(classesData.data);
-      if (studentsData.success) setStudents(studentsData.data);
-      if (teachersData.success) setTeachers(teachersData.data);
+      if (classesData.success) setClasses(classesData.data || []);
+      if (studentsData.success) setStudents(studentsData.data || []);
+      if (examsData.success) setExams(examsData.data || []);
     } catch (error) {
-      console.error('Error fetching data:', error);
-      addNotification('error', 'Failed to connect to backend server');
+      addNotification("error", "Failed to connect to server.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const calculateAnalytics = () => {
-    let filteredResults = [...results];
-    
-    if (selectedExam) {
-      filteredResults = filteredResults.filter(r => r.exam_id == selectedExam);
-    }
-    if (selectedClass) {
-      filteredResults = filteredResults.filter(r => r.class_id == selectedClass);
-    }
-    if (selectedSubject) {
-      filteredResults = filteredResults.filter(r => r.subject === selectedSubject);
-    }
+  const fetchAnalytics = async () => {
+    try {
+      let url = `${API_BASE_URL}/api/registrar/resultsreport/analytics/`;
+      const params = new URLSearchParams();
+      if (selectedClass) params.append("class_id", selectedClass);
+      const qs = params.toString();
+      if (qs) url += `?${qs}`;
 
-    // School Performance
-    const scores = filteredResults.map(r => r.score);
-    const avgScore = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-    const passed = filteredResults.filter(r => r.score >= 50).length;
-    const passRate = filteredResults.length ? (passed / filteredResults.length) * 100 : 0;
+      const response = await fetch(url, { headers: getAuthHeaders() });
+      const data = await response.json();
+      if (data.success) setAnalytics(data.data);
+    } catch (error) {
+      addNotification("error", "Failed to fetch analytics");
+    }
+  };
 
-    // Grade Distribution
-    const gradeDist = {};
-    EIGHT_POINT_SCALE.forEach(grade => {
-      const count = filteredResults.filter(r => {
-        if (grade.percentage === '90-100%') return r.score >= 90;
-        if (grade.percentage === '75-89%') return r.score >= 75 && r.score < 90;
-        if (grade.percentage === '58-74%') return r.score >= 58 && r.score < 75;
-        if (grade.percentage === '41-57%') return r.score >= 41 && r.score < 58;
-        if (grade.percentage === '31-40%') return r.score >= 31 && r.score < 41;
-        if (grade.percentage === '21-30%') return r.score >= 21 && r.score < 31;
-        if (grade.percentage === '11-20%') return r.score >= 11 && r.score < 21;
-        return r.score < 11;
-      }).length;
-      gradeDist[grade.level] = count;
-    });
-
-    // Class Performance
-    const classPerf = {};
-    classes.forEach(cls => {
-      const classResults = filteredResults.filter(r => r.class_id === cls.id);
-      if (classResults.length) {
-        const classScores = classResults.map(r => r.score);
-        classPerf[cls.id] = {
-          className: cls.class_name,
-          average: classScores.reduce((a, b) => a + b, 0) / classScores.length,
-          count: classResults.length,
-          passRate: (classResults.filter(r => r.score >= 50).length / classResults.length) * 100
-        };
+  const fetchStudentCompetencies = async (studentId) => {
+    try {
+      const termRes = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/terms/?is_current=true`,
+        { headers: getAuthHeaders() },
+      );
+      const termData = await termRes.json();
+      let termId = null,
+        academicYearId = null;
+      if (termData.success && termData.data?.length > 0) {
+        termId = termData.data[0].id;
+        academicYearId = termData.data[0].academic_year?.id;
       }
-    });
+      const coreCompRes = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/core-competencies/`,
+        { headers: getAuthHeaders() },
+      );
+      const coreCompData = await coreCompRes.json();
+      const coreCompetencies = coreCompData.success ? coreCompData.data : [];
 
-    // Subject Performance
-    const subjects = [...new Set(filteredResults.map(r => r.subject))];
-    const subjectPerf = subjects.map(subject => {
-      const subjectResults = filteredResults.filter(r => r.subject === subject);
-      const subjectScores = subjectResults.map(r => r.score);
-      return {
-        subject,
-        average: subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length,
-        count: subjectResults.length,
-        highest: Math.max(...subjectScores),
-        lowest: Math.min(...subjectScores)
-      };
-    }).sort((a, b) => b.average - a.average);
+      let url = `${API_BASE_URL}/api/registrar/academic/student-portfolios/?student=${studentId}`;
+      if (termId) url += `&term=${termId}`;
+      if (academicYearId) url += `&academic_year=${academicYearId}`;
+      const response = await fetch(url, { headers: getAuthHeaders() });
+      const data = await response.json();
 
-    setAnalytics({
-      schoolPerformance: {
-        averageScore: Math.round(avgScore * 100) / 100,
-        passRate: Math.round(passRate * 100) / 100,
-        totalResults: filteredResults.length,
-        totalStudents: new Set(filteredResults.map(r => r.student_id)).size,
-        gradeDistribution: gradeDist
-      },
-      classPerformance: Object.values(classPerf).sort((a, b) => b.average - a.average),
-      subjectPerformance: subjectPerf,
-      topSubjects: subjectPerf.slice(0, 3),
-      bottomSubjects: subjectPerf.slice(-3)
-    });
-  };
-
-  const getGradeLevel = (student) => {
-    const classObj = classes.find(c => c.id == student?.current_class);
-    const className = classObj?.class_name || '';
-    if (className.includes('PP') || className.includes('Pre-Primary')) return 'early_years';
-    if (['1', '2', '3'].some(g => className.includes(g))) return 'lower_primary';
-    if (['4', '5', '6'].some(g => className.includes(g))) return 'upper_primary';
-    if (['7', '8', '9'].some(g => className.includes(g))) return 'junior';
-    return 'upper_primary';
-  };
-
-  const calculateGrade = (percentage, gradeLevel) => {
-    if (gradeLevel === 'early_years' || gradeLevel === 'lower_primary') {
-      if (percentage >= 90) return FOUR_POINT_SCALE[0];
-      if (percentage >= 75) return FOUR_POINT_SCALE[1];
-      if (percentage >= 58) return FOUR_POINT_SCALE[2];
-      return FOUR_POINT_SCALE[3];
-    } else {
-      if (percentage >= 90) return EIGHT_POINT_SCALE[0];
-      if (percentage >= 75) return EIGHT_POINT_SCALE[1];
-      if (percentage >= 58) return EIGHT_POINT_SCALE[2];
-      if (percentage >= 41) return EIGHT_POINT_SCALE[3];
-      if (percentage >= 31) return EIGHT_POINT_SCALE[4];
-      if (percentage >= 21) return EIGHT_POINT_SCALE[5];
-      if (percentage >= 11) return EIGHT_POINT_SCALE[6];
-      return EIGHT_POINT_SCALE[7];
+      const competencyMap = new Map();
+      if (data.success && data.data) {
+        data.data.forEach((portfolio) => {
+          if (portfolio.core_competency) {
+            competencyMap.set(portfolio.core_competency.id, {
+              score: portfolio.percentage,
+              level: portfolio.sub_level,
+              level_label: portfolio.rating,
+              comment: portfolio.teacher_comment,
+            });
+          }
+        });
+      }
+      return coreCompetencies.map((comp) => ({
+        id: comp.id,
+        name: comp.name,
+        code: comp.code,
+        ...competencyMap.get(comp.id),
+        assessed: competencyMap.has(comp.id),
+      }));
+    } catch (error) {
+      console.error("Failed to fetch competencies:", error);
+      return [];
     }
   };
 
-  const generateStudentReport = (student) => {
-    const studentResults = results.filter(r => r.student_id === student.id);
-    const exam = exams.find(e => e.id == selectedExam);
-    const gradeLevel = getGradeLevel(student);
-    
-    const subjectGrades = [];
-    const subjects = [...new Set(studentResults.map(r => r.subject))];
-    
-    subjects.forEach(subject => {
-      const subjectResults = studentResults.filter(r => r.subject === subject);
-      const avgScore = subjectResults.reduce((a, b) => a + b.score, 0) / subjectResults.length;
-      const grade = calculateGrade(avgScore, gradeLevel);
-      subjectGrades.push({
-        subject,
-        score: Math.round(avgScore),
-        grade: gradeLevel === 'early_years' || gradeLevel === 'lower_primary' ? grade.short : grade.level,
-        level: grade.level,
-        color: grade.color
-      });
-    });
+  const fetchStudentReport = async (student) => {
+    setSelectedStudent(student);
+    setIsGenerating(true);
+    try {
+      const [reportRes, competencies] = await Promise.all([
+        fetch(
+          `${API_BASE_URL}/api/registrar/resultsreport/student/${student.id}/`,
+          { headers: getAuthHeaders() },
+        ),
+        fetchStudentCompetencies(student.id),
+      ]);
 
-    setReportData({ student, exam, gradeLevel, subjectGrades, generatedDate: new Date().toLocaleDateString() });
-    setShowReportModal(true);
+      const reportData = await reportRes.json();
+      if (!reportData.success) {
+        addNotification("error", reportData.error || "Failed to fetch report");
+        return;
+      }
+
+      const d = reportData.data;
+
+      const allTotals = d.exams.flatMap((e) => e.subjects.map((s) => s.total));
+      const overallAvg =
+        allTotals.length > 0
+          ? Math.round(
+              (allTotals.reduce((a, b) => a + b, 0) / allTotals.length) * 100,
+            ) / 100
+          : 0;
+      const overallLevel = getAchievementLevel(overallAvg);
+
+      setStudentReport({
+        student: d.student,
+        sba_results: d.sba_results,
+        avg_sba_score: d.avg_sba_score,
+        per_subject_sba: d.per_subject_sba || {},
+        exams: d.exams,
+        summary: {
+          average_score: overallAvg,
+          level: overallLevel,
+          grade_code: overallLevel?.code,
+          grade_label: overallLevel?.label,
+        },
+        competencies,
+      });
+      setShowReportModal(true);
+    } catch (error) {
+      addNotification("error", "Failed to fetch student report");
+      console.error(error);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const generateBulkReports = async () => {
-    if (!bulkGeneration.examId || bulkGeneration.classIds.length === 0) {
-      addNotification('warning', 'Please select exam and at least one class');
+    if (bulkGeneration.classIds.length === 0) {
+      addNotification("warning", "Please select at least one class");
       return;
     }
-    
-    addNotification('info', `Generating ${bulkGeneration.classIds.length} class reports...`);
-    // Implementation for bulk report generation
-    addNotification('success', 'Bulk reports generated successfully');
+    setUploading(true);
+    addNotification(
+      "info",
+      `Generating reports for ${bulkGeneration.classIds.length} class(es)...`,
+    );
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/registrar/resultsreport/bulk-generate/`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ class_ids: bulkGeneration.classIds }),
+        },
+      );
+      const data = await response.json();
+
+      if (data.success && data.data.reports) {
+        if (bulkGeneration.fileFormat === "excel") {
+          const exportData = [];
+          data.data.reports.forEach((report) => {
+            report.exams.forEach((exam) => {
+              exam.subjects.forEach((subject) => {
+                exportData.push({
+                  "Student Name": report.student_name,
+                  "Admission No": report.admission_no,
+                  Class: report.class_name,
+                  Exam: exam.exam_title,
+                  Term: exam.term,
+                  "Academic Year": exam.academic_year,
+                  Subject: subject.subject,
+                  // Show weighted contributions in the Excel export too
+                  "SBA × 40%": sbaWeighted(subject.sba_score),
+                  "Summative × 60%": summativeWeighted(subject.summative_score),
+                  "Total Score": subject.total,
+                  Grade: subject.grade,
+                });
+              });
+            });
+          });
+          const worksheet = XLSX.utils.json_to_sheet(exportData);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Bulk Reports");
+          XLSX.writeFile(
+            workbook,
+            `bulk_reports_${new Date().toISOString().split("T")[0]}.xlsx`,
+          );
+          addNotification("success", "Excel file downloaded");
+        } else {
+          let allReportsHtml = "";
+          for (const report of data.data.reports) {
+            const allTotals = report.exams.flatMap((e) =>
+              e.subjects.map((s) => s.total),
+            );
+            const overallAvg =
+              allTotals.length > 0
+                ? Math.round(
+                    (allTotals.reduce((a, b) => a + b, 0) /
+                      allTotals.length) *
+                      100,
+                  ) / 100
+                : 0;
+            const overallLevel = getAchievementLevel(overallAvg);
+
+            const examsHtml = report.exams
+              .map((exam) => {
+                const examTotals = exam.subjects.map((s) => s.total);
+                const examAvg =
+                  examTotals.length > 0
+                    ? Math.round(
+                        (examTotals.reduce((a, b) => a + b, 0) /
+                          examTotals.length) *
+                          100,
+                      ) / 100
+                    : 0;
+                return `
+                <div style="margin-bottom:16px;">
+                  <div style="font-size:12px;font-weight:bold;color:#1e40af;margin-bottom:6px;padding:4px 8px;background:#eff6ff;border-left:3px solid #3b82f6;">
+                    ${exam.exam_title} — Term ${exam.term}, ${exam.academic_year}
+                  </div>
+                  <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                    <thead>
+                      <tr style="background:#f3f4f6;">
+                        <th style="border:1px solid #ddd;padding:6px 8px;text-align:left;">Learning Area</th>
+                        <th style="border:1px solid #ddd;padding:6px 8px;text-align:center;">SBA × 40%</th>
+                        <th style="border:1px solid #ddd;padding:6px 8px;text-align:center;">Summative × 60%</th>
+                        <th style="border:1px solid #ddd;padding:6px 8px;text-align:center;">Total (= sum)</th>
+                        <th style="border:1px solid #ddd;padding:6px 8px;text-align:center;">Level</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${exam.subjects
+                        .map(
+                          (s) => `
+                        <tr>
+                          <td style="border:1px solid #ddd;padding:6px 8px;">${s.subject}</td>
+                          <td style="border:1px solid #ddd;padding:6px 8px;text-align:center;">
+                            ${s.sba_score !== null && s.sba_score !== undefined
+                              ? (s.sba_score * 0.4).toFixed(2)
+                              : '<span style="color:#aaa;font-style:italic;">0.00</span>'}
+                          </td>
+                          <td style="border:1px solid #ddd;padding:6px 8px;text-align:center;">${(s.summative_score * 0.6).toFixed(2)}</td>
+                          <td style="border:1px solid #ddd;padding:6px 8px;text-align:center;font-weight:bold;">${s.total}</td>
+                          <td style="border:1px solid #ddd;padding:6px 8px;text-align:center;font-weight:bold;">${s.grade}</td>
+                        </tr>
+                      `,
+                        )
+                        .join("")}
+                      <tr style="background:#f9fafb;font-weight:bold;">
+                        <td style="border:1px solid #ddd;padding:6px 8px;">Exam Average</td>
+                        <td style="border:1px solid #ddd;padding:6px 8px;text-align:center;">—</td>
+                        <td style="border:1px solid #ddd;padding:6px 8px;text-align:center;">—</td>
+                        <td style="border:1px solid #ddd;padding:6px 8px;text-align:center;">${examAvg}</td>
+                        <td style="border:1px solid #ddd;padding:6px 8px;text-align:center;">${getAchievementLevel(examAvg)?.code || ""}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              `;
+              })
+              .join("");
+
+            allReportsHtml += `
+              <div style="page-break-after:always;font-family:Arial,sans-serif;padding:20px;">
+                <div style="text-align:center;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #000;">
+                  <div style="font-size:22px;font-weight:bold;">JAWABU SCHOOL</div>
+                  <div style="font-size:11px;color:#666;margin-top:2px;">Striving For Excellence</div>
+                  <div style="font-size:13px;font-weight:bold;margin-top:10px;">COMPETENCY-BASED EDUCATION (CBE) ASSESSMENT REPORT</div>
+                  <div style="font-size:10px;color:#666;">KNEC-Compliant Junior Secondary School (JSS) Report Card</div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px;background:#f5f5f5;margin-bottom:16px;border:1px solid #ddd;">
+                  <div><div style="font-size:9px;font-weight:bold;color:#666;">Full Name</div><div style="font-size:13px;font-weight:bold;">${report.student_name}</div></div>
+                  <div><div style="font-size:9px;font-weight:bold;color:#666;">Admission No</div><div style="font-size:13px;">${report.admission_no}</div></div>
+                  <div><div style="font-size:9px;font-weight:bold;color:#666;">Class</div><div style="font-size:13px;">${report.class_name}</div></div>
+                  <div><div style="font-size:9px;font-weight:bold;color:#666;">UPI Number</div><div style="font-size:13px;">${report.upi_number}</div></div>
+                  <div><div style="font-size:9px;font-weight:bold;color:#666;">Gender</div><div style="font-size:13px;">${report.gender}</div></div>
+                </div>
+                <div style="margin-bottom:16px;">
+                  <div style="font-size:13px;font-weight:bold;margin-bottom:10px;">Summative Results (All Exams)</div>
+                  ${examsHtml}
+                </div>
+                <div style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;margin-bottom:16px;">
+                  <div style="font-size:12px;font-weight:bold;">Overall Average: ${overallAvg} — ${overallLevel?.code || "N/A"} (${overallLevel?.label || ""})</div>
+                  <div style="font-size:11px;color:#666;margin-top:4px;">
+                    ${overallAvg >= 75 ? "STEM Pathway Recommended" : overallAvg >= 58 ? "Social Sciences Pathway Recommended" : "Arts & Sports Science Pathway Recommended"}
+                  </div>
+                </div>
+                <div style="text-align:center;font-size:9px;color:#999;padding-top:8px;border-top:1px solid #ddd;">
+                  System-generated KNEC-compliant report — Jawabu E-School Genesis CBE Platform
+                </div>
+              </div>
+            `;
+          }
+
+          const fullHtml = `<!DOCTYPE html><html><head><title>Bulk CBE Report Cards</title>
+            <style>@media print{body{margin:0;padding:0;}.report{page-break-after:always;}}
+            *{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;background:white;}</style>
+            </head><body>${allReportsHtml}</body></html>`;
+
+          const blob = new Blob([fullHtml], { type: "text/html" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `bulk_reports_${new Date().toISOString().split("T")[0]}.html`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          addNotification(
+            "success",
+            "HTML report generated. Open and use Ctrl+P to save as PDF.",
+          );
+        }
+      } else {
+        addNotification("error", data.error || "Failed to generate reports");
+      }
+    } catch (error) {
+      addNotification("error", "Failed to generate bulk reports");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleBulkUpload = async () => {
-    if (!uploadFile) {
-      addNotification('warning', 'Please select a file to upload');
+    if (!uploadFile || !bulkGeneration.examId) {
+      addNotification("warning", "Please select exam and file");
       return;
     }
-    
+    setUploading(true);
     const formData = new FormData();
-    formData.append('file', uploadFile);
-    formData.append('exam_id', bulkGeneration.examId);
-    
+    formData.append("file", uploadFile);
+    formData.append("exam_id", bulkGeneration.examId);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/registrar/results/bulk-upload/`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: formData
-      });
-      
+      const response = await fetch(
+        `${API_BASE_URL}/api/registrar/resultsreport/bulk-upload/`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: formData,
+        },
+      );
       const data = await response.json();
       if (data.success) {
-        addNotification('success', `Uploaded ${data.count} results successfully`);
+        addNotification(
+          "success",
+          `Uploaded ${data.saved_count} results successfully`,
+        );
         setShowBulkImportModal(false);
         setUploadFile(null);
-        await fetchData();
+        fetchAnalytics();
       } else {
-        addNotification('error', data.error || 'Failed to upload results');
+        addNotification("error", data.error || "Failed to upload results");
       }
     } catch (error) {
-      console.error('Error uploading:', error);
-      addNotification('error', 'Failed to upload file');
+      addNotification("error", "Failed to upload file");
+    } finally {
+      setUploading(false);
     }
   };
 
-  const exportToExcel = () => {
-    try {
-      const exportData = results.map(result => {
-        const student = students.find(s => s.id === result.student_id);
-        const exam = exams.find(e => e.id == result.exam_id);
-        return {
-          'Student Name': `${student?.first_name} ${student?.last_name}`,
-          'Admission No': student?.admission_no,
-          'UPI Number': student?.upi_number,
-          'Exam': exam?.title,
-          'Subject': result.subject,
-          'Score (%)': result.score,
-          'Date': result.created_at?.split('T')[0]
-        };
-      });
-
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Results');
-      XLSX.writeFile(workbook, `cbc_results_${new Date().toISOString().split('T')[0]}.xlsx`);
-      addNotification('success', `Exported ${exportData.length} results successfully`);
-    } catch (error) {
-      console.error('Error exporting:', error);
-      addNotification('error', 'Failed to export data.');
-    }
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    const printContent =
+      document.getElementById("report-content")?.innerHTML || "";
+    printWindow.document.write(`
+      <html><head><title>Student Report Card</title>
+      <style>@media print{body{margin:0;padding:0;}}*{margin:0;padding:0;box-sizing:border-box;}
+      body{font-family:Arial,sans-serif;padding:20px;background:white;}
+      .report-container{max-width:210mm;margin:0 auto;}</style>
+      </head><body><div class="report-container">${printContent}</div>
+      <script>window.print();</script></body></html>`);
+    printWindow.document.close();
   };
 
   const downloadTemplate = () => {
     const template = [
-      { student_id: 'STU001', subject: 'Mathematics', score: 85, exam_id: 'EXAM001' },
-      { student_id: 'STU001', subject: 'English', score: 78, exam_id: 'EXAM001' }
+      { student_id: "ADM001", subject: "Mathematics", score: 85 },
+      { student_id: "ADM001", subject: "English", score: 78 },
     ];
     const worksheet = XLSX.utils.json_to_sheet(template);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template');
-    XLSX.writeFile(workbook, 'results_upload_template.xlsx');
-    addNotification('success', 'Template downloaded');
-  };
-
-  const handlePrint = () => {
-    const printContent = printRef.current.innerHTML;
-    const originalContent = document.body.innerHTML;
-    document.body.innerHTML = printContent;
-    window.print();
-    document.body.innerHTML = originalContent;
-    window.location.reload();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
+    XLSX.writeFile(workbook, "cbe_results_template.xlsx");
+    addNotification("success", "Template downloaded");
   };
 
   if (!isAuthenticated) {
@@ -443,9 +737,16 @@ function ResultsReporting() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
-          <p className="text-gray-600 mb-4">Please login to access results</p>
-          <a href="/login" className="px-6 py-3 bg-blue-600 text-white font-medium border border-blue-700 inline-block hover:bg-blue-700">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Authentication Required
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Please login to access the results reporting system
+          </p>
+          <a
+            href="/login"
+            className="px-6 py-3 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 inline-block"
+          >
             Go to Login
           </a>
         </div>
@@ -453,30 +754,48 @@ function ResultsReporting() {
     );
   }
 
+  const filteredStudents = students.filter(
+    (s) => !selectedClass || s.current_class === selectedClass,
+  );
+
   return (
-    <div className="mx-auto p-6 bg-gray-50 min-h-screen">
-      {/* Notifications */}
-      {notifications.map(notification => (
-        <Notification key={notification.id} type={notification.type} message={notification.message} onClose={() => removeNotification(notification.id)} />
+    <div className="p-6 bg-gray-50 min-h-screen">
+      {notifications.map((notification) => (
+        <Notification
+          key={notification.id}
+          type={notification.type}
+          message={notification.message}
+          onClose={() =>
+            setNotifications((prev) =>
+              prev.filter((n) => n.id !== notification.id),
+            )
+          }
+        />
       ))}
 
       {/* Header */}
-      <div className="mb-8 bg-green-700 p-6">
+      <div className="mb-6 bg-green-700 p-5 rounded">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">CBC Results & Analytics</h1>
-            <p className="text-blue-100 mt-1">Competency-Based Curriculum assessment reporting and analytics</p>
+            <h1 className="text-2xl font-bold text-white">
+              KNEC-Compliant Report Card System
+            </h1>
+            <p className="text-green-100 mt-1">
+              Competency-Based Education (CBE) Assessment Reporting
+            </p>
           </div>
-          <div className="flex gap-3">
-            <button onClick={() => setShowBulkImportModal(true)} className="px-5 py-2 bg-green-600 text-white text-sm font-medium border border-green-700 hover:bg-green-700">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowBulkImportModal(true)}
+              className="px-4 py-2 bg-white text-green-700 text-sm font-medium rounded hover:bg-gray-100"
+            >
               <Upload className="h-4 w-4 inline mr-2" />
               Bulk Import
             </button>
-            <button onClick={exportToExcel} className="px-5 py-2 bg-gray-600 text-white text-sm font-medium border border-gray-700 hover:bg-gray-700">
-              <Download className="h-4 w-4 inline mr-2" />
-              Export
-            </button>
-            <button onClick={fetchData} className="px-5 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700">
+            <button
+              onClick={fetchInitialData}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
+            >
               <RefreshCw className="h-4 w-4 inline mr-2" />
               Refresh
             </button>
@@ -484,285 +803,263 @@ function ResultsReporting() {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-gray-300 pb-4">
-        <button 
-          onClick={() => setActiveTab('analytics')} 
-          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'analytics' ? 'bg-blue-700 text-white' : 'bg-gray-200 text-gray-800'}`}
-        >
-          <BarChart3 className="h-4 w-4 inline mr-2" />
-          School Analytics
-        </button>
-        <button 
-          onClick={() => setActiveTab('classes')} 
-          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'classes' ? 'bg-blue-700 text-white' : 'bg-gray-200 text-gray-800'}`}
-        >
-          <Users className="h-4 w-4 inline mr-2" />
-          Class Performance
-        </button>
-        <button 
-          onClick={() => setActiveTab('students')} 
-          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'students' ? 'bg-blue-700 text-white' : 'bg-gray-200 text-gray-800'}`}
-        >
-          <GraduationCap className="h-4 w-4 inline mr-2" />
-          Student Reports
-        </button>
-        <button 
-          onClick={() => setActiveTab('bulk')} 
-          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'bulk' ? 'bg-blue-700 text-white' : 'bg-gray-200 text-gray-800'}`}
-        >
-          <FileText className="h-4 w-4 inline mr-2" />
-          Bulk Generation
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white border border-gray-300 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Exam</label>
-            <select value={selectedExam} onChange={(e) => setSelectedExam(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white">
-              <option value="">All Exams</option>
-              {exams.map(exam => (
-                <option key={exam.id} value={exam.id}>{exam.title}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Class</label>
-            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white">
-              <option value="">All Classes</option>
-              {classes.map(cls => (
-                <option key={cls.id} value={cls.id}>{cls.class_name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Subject</label>
-            <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-400 bg-white">
-              <option value="">All Subjects</option>
-              <option value="Mathematics">Mathematics</option>
-              <option value="English">English</option>
-              <option value="Kiswahili">Kiswahili</option>
-              <option value="Science">Science</option>
-              <option value="Integrated Science">Integrated Science</option>
-            </select>
-          </div>
-        </div>
-        <div className="mt-3 flex justify-between items-center">
-          <button onClick={() => { setSelectedExam(''); setSelectedClass(''); setSelectedSubject(''); }} className="text-xs text-blue-700 hover:text-blue-900 font-bold">
-            Clear All Filters
+      {/* Tabs */}
+      <div className="mb-5 flex flex-wrap gap-1 border-b border-gray-300 pb-3">
+        {[
+          { id: "analytics", label: "School Analytics", icon: BarChart3 },
+          { id: "students", label: "Student Reports", icon: GraduationCap },
+          { id: "bulk", label: "Bulk Generation", icon: FileText },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium rounded ${activeTab === tab.id ? "bg-blue-600 text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}
+          >
+            <tab.icon className="h-4 w-4 inline mr-2" />
+            {tab.label}
           </button>
-          {isLoading && <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />}
+        ))}
+      </div>
+
+      {/* Class filter */}
+      <div className="bg-white border border-gray-300 rounded p-4 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Grade / Class
+            </label>
+            <select
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-400 rounded bg-white"
+            >
+              <option value="">All Classes</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.class_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={() => setSelectedClass("")}
+              className="text-xs text-blue-600 hover:text-blue-800 font-bold"
+            >
+              Clear Filter
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* TAB 1: SCHOOL ANALYTICS */}
-      {activeTab === 'analytics' && (
-        <div>
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white border border-gray-300 p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Average Score</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{analytics.schoolPerformance.averageScore}%</p>
-                </div>
-                <div className="w-12 h-12 bg-blue-100 flex items-center justify-center border border-blue-200">
-                  <TrendingUp className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white border border-gray-300 p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Pass Rate</p>
-                  <p className="text-2xl font-bold text-green-700 mt-1">{analytics.schoolPerformance.passRate}%</p>
-                </div>
-                <div className="w-12 h-12 bg-green-100 flex items-center justify-center border border-green-200">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white border border-gray-300 p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Students</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{analytics.schoolPerformance.totalStudents}</p>
-                </div>
-                <div className="w-12 h-12 bg-purple-100 flex items-center justify-center border border-purple-200">
-                  <Users className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white border border-gray-300 p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Results</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{analytics.schoolPerformance.totalResults}</p>
-                </div>
-                <div className="w-12 h-12 bg-orange-100 flex items-center justify-center border border-orange-200">
-                  <FileText className="h-6 w-6 text-orange-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Grade Distribution */}
-          <div className="bg-white border border-gray-300 mb-6">
-            <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
-              <h2 className="text-md font-bold text-gray-900">Grade Distribution (8-Point Scale)</h2>
-              <p className="text-sm text-gray-600 mt-0.5">Performance breakdown by achievement level</p>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {EIGHT_POINT_SCALE.map(grade => (
-                  <div key={grade.level} className="text-center p-3 border border-gray-200">
-                    <div className={`${grade.color} px-3 py-2 font-bold text-lg`}>{grade.level}</div>
-                    <p className="text-2xl font-bold text-gray-800 mt-2">{analytics.schoolPerformance.gradeDistribution[grade.level] || 0}</p>
-                    <p className="text-xs text-gray-500 mt-1">{grade.percentage}</p>
+      {/* ── Analytics Tab ──────────────────────────────────────────────────────── */}
+      {activeTab === "analytics" &&
+        (isLoading ? (
+          <LoadingSpinner message="Loading analytics data..." />
+        ) : (
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
+              {[
+                {
+                  label: "Average Score",
+                  value: `${Math.round(analytics.average_score)}%`,
+                  icon: TrendingUp,
+                },
+                {
+                  label: "Pass Rate",
+                  value: `${Math.round(analytics.pass_rate)}%`,
+                  icon: CheckCircle,
+                },
+                {
+                  label: "Total Students",
+                  value: analytics.total_students,
+                  icon: Users,
+                },
+                {
+                  label: "Total Results",
+                  value: analytics.total_results,
+                  icon: FileText,
+                },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="bg-white border border-gray-300 rounded p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">{stat.label}</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">
+                        {stat.value}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
+                      <stat.icon className="h-5 w-5 text-gray-600" />
+                    </div>
                   </div>
-                ))}
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-white border border-gray-300 rounded mb-5">
+              <div className="border-b border-gray-300 px-5 py-3 bg-gray-50">
+                <h2 className="text-md font-bold text-gray-900">
+                  Performance Level Distribution (JSS 8-Point Scale)
+                </h2>
+              </div>
+              <div className="p-5">
+                <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+                  {Object.entries(JSS_SCALE).map(([key, level]) => (
+                    <div
+                      key={key}
+                      className="text-center p-2 border border-gray-300 rounded"
+                    >
+                      <div
+                        className={`${level.color} px-2 py-1 font-bold text-sm rounded`}
+                      >
+                        {key}
+                      </div>
+                      <p className="text-lg font-bold text-gray-800 mt-1">
+                        {analytics.grade_distribution?.[key] || 0}
+                      </p>
+                      <p className="text-xs text-gray-500">{level.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-300 rounded mb-5">
+              <div className="border-b border-gray-300 px-5 py-3 bg-gray-50">
+                <h2 className="text-md font-bold text-gray-900">
+                  Top Performing Students
+                </h2>
+              </div>
+              <div className="overflow-x-auto p-4">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr className="border-b border-gray-300">
+                      <th className="px-4 py-2 text-left font-bold">
+                        Student Name
+                      </th>
+                      <th className="px-4 py-2 text-left font-bold">
+                        Admission No
+                      </th>
+                      <th className="px-4 py-2 text-center font-bold">
+                        Average Score
+                      </th>
+                      <th className="px-4 py-2 text-center font-bold">
+                        Performance Level
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.top_performers?.map((student, idx) => {
+                      const level = getAchievementLevel(student.average_score);
+                      return (
+                        <tr
+                          key={idx}
+                          className="border-b border-gray-200 hover:bg-gray-50"
+                        >
+                          <td className="px-4 py-2">{student.name}</td>
+                          <td className="px-4 py-2">{student.admission_no}</td>
+                          <td className="px-4 py-2 text-center font-bold text-green-700">
+                            {Math.round(student.average_score)}%
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <span
+                              className={`px-2 py-1 text-xs font-bold rounded ${level?.color || "bg-gray-100"}`}
+                            >
+                              {level?.code || "ME1"} - {level?.label || "Good"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
+        ))}
 
-          {/* Subject Performance */}
-          <div className="bg-white border border-gray-300">
-            <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
-              <h2 className="text-md font-bold text-gray-900">Subject Performance Analysis</h2>
-              <p className="text-sm text-gray-600 mt-0.5">Average scores by learning area</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Subject</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Average Score</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Highest</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Lowest</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Performance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {analytics.subjectPerformance.map((subject, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-4 py-3 font-medium">{subject.subject}</td>
-                      <td className="border border-gray-300 px-4 py-3 text-center font-bold">{subject.average}%</td>
-                      <td className="border border-gray-300 px-4 py-3 text-center text-green-600">{subject.highest}%</td>
-                      <td className="border border-gray-300 px-4 py-3 text-center text-red-600">{subject.lowest}%</td>
-                      <td className="border border-gray-300 px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-gray-200 h-2">
-                            <div className="bg-blue-600 h-2" style={{ width: `${subject.average}%` }}></div>
-                          </div>
-                          <span className="text-xs text-gray-600">{Math.round(subject.average)}%</span>
-                        </div>
-                       </td>
-                    </tr>
-                  ))}
-                </tbody>
-               </table>
-            </div>
+      {/* ── Student Reports Tab ───────────────────────────────────────────────── */}
+      {activeTab === "students" && (
+        <div className="bg-white border border-gray-300 rounded">
+          <div className="border-b border-gray-300 px-5 py-3 bg-gray-50">
+            <h2 className="text-md font-bold text-gray-900">
+              Individual Student Reports
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Full report card: per-subject SBA avg × 40% + summative × 60% =
+              Total. Subjects with no SBA count 0 for the 40% component.
+            </p>
           </div>
-        </div>
-      )}
-
-      {/* TAB 2: CLASS PERFORMANCE */}
-      {activeTab === 'classes' && (
-        <div>
-          <div className="bg-white border border-gray-300">
-            <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
-              <h2 className="text-md font-bold text-gray-900">Class Performance Comparison</h2>
-              <p className="text-sm text-gray-600 mt-0.5">Average scores and pass rates by stream</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Stream</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Students</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Average Score</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Pass Rate</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Performance Trend</th>
-                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {analytics.classPerformance.map((cls, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-4 py-3 font-medium">{cls.className}</td>
-                      <td className="border border-gray-300 px-4 py-3 text-center">{cls.count}</td>
-                      <td className="border border-gray-300 px-4 py-3 text-center font-bold">{Math.round(cls.average)}%</td>
-                      <td className="border border-gray-300 px-4 py-3 text-center">
-                        <span className={`px-2 py-1 text-xs font-medium ${cls.passRate >= 80 ? 'bg-green-100 text-green-800' : cls.passRate >= 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
-                          {Math.round(cls.passRate)}%
-                        </span>
-                      </td>
-                      <td className="border border-gray-300 px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-gray-200 h-2">
-                            <div className={`h-2 ${cls.average >= 70 ? 'bg-green-600' : cls.average >= 50 ? 'bg-yellow-600' : 'bg-red-600'}`} style={{ width: `${cls.average}%` }}></div>
-                          </div>
-                          {cls.average >= 70 ? <ArrowUp className="h-3 w-3 text-green-600" /> : <ArrowDown className="h-3 w-3 text-red-600" />}
-                        </div>
-                      </td>
-                      <td className="border border-gray-300 px-4 py-3 text-center">
-                        <button className="px-3 py-1 bg-blue-600 text-white text-xs font-medium border border-blue-700 hover:bg-blue-700">
-                          View Details
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: STUDENT REPORTS */}
-      {activeTab === 'students' && (
-        <div className="bg-white border border-gray-300">
-          <div className="border-b border-gray-300 px-6 py-4 bg-gray-100">
-            <h2 className="text-md font-bold text-gray-900">Individual Student Reports</h2>
-            <p className="text-sm text-gray-600 mt-0.5">Generate and download CBC assessment reports</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Admission No</th>
-                  <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700">Student Name</th>
-                  <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700 hidden md:table-cell">UPI Number</th>
-                  <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-700 hidden sm:table-cell">Class</th>
-                  <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-700">Action</th>
+          <div className="overflow-x-auto p-4">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr className="border-b border-gray-300">
+                  <th className="px-4 py-2 text-left font-bold">
+                    Admission No
+                  </th>
+                  <th className="px-4 py-2 text-left font-bold">
+                    Student Name
+                  </th>
+                  <th className="px-4 py-2 text-left hidden md:table-cell font-bold">
+                    UPI Number
+                  </th>
+                  <th className="px-4 py-2 text-left hidden sm:table-cell font-bold">
+                    Class
+                  </th>
+                  <th className="px-4 py-2 text-center font-bold">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan="5" className="border border-gray-300 px-4 py-12 text-center text-gray-500">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                      Loading students...
+                    <td colSpan="5" className="px-4 py-12 text-center">
+                      <Loader2 className="h-6 w-6 text-blue-600 animate-spin mx-auto" />
                     </td>
                   </tr>
-                ) : students.length === 0 ? (
+                ) : filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="border border-gray-300 px-4 py-12 text-center text-gray-400">
+                    <td
+                      colSpan="5"
+                      className="px-4 py-12 text-center text-gray-400"
+                    >
                       No students found
                     </td>
                   </tr>
                 ) : (
-                  students.map(student => (
-                    <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-4 py-3 font-mono text-xs">{student.admission_no}</td>
-                      <td className="border border-gray-300 px-4 py-3 font-medium">{student.first_name} {student.last_name}</td>
-                      <td className="border border-gray-300 px-4 py-3 hidden md:table-cell text-xs">{student.upi_number || 'N/A'}</td>
-                      <td className="border border-gray-300 px-4 py-3 hidden sm:table-cell">{classes.find(c => c.id == student.current_class)?.class_name}</td>
-                      <td className="border border-gray-300 px-4 py-3 text-center">
-                        <button onClick={() => generateStudentReport(student)} className="px-3 py-1 bg-blue-600 text-white text-xs font-medium border border-blue-700 hover:bg-blue-700">
-                          <Eye className="h-3 w-3 inline mr-1" />
+                  filteredStudents.map((student) => (
+                    <tr
+                      key={student.id}
+                      className="border-b border-gray-200 hover:bg-gray-50"
+                    >
+                      <td className="px-4 py-2 font-mono text-xs">
+                        {student.admission_no}
+                      </td>
+                      <td className="px-4 py-2 font-medium">
+                        {student.first_name} {student.last_name}
+                      </td>
+                      <td className="px-4 py-2 hidden md:table-cell text-xs">
+                        {student.upi_number || "N/A"}
+                      </td>
+                      <td className="px-4 py-2 hidden sm:table-cell">
+                        {classes.find((c) => c.id === student.current_class)
+                          ?.class_name || "N/A"}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <button
+                          onClick={() => fetchStudentReport(student)}
+                          disabled={isGenerating}
+                          className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-400"
+                        >
+                          {isGenerating &&
+                          selectedStudent?.id === student.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
+                          ) : (
+                            <Eye className="h-3 w-3 inline mr-1" />
+                          )}
                           Generate Report
                         </button>
                       </td>
@@ -775,146 +1072,163 @@ function ResultsReporting() {
         </div>
       )}
 
-      {/* TAB 4: BULK GENERATION */}
-      {activeTab === 'bulk' && (
-        <div className="bg-white border border-gray-300 p-6">
-          <h2 className="text-md font-bold text-gray-900 mb-2">Bulk Report Generation</h2>
-          <p className="text-sm text-gray-600 mb-6">Generate reports for multiple students or entire classes at once</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      {/* ── Bulk Generation Tab ───────────────────────────────────────────────── */}
+      {activeTab === "bulk" && (
+        <div className="bg-white border border-gray-300 rounded p-5">
+          <h2 className="text-md font-bold text-gray-900 mb-2">
+            Bulk Report Card Generation
+          </h2>
+          <p className="text-sm text-gray-600 mb-5">
+            Generate full CBE report cards (per-subject SBA + all summative
+            exams) for multiple students at once
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Select Exam</label>
-              <select 
-                value={bulkGeneration.examId}
-                onChange={(e) => setBulkGeneration({ ...bulkGeneration, examId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
-              >
-                <option value="">Select Exam</option>
-                {exams.map(exam => (
-                  <option key={exam.id} value={exam.id}>{exam.title}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Select Classes</label>
-              <select 
-                multiple 
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Select Classes (Ctrl/Cmd + Click)
+              </label>
+              <select
+                multiple
                 value={bulkGeneration.classIds}
-                onChange={(e) => setBulkGeneration({ ...bulkGeneration, classIds: Array.from(e.target.selectedOptions, opt => opt.value) })}
-                className="w-full px-3 py-2 border border-gray-400 text-sm bg-white h-32"
+                onChange={(e) =>
+                  setBulkGeneration({
+                    ...bulkGeneration,
+                    classIds: Array.from(
+                      e.target.selectedOptions,
+                      (opt) => opt.value,
+                    ),
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-400 rounded text-sm bg-white h-28"
               >
-                {classes.map(cls => (
-                  <option key={cls.id} value={cls.id}>{cls.class_name}</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.class_name}
+                  </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">Hold Ctrl to select multiple classes</p>
             </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Report Format</label>
-              <select 
-                value={bulkGeneration.format}
-                onChange={(e) => setBulkGeneration({ ...bulkGeneration, format: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Download Format
+              </label>
+              <select
+                value={bulkGeneration.fileFormat}
+                onChange={(e) =>
+                  setBulkGeneration({
+                    ...bulkGeneration,
+                    fileFormat: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-400 rounded text-sm bg-white"
               >
-                <option value="pdf">PDF Document</option>
-                <option value="excel">Excel Spreadsheet</option>
-                <option value="both">Both PDF & Excel</option>
+                <option value="pdf">PDF (Printable HTML — save as PDF)</option>
+                <option value="excel">Excel Spreadsheet (.xlsx)</option>
               </select>
-            </div>
-            <div className="flex items-end gap-4">
-              <label className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  checked={bulkGeneration.includeCompetencies}
-                  onChange={(e) => setBulkGeneration({ ...bulkGeneration, includeCompetencies: e.target.checked })}
-                  className="mr-2"
-                />
-                <span className="text-sm">Include Competencies Assessment</span>
-              </label>
-              <label className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  checked={bulkGeneration.includeValues}
-                  onChange={(e) => setBulkGeneration({ ...bulkGeneration, includeValues: e.target.checked })}
-                  className="mr-2"
-                />
-                <span className="text-sm">Include Values Assessment</span>
-              </label>
+              <p className="text-xs text-gray-500 mt-1">
+                PDF generates complete CBE report cards with all exam sections
+              </p>
             </div>
           </div>
-          
-          <div className="mt-6 p-4 bg-gray-100 border border-gray-300">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-              <div>
-                <p className="font-bold text-gray-800">Bulk Generation Notice</p>
-                <p className="text-sm text-gray-700 mt-1">This will generate reports for all students in the selected classes. The process may take a few minutes depending on the number of students.</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-6 flex justify-end gap-3">
-            <button onClick={generateBulkReports} className="px-5 py-2 bg-blue-700 text-white text-sm font-bold border border-blue-800 hover:bg-blue-800">
-              Generate Bulk Reports
+          <div className="mt-5 flex justify-end">
+            <button
+              onClick={generateBulkReports}
+              disabled={uploading || bulkGeneration.classIds.length === 0}
+              className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              {uploading ? (
+                <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+              ) : (
+                <Download className="h-4 w-4 inline mr-2" />
+              )}
+              Generate & Download Reports
             </button>
           </div>
         </div>
       )}
 
-      {/* Bulk Import Modal */}
+      {/* ── Bulk Import Modal ─────────────────────────────────────────────────── */}
       {showBulkImportModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowBulkImportModal(false)}>
-          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
-              <h3 className="text-md font-bold text-gray-900">Bulk Import Results</h3>
-              <button onClick={() => setShowBulkImportModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowBulkImportModal(false)}
+        >
+          <div
+            className="bg-white max-w-md w-full mx-4 border border-gray-400 rounded"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-3 border-b border-gray-300 bg-gray-50 flex justify-between items-center rounded-t">
+              <h3 className="text-md font-bold text-gray-900">
+                Bulk Import Results
+              </h3>
+              <button
+                onClick={() => setShowBulkImportModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-xl"
+              >
+                &times;
+              </button>
             </div>
-            <div className="p-6">
+            <div className="p-5">
               <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-2">Select Exam</label>
-                <select 
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Select Exam
+                </label>
+                <select
                   value={bulkGeneration.examId}
-                  onChange={(e) => setBulkGeneration({ ...bulkGeneration, examId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  onChange={(e) =>
+                    setBulkGeneration({
+                      ...bulkGeneration,
+                      examId: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-400 rounded text-sm bg-white"
                 >
                   <option value="">Select Exam</option>
-                  {exams.map(exam => (
-                    <option key={exam.id} value={exam.id}>{exam.title}</option>
+                  {exams.map((exam) => (
+                    <option key={exam.id} value={exam.id}>
+                      {exam.title}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-2">Upload File</label>
-                <input 
-                  type="file" 
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Upload Excel/CSV File
+                </label>
+                <input
+                  type="file"
                   accept=".xlsx,.xls,.csv"
                   onChange={(e) => setUploadFile(e.target.files[0])}
-                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
+                  className="w-full px-3 py-2 border border-gray-400 rounded text-sm bg-white"
                 />
-                <p className="text-xs text-gray-500 mt-1">Supported formats: .xlsx, .xls, .csv</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Format: student_id, subject, score
+                </p>
               </div>
-              <div className="mt-4 flex justify-end">
-                <button onClick={downloadTemplate} className="text-sm text-blue-600 hover:text-blue-800">
-                  Download Template
-                </button>
-              </div>
-              {uploadProgress > 0 && (
-                <div className="mt-4">
-                  <div className="bg-gray-200 h-2">
-                    <div className="bg-blue-600 h-2" style={{ width: `${uploadProgress}%` }}></div>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">{uploadProgress}% uploaded</p>
-                </div>
-              )}
+              <button
+                onClick={downloadTemplate}
+                className="text-sm text-blue-600 hover:text-blue-800 font-bold"
+              >
+                Download Template
+              </button>
             </div>
-            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => setShowBulkImportModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            <div className="px-5 py-3 border-t border-gray-300 bg-gray-50 flex justify-end gap-2 rounded-b">
+              <button
+                onClick={() => setShowBulkImportModal(false)}
+                className="px-4 py-2 border border-gray-400 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
                 Cancel
               </button>
-              <button onClick={handleBulkUpload} className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">
+              <button
+                onClick={handleBulkUpload}
+                disabled={uploading}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded hover:bg-green-800 disabled:opacity-50"
+              >
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin inline mr-1" />
+                ) : (
+                  <Upload className="h-4 w-4 inline mr-1" />
+                )}
                 Upload
               </button>
             </div>
@@ -922,89 +1236,350 @@ function ResultsReporting() {
         </div>
       )}
 
-      {/* Student Report Modal */}
-      {showReportModal && reportData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowReportModal(false)}>
-          <div className="bg-white border border-gray-400 max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center no-print">
-              <h3 className="text-md font-bold text-gray-900">CBC Assessment Report</h3>
+      {/* ── Student Report Modal ──────────────────────────────────────────────── */}
+      {showReportModal && studentReport && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowReportModal(false)}
+        >
+          <div
+            className="bg-white max-w-5xl w-full max-h-[90vh] overflow-auto border border-gray-400 rounded"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-300 px-5 py-3 flex justify-between items-center z-10 rounded-t">
+              <h3 className="text-md font-bold text-gray-900">
+                KNEC-Compliant CBE Report Card — Full History
+              </h3>
               <div className="flex gap-2">
-                <button onClick={handlePrint} className="px-3 py-1 bg-gray-600 text-white text-xs font-medium border border-gray-700 hover:bg-gray-700">
+                <button
+                  onClick={handlePrint}
+                  className="px-3 py-1 bg-gray-600 text-white text-xs font-medium rounded hover:bg-gray-700"
+                >
                   <Printer className="h-3 w-3 inline mr-1" />
-                  Print
+                  Print / Save as PDF
                 </button>
-                <button onClick={() => setShowReportModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+                <button
+                  onClick={() => setShowReportModal(false)}
+                  className="text-gray-500 hover:text-gray-700 text-xl"
+                >
+                  &times;
+                </button>
               </div>
             </div>
-            <div ref={printRef} className="p-6">
+
+            <div id="report-content" ref={printRef} className="p-6 bg-white">
               {/* School Header */}
-              <div className="text-center mb-6 pb-4 border-b border-gray-300">
-                <h1 className="text-2xl font-bold text-gray-900">KIBERA ACADEMY</h1>
-                <p className="text-sm text-gray-600">Ministry of Education Registration: KCBA001</p>
-                <p className="text-xs text-gray-500">P.O. Box 12345-00100, Nairobi | Tel: 020-1234567</p>
+              <div className="text-center mb-6 pb-3 border-b-2 border-gray-900">
+                <h1 className="text-2xl font-bold text-gray-900 uppercase">
+                  JAWABU ACADEMY
+                </h1>
+                <p className="text-sm text-gray-600 italic">
+                  Excellence in Education
+                </p>
+                <p className="text-xs text-gray-500 mt-2 font-bold">
+                  COMPETENCY-BASED EDUCATION (CBE) ASSESSMENT REPORT
+                </p>
+                <p className="text-xs text-gray-500">
+                  KNEC-Compliant Junior Secondary School (JSS) Report Card
+                </p>
               </div>
 
-              {/* Student Profile */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 border border-gray-300 mb-6">
+              {/* Student Biodata */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-gray-50 border border-gray-300 mb-5 rounded">
                 <div>
-                  <p className="text-xs text-gray-500">Student Name</p>
-                  <p className="font-bold text-gray-900">{reportData.student.first_name} {reportData.student.last_name}</p>
+                  <p className="text-xs text-gray-500 font-bold uppercase">
+                    Full Name
+                  </p>
+                  <p className="font-bold text-gray-900">
+                    {studentReport.student.name}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Admission Number</p>
-                  <p className="font-bold text-gray-900">{reportData.student.admission_no}</p>
+                  <p className="text-xs text-gray-500 font-bold uppercase">
+                    UPI Number
+                  </p>
+                  <p className="font-bold text-gray-900">
+                    {studentReport.student.upi_number}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">UPI Number</p>
-                  <p className="font-bold text-gray-900">{reportData.student.upi_number || 'N/A'}</p>
+                  <p className="text-xs text-gray-500 font-bold uppercase">
+                    Grade / Class
+                  </p>
+                  <p className="font-bold text-gray-900">
+                    {studentReport.student.class_name}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Class</p>
-                  <p className="font-bold text-gray-900">{classes.find(c => c.id == reportData.student.current_class)?.class_name}</p>
+                  <p className="text-xs text-gray-500 font-bold uppercase">
+                    Admission No
+                  </p>
+                  <p className="font-bold text-gray-900">
+                    {studentReport.student.admission_no}
+                  </p>
                 </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-bold uppercase">
+                    Gender
+                  </p>
+                  <p className="font-bold text-gray-900">
+                    {studentReport.student.gender}
+                  </p>
+                </div>
+                
               </div>
 
-              {/* Subject Grades */}
-              <h3 className="text-md font-bold text-gray-800 mb-3">Academic Performance</h3>
-              <div className="overflow-x-auto mb-6">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">Subject</th>
-                      <th className="border border-gray-300 px-4 py-2 text-center font-bold">Score (%)</th>
-                      <th className="border border-gray-300 px-4 py-2 text-center font-bold">Grade</th>
-                      <th className="border border-gray-300 px-4 py-2 text-center font-bold">Achievement Level</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reportData.subjectGrades.map((subject, idx) => (
-                      <tr key={idx}>
-                        <td className="border border-gray-300 px-4 py-2">{subject.subject}</td>
-                        <td className="border border-gray-300 px-4 py-2 text-center font-bold">{subject.score}%</td>
-                        <td className="border border-gray-300 px-4 py-2 text-center font-bold">{subject.grade}</td>
-                        <td className="border border-gray-300 px-4 py-2 text-center">
-                          <span className={`px-2 py-1 text-xs font-bold ${subject.color}`}>{subject.level}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                 </table>
-              </div>
+              
 
-              {/* Legend */}
-              <div className="mt-6 pt-4 border-t border-gray-300">
-                <h4 className="text-sm font-bold text-gray-800 mb-2">Achievement Level Legend</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {(reportData.gradeLevel === 'upper_primary' || reportData.gradeLevel === 'junior' ? EIGHT_POINT_SCALE : FOUR_POINT_SCALE).map(grade => (
-                    <div key={grade.level} className="flex items-center gap-2 text-xs">
-                      <span className={`px-2 py-1 text-xs font-bold ${grade.color}`}>{grade.level}</span>
-                      <span className="text-gray-600">{grade.label}</span>
+              {/* Summative Results per Exam */}
+              {studentReport.exams && studentReport.exams.length > 0 ? (
+                <div className="mb-5">
+                  <h3 className="text-md font-bold text-gray-800 mb-3">
+                    Summative Tracking Analysis — All Exams (40/60 Rule)
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    SBA × 40% + Summative × 60% = Total. The two weighted
+                    columns always add up to the Total. Subjects with no SBA
+                    show 0.00 for the 40% component.
+                  </p>
+                  {studentReport.exams.map((exam, examIdx) => (
+                    <div
+                      key={examIdx}
+                      className="mb-5 border border-gray-200 rounded overflow-hidden"
+                    >
+                      <div className="bg-blue-700 text-white px-4 py-2 text-sm font-bold flex justify-between items-center">
+                        <span>{exam.exam_title}</span>
+                        <span className="text-blue-200 text-xs font-normal">
+                          Term {exam.term} · {exam.academic_year} ·{" "}
+                          {exam.exam_type}
+                        </span>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm border-collapse">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="border border-gray-300 px-3 py-2 text-left font-bold">
+                                Learning Area
+                              </th>
+                              {/* ── CHANGED: headers now state the weighted contribution ── */}
+                              <th className="border border-gray-300 px-3 py-2 text-center font-bold">
+                                SBA × 40%
+                              </th>
+                              <th className="border border-gray-300 px-3 py-2 text-center font-bold">
+                                Summative × 60%
+                              </th>
+                              <th className="border border-gray-300 px-3 py-2 text-center font-bold">
+                                Total (= sum)
+                              </th>
+                              <th className="border border-gray-300 px-3 py-2 text-center font-bold">
+                                Achievement Level
+                              </th>
+                              <th className="border border-gray-300 px-3 py-2 text-left font-bold">
+                                Remark
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {exam.subjects.map((subject, idx) => {
+                              const level = getAchievementLevel(subject.total);
+                              return (
+                                <tr key={idx} className="hover:bg-gray-50">
+                                  <td className="border border-gray-300 px-3 py-2 font-medium">
+                                    {subject.subject}
+                                  </td>
+
+                                  {/* ── CHANGED: display raw_sba × 0.40, or 0.00 if no SBA ── */}
+                                  <td className="border border-gray-300 px-3 py-2 text-center">
+                                    {subject.sba_score !== null &&
+                                    subject.sba_score !== undefined ? (
+                                      <span className="font-medium">
+                                        {sbaWeighted(subject.sba_score)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400 italic text-xs">
+                                        0.00
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* ── CHANGED: display raw_summative × 0.60 ── */}
+                                  <td className="border border-gray-300 px-3 py-2 text-center font-medium">
+                                    {summativeWeighted(subject.summative_score)}
+                                  </td>
+
+                                  <td className="border border-gray-300 px-3 py-2 text-center font-bold text-lg">
+                                    {subject.total}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-center">
+                                    {level && (
+                                      <span
+                                        className={`px-2 py-1 text-xs font-bold rounded ${level.color}`}
+                                      >
+                                        {subject.grade_code} —{" "}
+                                        {subject.grade_label}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-gray-500 text-xs">
+                                    { subject.total >= 58 ? (
+                                      "Satisfactory progress"
+                                    ) : subject.total >= 41 ? (
+                                      "Needs more effort"
+                                    ) : (
+                                      "Requires intervention"
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-gray-100 font-bold">
+                              <td className="border border-gray-300 px-3 py-2">
+                                Exam Average
+                              </td>
+                              <td className="border border-gray-300 px-3 py-2 text-center text-gray-400">
+                                —
+                              </td>
+                              <td className="border border-gray-300 px-3 py-2 text-center text-gray-400">
+                                —
+                              </td>
+                              <td className="border border-gray-300 px-3 py-2 text-center text-lg text-blue-700">
+                                {exam.summary.average_score}
+                              </td>
+                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                <span
+                                  className={`px-2 py-1 text-xs font-bold rounded ${getAchievementLevel(exam.summary.average_score)?.color || "bg-gray-100"}`}
+                                >
+                                  {exam.summary.grade_code} —{" "}
+                                  {exam.summary.grade_label}
+                                </span>
+                              </td>
+                              <td className="border border-gray-300 px-3 py-2"></td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <div className="text-center text-xs text-gray-500 mt-4">
-                  <p>Generated on: {reportData.generatedDate}</p>
+              ) : (
+                <div className="mb-5 p-4 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                  No summative exam results found for this student yet.
                 </div>
+              )}
+
+              {/* Subject Progress Summary (across all exams) */}
+              {studentReport.exams &&
+                studentReport.exams.length > 0 &&
+                (() => {
+                  const subjectMap = {};
+                  studentReport.exams.forEach((exam) => {
+                    exam.subjects.forEach((s) => {
+                      if (!subjectMap[s.subject]) subjectMap[s.subject] = [];
+                      if (s.total !== null) subjectMap[s.subject].push(s.total);
+                    });
+                  });
+                  return (
+                    <div className="mb-5 border border-gray-300 rounded p-4">
+                      <h3 className="text-md font-bold text-gray-800 mb-3">
+                        Subject Performance Summary (All-Time Average)
+                      </h3>
+                      {Object.entries(subjectMap).map(([subj, totals]) => {
+                        const avg = Math.round(
+                          totals.reduce((a, b) => a + b, 0) / totals.length,
+                        );
+                        return (
+                          <ProgressBar
+                            key={subj}
+                            percentage={avg}
+                            label={subj}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+              {/* Core Competencies */}
+              {studentReport.competencies &&
+                studentReport.competencies.length > 0 && (
+                  <div className="mb-5 border border-gray-300 rounded p-4">
+                    <h3 className="text-md font-bold text-gray-800 mb-3">
+                      Core Competencies Assessment
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {studentReport.competencies.map((comp) => (
+                        <CircularRibbon
+                          key={comp.id}
+                          percentage={comp.score || 0}
+                          label={comp.name}
+                          code={comp.code}
+                          assessed={comp.assessed}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {/* Overall Summary + Career Pathway */}
+              <div
+                className={`mb-5 p-4 border-l-4 rounded ${
+                  studentReport.summary.average_score >= 75
+                    ? "border-l-green-500 bg-green-50"
+                    : studentReport.summary.average_score >= 58
+                      ? "border-l-blue-500 bg-blue-50"
+                      : studentReport.summary.average_score >= 41
+                        ? "border-l-yellow-500 bg-yellow-50"
+                        : "border-l-red-500 bg-red-50"
+                }`}
+              >
+                <h3 className="text-md font-bold text-gray-800 mb-1">
+                  Overall Summary
+                </h3>
+                <p className="text-xl font-bold text-gray-900">
+                  {studentReport.summary.average_score}
+                  <span
+                    className={`ml-3 text-sm px-2 py-1 rounded ${studentReport.summary.level?.color || "bg-gray-100"}`}
+                  >
+                    {studentReport.summary.grade_code} —{" "}
+                    {studentReport.summary.grade_label}
+                  </span>
+                </p>
+                <p className="text-sm font-bold text-gray-700 mt-2">
+                  Career Pathway:{" "}
+                  {studentReport.summary.average_score >= 75
+                    ? "STEM Pathway Recommended"
+                    : studentReport.summary.average_score >= 58
+                      ? "Social Sciences Pathway Recommended"
+                      : "Arts & Sports Science Pathway Recommended"}
+                </p>
+              </div>
+
+              {/* Teacher / Principal Comments */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                <div className="border border-gray-300 rounded p-3">
+                  <h3 className="text-sm font-bold text-gray-800 mb-2">
+                    Class Teacher's Comment
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    Student has shown consistent effort throughout the term.
+                  </p>
+                </div>
+                <div className="border border-gray-300 rounded p-3">
+                  <h3 className="text-sm font-bold text-gray-800 mb-2">
+                    Principal's Comment
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    Satisfactory performance. Keep up the good work.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="text-center text-xs text-gray-400 pt-3 border-t border-gray-300">
+                <p>This is a system-generated KNEC-compliant report card.</p>
+                <p>Jawabu E-School Genesis System — CBE Assessment Platform</p>
               </div>
             </div>
           </div>

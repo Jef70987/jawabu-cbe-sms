@@ -27,15 +27,15 @@ const TeacherSidebarData = [
     link: "/TeacherPortal/Dashboard"
   },
   {
-    title: "Class Profile",
+    title: "Class Profile/attendance",
     icon: <HomeIcon />,
     link: "/TeacherPortal/ClassProfile"
   },
 
   /* --- SECTION: DAILY OPERATIONS --- */
   {
-    title: "Attendance",
-    icon: <ClipboardCheckIcon />, // Changed to CheckIcon for "taking roll"
+    title: "Subject-Attendance",
+    icon: <ClipboardCheckIcon />, 
     link: "/TeacherPortal/Attendance"
   },
   {
@@ -49,11 +49,11 @@ const TeacherSidebarData = [
     icon: <DescriptionIcon />,
     link: "/TeacherPortal/AssessmentManager"
   },
-  {
-    title: "JSS Mark Entry", // 8-Point Scale (G7-G9)
-    icon: <PenBoxIcon />,
-    link: "/TeacherPortal/MarkEntry"
-  },
+ // {
+ //   title: "JSS Mark Entry", // 8-Point Scale (G7-G9)
+ //   icon: <PenBoxIcon />,
+ //   link: "/TeacherPortal/MarkEntry"
+ // },
   {
     title: "Competency Matrix",
     icon: <LayoutGridIcon />, // Visualizes student skill gaps
@@ -64,11 +64,11 @@ const TeacherSidebarData = [
     icon: <CameraIcon />, // For uploading student evidence
     link: "/TeacherPortal/Portfolio"
   },
-  {
-    title: "Timetable",
-    icon: <TimerIcon />,
-    link: "/TeacherPortal/Timetable"
-  },
+  // {
+  //   title: "Timetable",
+  //   icon: <TimerIcon />,
+  //   link: "/TeacherPortal/Timetable"
+  // },
 
   /* --- SECTION: RESULTS & UPDATES --- */
   {

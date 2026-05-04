@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
 import {
   User,
@@ -23,7 +23,9 @@ import {
   FileText,
   Users,
   PieChart as PieChartIcon,
-  Shield
+  Shield,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   PieChart,
@@ -36,36 +38,50 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// Toast Component
+// ── EXAM TYPE LABELS ──────────────────────────────────────────────────────────
+const EXAM_TYPE_LABELS = {
+  cba:      'CBA',
+  sba:      'SBA',
+  cat:      'CAT',
+  end_term: 'End of Term',
+  mock:     'Mock',
+  kpsea:    'KPSEA',
+  kjsea:    'KJSEA',
+};
+
+const GRADE_COLORS = {
+  EE:  'bg-green-100 text-green-700 border-green-200',
+  EE1: 'bg-green-100 text-green-700 border-green-200',
+  EE2: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  ME:  'bg-blue-100 text-blue-700 border-blue-200',
+  ME1: 'bg-blue-100 text-blue-700 border-blue-200',
+  ME2: 'bg-sky-100 text-sky-700 border-sky-200',
+  AE:  'bg-yellow-100 text-yellow-700 border-yellow-200',
+  AE1: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  AE2: 'bg-amber-100 text-amber-700 border-amber-200',
+  BE:  'bg-red-100 text-red-700 border-red-200',
+  BE1: 'bg-red-100 text-red-700 border-red-200',
+  BE2: 'bg-rose-100 text-rose-700 border-rose-200',
+};
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
 const Toast = ({ message, type, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
-
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(onClose, 300);
-    }, 5000);
+    const timer = setTimeout(() => { setIsVisible(false); setTimeout(onClose, 300); }, 5000);
     return () => clearTimeout(timer);
   }, [onClose]);
-
-  const bgColor = {
-    success: 'bg-green-600',
-    error: 'bg-red-600',
-    info: 'bg-blue-600',
-    warning: 'bg-yellow-600'
-  };
-
+  const bgColor = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-blue-600', warning: 'bg-yellow-500' };
   if (!isVisible) return null;
-
   return (
-    <div className="fixed top-4 right-4 left-4 md:left-auto z-50">
-      <div className={`${bgColor[type]} text-white shadow-lg p-4 max-w-md mx-auto md:mx-0`}>
+    <div className="fixed top-4 right-4 z-50 animate-slideIn">
+      <div className={`${bgColor[type]} text-white border border-gray-600 p-4 min-w-[280px] max-w-md`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <p className="font-semibold capitalize text-sm md:text-base">{type}</p>
-            <p className="text-xs md:text-sm text-white/90 mt-1">{message}</p>
+            <p className="font-bold capitalize">{type}</p>
+            <p className="text-sm text-white/90 mt-1">{message}</p>
           </div>
-          <button onClick={() => { setIsVisible(false); setTimeout(onClose, 300); }} className="text-white/70 hover:text-white shrink-0">
+          <button onClick={() => { setIsVisible(false); setTimeout(onClose, 300); }} className="text-white/70 hover:text-white">
             <AlertCircle size={16} />
           </button>
         </div>
@@ -74,23 +90,21 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-// Session Expired Modal
+// ── SESSION EXPIRED ───────────────────────────────────────────────────────────
 const SessionExpiredModal = ({ isOpen, onLogout }) => {
   if (!isOpen) return null;
-  
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[100]">
-      <div className="bg-white shadow-lg max-w-md w-full mx-4">
-        <div className="p-4 md:p-6">
+      <div className="bg-white border border-gray-400 max-w-md w-full">
+        <div className="p-6">
           <div className="flex items-center mb-4">
-            <AlertCircle className="h-6 w-6 md:h-8 md:w-8 text-red-600 mr-3" />
-            <h3 className="text-lg md:text-xl font-semibold text-gray-900">Session Expired</h3>
+            <AlertCircle className="h-8 w-8 text-red-500 mr-3" />
+            <h3 className="text-lg font-bold text-gray-900">Session Expired</h3>
           </div>
-          <p className="text-sm md:text-base text-gray-600 mb-6">Your session has expired. Please login again to continue.</p>
+          <p className="text-gray-600 mb-6">Your session has expired. Please login again to continue.</p>
           <div className="flex justify-end">
-            <button onClick={onLogout} className="px-4 py-2 md:px-6 md:py-2 bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2 text-sm md:text-base">
-              <LogOut className="h-4 w-4" />
-              Logout
+            <button onClick={onLogout} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium border border-blue-700 hover:bg-blue-700 flex items-center gap-2">
+              <LogOut className="h-4 w-4" /> Logout
             </button>
           </div>
         </div>
@@ -99,93 +113,138 @@ const SessionExpiredModal = ({ isOpen, onLogout }) => {
   );
 };
 
-// Stat Card Component - No border-left, consistent colors
+// ── STAT CARD ─────────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, icon: Icon, color, onClick, subtitle }) => {
   const colorClasses = {
-    blue: { bg: 'bg-blue-50', text: 'text-blue-600', iconBg: 'bg-blue-100' },
-    green: { bg: 'bg-green-50', text: 'text-green-600', iconBg: 'bg-green-100' },
-    red: { bg: 'bg-red-50', text: 'text-red-600', iconBg: 'bg-red-100' },
-    orange: { bg: 'bg-orange-50', text: 'text-orange-600', iconBg: 'bg-orange-100' }
+    blue:   { iconBg: 'bg-blue-100',   text: 'text-blue-600' },
+    green:  { iconBg: 'bg-green-100',  text: 'text-green-600' },
+    red:    { iconBg: 'bg-red-100',    text: 'text-red-600' },
+    orange: { iconBg: 'bg-orange-100', text: 'text-orange-600' },
   };
-
   const colors = colorClasses[color] || colorClasses.blue;
-
   return (
-    <div 
-      onClick={onClick}
-      className="bg-white border border-gray-300 p-4 md:p-6 hover:shadow-md transition-all cursor-pointer"
-    >
+    <div onClick={onClick} className="bg-white border border-gray-300 p-4 hover:shadow-md transition-all cursor-pointer">
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs md:text-sm font-medium text-gray-600 truncate">{title}</p>
-          <p className="text-lg md:text-2xl font-bold text-gray-900 mt-1 break-words">{value}</p>
+          <p className="text-xs font-medium text-gray-600 truncate">{title}</p>
+          <p className="text-xl font-bold text-gray-900 mt-1 break-words">{value}</p>
           {subtitle && <p className="text-xs text-gray-500 mt-1 truncate">{subtitle}</p>}
         </div>
-        <div className={`p-2 md:p-3 ${colors.iconBg} shrink-0`}>
-          <Icon className={`w-5 h-5 md:w-6 md:h-6 ${colors.text}`} />
+        <div className={`p-2 ${colors.iconBg} shrink-0 rounded-full`}>
+          <Icon className={`w-5 h-5 ${colors.text}`} />
         </div>
       </div>
     </div>
   );
 };
 
-// Info Card Component - No border-left
-const InfoCard = ({ title, icon: Icon, children }) => {
+// ── INFO CARD ─────────────────────────────────────────────────────────────────
+const InfoCard = ({ title, icon: Icon, children }) => (
+  <div className="bg-white border border-gray-300 p-4">
+    <div className="flex items-center gap-2 mb-4">
+      <div className="p-1.5 bg-blue-100 rounded-full">
+        <Icon className="w-4 h-4 text-blue-600" />
+      </div>
+      <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+    </div>
+    {children}
+  </div>
+);
+
+// ── EXAM RESULT CARD ──────────────────────────────────────────────────────────
+// Shows one published exam with expandable subject breakdown.
+const ExamResultCard = ({ exam }) => {
+  const [expanded, setExpanded] = useState(false);
+  const gradeColor = GRADE_COLORS[exam.overall_grade] || 'bg-gray-100 text-gray-700 border-gray-200';
+  const typeLabel  = EXAM_TYPE_LABELS[exam.exam_type] || exam.exam_type;
+
   return (
-    <div className="bg-white border border-gray-300 p-4 md:p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="p-1.5 md:p-2 bg-blue-100">
-          <Icon className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+    <div className="border border-gray-200 rounded mb-3 last:mb-0 overflow-hidden">
+      {/* Header row */}
+      <div
+        className="flex items-center justify-between px-4 py-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-gray-900 truncate">{exam.exam_title}</span>
+            <span className="px-1.5 py-0.5 text-xs bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-full shrink-0">
+              {typeLabel}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-gray-500">
+            <span>Term {exam.term} · {exam.academic_year}</span>
+            <span>{exam.subjects_count} subject{exam.subjects_count !== 1 ? 's' : ''}</span>
+            <span>Avg: <strong className="text-gray-700">{exam.average_percentage}%</strong></span>
+          </div>
         </div>
-        <h3 className="text-base md:text-lg font-semibold text-gray-900">{title}</h3>
+        <div className="flex items-center gap-3 shrink-0 ml-2">
+          <span className={`px-2 py-0.5 text-xs font-bold border rounded-full ${gradeColor}`}>
+            {exam.overall_grade || '—'}
+          </span>
+          {expanded
+            ? <ChevronUp className="w-4 h-4 text-gray-500" />
+            : <ChevronDown className="w-4 h-4 text-gray-500" />}
+        </div>
       </div>
-      {children}
+
+      {/* Expandable subject rows */}
+      {expanded && (
+        <div className="divide-y divide-gray-100">
+          {exam.subjects.map((s, idx) => {
+            const sg = GRADE_COLORS[s.grade] || 'bg-gray-100 text-gray-700 border-gray-200';
+            return (
+              <div key={idx} className="flex items-center justify-between px-4 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-800 truncate">{s.subject}</p>
+                  {s.remarks && <p className="text-xs text-gray-400 truncate mt-0.5">{s.remarks}</p>}
+                </div>
+                <div className="flex items-center gap-3 shrink-0 ml-2">
+                  <span className="text-sm font-semibold text-gray-700">{s.percentage}%</span>
+                  <span className={`px-2 py-0.5 text-xs font-medium border rounded-full ${sg}`}>
+                    {s.grade}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
 
-// Attendance Item Component
+// ── ATTENDANCE ITEM ───────────────────────────────────────────────────────────
 const AttendanceItem = ({ date, status, subject }) => {
   const statusColors = {
-    Present: 'bg-green-100 text-green-700',
-    Absent: 'bg-red-100 text-red-700',
-    Late: 'bg-yellow-100 text-yellow-700',
-    Excused: 'bg-blue-100 text-blue-700'
+    Present: 'bg-green-100 text-green-700 border-green-200',
+    Absent:  'bg-red-100 text-red-700 border-red-200',
+    Late:    'bg-yellow-100 text-yellow-700 border-yellow-200',
+    Excused: 'bg-blue-100 text-blue-700 border-blue-200',
   };
-
   const statusIcons = {
-    Present: <CheckCircle className="w-3 h-3 md:w-4 md:h-4" />,
-    Absent: <XCircle className="w-3 h-3 md:w-4 md:h-4" />,
-    Late: <Clock className="w-3 h-3 md:w-4 md:h-4" />,
-    Excused: <FileText className="w-3 h-3 md:w-4 md:h-4" />
+    Present: <CheckCircle className="w-3 h-3" />,
+    Absent:  <XCircle className="w-3 h-3" />,
+    Late:    <Clock className="w-3 h-3" />,
+    Excused: <FileText className="w-3 h-3" />,
   };
-
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' });
-  };
-
+  const formatDate = d => d ? new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) : 'N/A';
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-gray-100 last:border-0 gap-2">
       <div className="flex-1">
         <p className="text-sm font-medium text-gray-900 truncate">{subject}</p>
         <p className="text-xs text-gray-500 mt-0.5">{formatDate(date)}</p>
       </div>
-      <span className={`flex items-center gap-1 px-2 py-1 text-xs font-medium ${statusColors[status]} self-start sm:self-center`}>
-        {statusIcons[status]}
-        {status}
+      <span className={`flex items-center gap-1 px-2 py-1 text-xs font-medium border ${statusColors[status]} self-start sm:self-center rounded-full`}>
+        {statusIcons[status]} {status}
       </span>
     </div>
   );
 };
 
-// Discipline Item Component
+// ── DISCIPLINE ITEM ───────────────────────────────────────────────────────────
 const DisciplineItem = ({ date, incident, points, status }) => {
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' });
-  };
-
+  const formatDate = d => d ? new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) : 'N/A';
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-gray-100 last:border-0 gap-2">
       <div className="flex-1">
@@ -202,24 +261,16 @@ const DisciplineItem = ({ date, incident, points, status }) => {
   );
 };
 
-// Fee Item Component
+// ── FEE ITEM ──────────────────────────────────────────────────────────────────
 const FeeItem = ({ description, amount, dueDate, status }) => {
   const statusColors = {
-    Paid: 'bg-green-100 text-green-700',
-    Pending: 'bg-yellow-100 text-yellow-700',
-    Overdue: 'bg-red-100 text-red-700',
-    Partial: 'bg-blue-100 text-blue-700'
+    Paid:    'bg-green-100 text-green-700 border-green-200',
+    Pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    Overdue: 'bg-red-100 text-red-700 border-red-200',
+    Partial: 'bg-blue-100 text-blue-700 border-blue-200',
   };
-
-  const formatCurrency = (amount) => {
-    return `KES ${parseFloat(amount).toLocaleString()}`;
-  };
-
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' });
-  };
-
+  const formatCurrency = a => `KES ${parseFloat(a).toLocaleString()}`;
+  const formatDate = d => d ? new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) : 'N/A';
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-gray-100 last:border-0 gap-2">
       <div className="flex-1">
@@ -228,7 +279,7 @@ const FeeItem = ({ description, amount, dueDate, status }) => {
       </div>
       <div className="text-left sm:text-right">
         <p className="text-sm font-semibold text-gray-900">{formatCurrency(amount)}</p>
-        <span className={`inline-block px-2 py-0.5 text-xs font-medium mt-1 ${statusColors[status]}`}>
+        <span className={`inline-block px-2 py-0.5 text-xs font-medium border mt-1 rounded-full ${statusColors[status]}`}>
           {status}
         </span>
       </div>
@@ -236,81 +287,48 @@ const FeeItem = ({ description, amount, dueDate, status }) => {
   );
 };
 
-// Performance Item Component
-const PerformanceItem = ({ subject, score, grade, trend }) => {
-  const gradeColors = {
-    'Exceeding': 'bg-green-100 text-green-700',
-    'Meeting': 'bg-blue-100 text-blue-700',
-    'Approaching': 'bg-yellow-100 text-yellow-700',
-    'Below': 'bg-red-100 text-red-700'
-  };
-
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-gray-100 last:border-0 gap-2">
-      <div className="flex-1">
-        <p className="text-sm font-medium text-gray-900 truncate">{subject}</p>
-      </div>
-      <div className="flex items-center justify-between sm:justify-end gap-3">
-        <span className="text-sm font-semibold text-gray-900">{score}%</span>
-        <span className={`px-2 py-0.5 text-xs font-medium ${gradeColors[grade]}`}>
-          {grade}
-        </span>
-        {trend === 'up' && <TrendingUp className="w-4 h-4 text-green-600 shrink-0" />}
-        {trend === 'down' && <TrendingDown className="w-4 h-4 text-red-600 shrink-0" />}
-      </div>
-    </div>
-  );
-};
-
+// ── MAIN DASHBOARD ────────────────────────────────────────────────────────────
 const StudentDashboard = () => {
   const { user, getAuthHeaders, isAuthenticated, logout } = useAuth();
-  
-  // State
-  const [loading, setLoading] = useState(true);
-  const [studentProfile, setStudentProfile] = useState(null);
-  const [feeSummary, setFeeSummary] = useState(null);
-  const [recentAttendance, setRecentAttendance] = useState([]);
-  const [disciplineRecords, setDisciplineRecords] = useState([]);
-  const [academicPerformance, setAcademicPerformance] = useState([]);
-  const [feeBreakdown, setFeeBreakdown] = useState([]);
-  const [attendanceSummary, setAttendanceSummary] = useState({ present: 0, absent: 0, late: 0, total: 0 });
-  const [toasts, setToasts] = useState([]);
-  const [showSessionExpired, setShowSessionExpired] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [greeting, setGreeting] = useState('');
 
-  // Colors for pie chart
-  const COLORS = ['#108529','#d42424', '#F59E0B', '#1636d6'];
+  const [loading,             setLoading]             = useState(true);
+  const [studentProfile,      setStudentProfile]      = useState(null);
+  const [feeSummary,          setFeeSummary]          = useState(null);
+  const [recentAttendance,    setRecentAttendance]    = useState([]);
+  const [disciplineRecords,   setDisciplineRecords]   = useState([]);
+  const [recentExams,         setRecentExams]         = useState([]);   // ← replaces academicPerformance
+  const [feeBreakdown,        setFeeBreakdown]        = useState([]);
+  const [attendanceSummary,   setAttendanceSummary]   = useState({ present: 0, absent: 0, late: 0, total: 0 });
+  const [toasts,              setToasts]              = useState([]);
+  const [showSessionExpired,  setShowSessionExpired]  = useState(false);
+  const [currentTime,         setCurrentTime]         = useState(new Date());
+  const [greeting,            setGreeting]            = useState('');
 
+  const COLORS = ['#108529', '#d42424', '#F59E0B', '#1636d6'];
 
-  // Update greeting and time
   useEffect(() => {
-    const updateTime = () => {
+    const update = () => {
       const now = new Date();
       setCurrentTime(now);
-      const hour = now.getHours();
-      if (hour < 12) setGreeting('Good Morning');
-      else if (hour < 17) setGreeting('Good Afternoon');
-      else setGreeting('Good Evening');
+      const h = now.getHours();
+      setGreeting(h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening');
     };
-    
-    updateTime();
-    const interval = setInterval(updateTime, 60000);
-    return () => clearInterval(interval);
+    update();
+    const iv = setInterval(update, 60000);
+    return () => clearInterval(iv);
   }, []);
 
-  // Helper Functions
-  const showToast = (message, type = 'info') => {
+  const showToast = useCallback((message, type = 'info') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
-  };
+  }, []);
 
-  const handleApiError = (error) => {
+  const handleApiError = useCallback((error) => {
     if (error?.status === 401 || error?.message?.includes('Unauthorized')) {
       setShowSessionExpired(true);
     }
-  };
+  }, []);
 
   const handleLogout = () => {
     setShowSessionExpired(false);
@@ -318,155 +336,104 @@ const StudentDashboard = () => {
     window.location.href = '/login';
   };
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = amount => {
     if (!amount) return 'KES 0';
     return `KES ${parseFloat(amount).toLocaleString()}`;
   };
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
-  };
+  const formatTime = date =>
+    date.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
 
-  // Fetch Student Dashboard Data
-  const fetchDashboardData = async () => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-    
+  const fetchDashboardData = useCallback(async () => {
+    if (!isAuthenticated) { setLoading(false); return; }
     setLoading(true);
     try {
-      // 1. Fetch student profile
-      const profileRes = await fetch(`${API_BASE_URL}/api/student/profile/`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (profileRes.status === 401) { 
-        handleApiError({ status: 401 }); 
-        setLoading(false);
-        return; 
-      }
-      
+      // ── Profile ──────────────────────────────────────────────────────────
+      const profileRes = await fetch(`${API_BASE_URL}/api/student/profile/`, { headers: getAuthHeaders() });
+      if (profileRes.status === 401) { handleApiError({ status: 401 }); setLoading(false); return; }
       if (profileRes.ok) {
-        const profileData = await profileRes.json();
-        if (profileData.success) {
-          setStudentProfile(profileData.data);
-        }
+        const d = await profileRes.json();
+        if (d.success) setStudentProfile(d.data);
       }
-      
-      // 2. Fetch fee summary
-      const feeRes = await fetch(`${API_BASE_URL}/api/student/dashboard/fees/summary/`, {
-        headers: getAuthHeaders()
-      });
-      
+
+      // ── Fees ─────────────────────────────────────────────────────────────
+      const feeRes = await fetch(`${API_BASE_URL}/api/student/dashboard/fees/summary/`, { headers: getAuthHeaders() });
       if (feeRes.ok) {
-        const feeData = await feeRes.json();
-        if (feeData.success) {
-          setFeeSummary(feeData.data);
-          
-          if (feeData.data) {
-            const totalFees = parseFloat(feeData.data.total_fees) || 0;
-            const totalPaid = parseFloat(feeData.data.total_paid) || 0;
-            const overdueAmount = parseFloat(feeData.data.overdue_amount) || 0;
-            const pendingAmount = totalFees - totalPaid;
-            
-            const breakdown = [];
-            
-            if (totalFees > 0) {
-              breakdown.push({ name: 'Paid', value: totalPaid });
-              if (pendingAmount > 0) breakdown.push({ name: 'Pending', value: pendingAmount });
-              if (overdueAmount > 0) breakdown.push({ name: 'Overdue', value: overdueAmount });
-            }
-            
-            if (breakdown.length === 0) {
-              breakdown.push({ name: 'No Fee Data', value: 1 });
-            }
-            
-            setFeeBreakdown(breakdown);
+        const d = await feeRes.json();
+        if (d.success && d.data) {
+          setFeeSummary(d.data);
+          const totalFees = parseFloat(d.data.total_fees) || 0;
+          const totalPaid = parseFloat(d.data.total_paid) || 0;
+          const overdueAmount = parseFloat(d.data.overdue_amount) || 0;
+          const pendingAmount = totalFees - totalPaid;
+          const breakdown = [];
+          if (totalFees > 0) {
+            breakdown.push({ name: 'Paid', value: totalPaid });
+            if (pendingAmount > 0) breakdown.push({ name: 'Pending', value: pendingAmount });
+            if (overdueAmount > 0) breakdown.push({ name: 'Overdue', value: overdueAmount });
           }
+          setFeeBreakdown(breakdown.length ? breakdown : [{ name: 'No Fee Data', value: 1 }]);
         }
       }
-      
-      // 3. Fetch recent attendance
-      const attendanceRes = await fetch(`${API_BASE_URL}/api/student/attendance/recent/?limit=5`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (attendanceRes.ok) {
-        const attendanceData = await attendanceRes.json();
-        if (attendanceData.success) {
-          setRecentAttendance(attendanceData.data || []);
-          
-          const summary = { present: 0, absent: 0, late: 0, total: attendanceData.data?.length || 0 };
-          (attendanceData.data || []).forEach(record => {
-            if (record.attendance_status === 'Present') summary.present++;
-            else if (record.attendance_status === 'Absent') summary.absent++;
-            else if (record.attendance_status === 'Late') summary.late++;
+
+      // ── Attendance ────────────────────────────────────────────────────────
+      const attRes = await fetch(`${API_BASE_URL}/api/student/attendance/recent/?limit=5`, { headers: getAuthHeaders() });
+      if (attRes.ok) {
+        const d = await attRes.json();
+        if (d.success) {
+          setRecentAttendance(d.data || []);
+          const summary = { present: 0, absent: 0, late: 0, total: d.data?.length || 0 };
+          (d.data || []).forEach(r => {
+            if (r.attendance_status === 'Present') summary.present++;
+            else if (r.attendance_status === 'Absent') summary.absent++;
+            else if (r.attendance_status === 'Late') summary.late++;
           });
           setAttendanceSummary(summary);
         }
       }
-      
-      // 4. Fetch discipline records
-      const disciplineRes = await fetch(`${API_BASE_URL}/api/student/discipline/`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (disciplineRes.ok) {
-        const disciplineData = await disciplineRes.json();
-        if (disciplineData.success) {
-          setDisciplineRecords(disciplineData.data || []);
-        }
+
+      // ── Discipline ────────────────────────────────────────────────────────
+      const discRes = await fetch(`${API_BASE_URL}/api/student/discipline/`, { headers: getAuthHeaders() });
+      if (discRes.ok) {
+        const d = await discRes.json();
+        if (d.success) setDisciplineRecords(d.data || []);
       }
-      
-      // 5. Fetch academic performance
-      const performanceRes = await fetch(`${API_BASE_URL}/api/student/performance/current/`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (performanceRes.ok) {
-        const performanceData = await performanceRes.json();
-        if (performanceData.success) {
-          setAcademicPerformance(performanceData.data || []);
-        }
+
+      // ── Recent published exams ────────────────────────────────────────────
+      // Uses the new endpoint that returns per-exam cards (not per-subject aggregates)
+      const examRes = await fetch(
+        `${API_BASE_URL}/api/student/exams/published/recent/?limit=10`,
+        { headers: getAuthHeaders() }
+      );
+      if (examRes.ok) {
+        const d = await examRes.json();
+        if (d.success) setRecentExams(d.data || []);
       }
-      
+
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
+      console.error('Dashboard fetch error:', err);
       showToast('Failed to load dashboard data', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAuthHeaders, handleApiError, isAuthenticated, showToast]);
 
-  // Refresh data
-  const refreshData = () => {
-    fetchDashboardData();
-    showToast('Dashboard refreshed', 'success');
-  };
+  const refreshData = () => { fetchDashboardData(); showToast('Dashboard refreshed', 'success'); };
+  const navigateTo = path => { window.location.href = path; };
 
-  // Navigation handlers
-  const navigateTo = (path) => {
-    window.location.href = path;
-  };
-
-  // Effects
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'student') {
-      fetchDashboardData();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
+    if (isAuthenticated && user?.role === 'student') fetchDashboardData();
+    else setLoading(false);
+  }, [fetchDashboardData, isAuthenticated, user?.role]);
 
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 md:h-16 md:w-16 text-blue-600 mx-auto mb-4" />
-          <h2 className="text-xl md:text-2xl font-bold">Authentication Required</h2>
-          <p className="text-gray-600 mt-2 text-sm md:text-base">Please login to access your dashboard</p>
-          <a href="/login" className="mt-4 inline-block px-4 py-2 md:px-6 md:py-3 bg-blue-600 text-white text-sm md:text-base">Go to Login</a>
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900">Authentication Required</h2>
+          <p className="text-gray-600 mt-2">Please login to access your dashboard</p>
+          <a href="/login" className="mt-4 inline-block px-6 py-3 bg-blue-600 text-white font-medium border border-blue-700 hover:bg-blue-700">Go to Login</a>
         </div>
       </div>
     );
@@ -476,10 +443,9 @@ const StudentDashboard = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 md:h-16 md:w-16 text-yellow-600 mx-auto mb-4" />
-          <h2 className="text-xl md:text-2xl font-bold">Access Denied</h2>
-          <p className="text-gray-600 mt-2 text-sm md:text-base">This portal is only for students.</p>
-          <p className="text-gray-500 text-xs md:text-sm mt-1">Please use your student account to access this page.</p>
+          <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900">Access Denied</h2>
+          <p className="text-gray-600 mt-2">This portal is only for students.</p>
         </div>
       </div>
     );
@@ -487,46 +453,45 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <style>{`
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .animate-slideIn { animation: slideIn 0.3s ease-out; }
+      `}</style>
+
       <SessionExpiredModal isOpen={showSessionExpired} onLogout={handleLogout} />
       {toasts.map(t => (
-        <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts(prev => prev.filter(t2 => t2.id !== t.id))} />
+        <Toast key={t.id} message={t.message} type={t.type}
+          onClose={() => setToasts(prev => prev.filter(t2 => t2.id !== t.id))} />
       ))}
 
-      <div className="p-3 py-9 md:p-6 w-full max-w-full">
-        {/* Header Card - Green-700 background, no border-left */}
-        <div className="bg-green-700 p-4 md:p-6 mb-4 md:mb-8 w-full">
+      <div className="p-6 w-full max-w-full">
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
+        <div className="bg-green-700 p-6 mb-8 w-full">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex-1">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h1 className="text-xl md:text-3xl font-bold text-white">
+                  <h1 className="text-2xl font-bold text-white">
                     {greeting}, {studentProfile?.first_name || user?.first_name || 'Student'}!
                   </h1>
-                  <p className="text-sm md:text-base text-green-100 mt-1">
-                    Welcome to your Student Dashboard
-                  </p>
+                  <p className="text-green-100 mt-1">Welcome to your Student Dashboard</p>
                 </div>
-                <button 
-                  onClick={refreshData}
-                  className="px-3 py-1.5 md:px-4 md:py-2 bg-white text-gray-700 hover:bg-gray-100 flex items-center gap-1 md:gap-2 text-sm md:text-base shrink-0 border border-gray-200"
-                >
-                  <RefreshCw className="w-3 h-3 md:w-4 md:h-4" />
-                  <span className="hidden sm:inline">Refresh</span>
+                <button onClick={refreshData}
+                  className="px-4 py-2 bg-white text-gray-700 hover:bg-gray-100 flex items-center gap-2 text-sm font-medium border border-gray-200">
+                  <RefreshCw className="w-4 h-4" /> Refresh
                 </button>
               </div>
-              <div className="flex flex-wrap items-center gap-2 mt-2 text-xs md:text-sm text-green-100">
-                <Calendar className="w-3 h-3 md:w-4 md:h-4" />
+              <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-green-100">
+                <Calendar className="w-4 h-4" />
                 <span>{currentTime.toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                <Clock className="w-3 h-3 md:w-4 md:h-4 ml-1" />
+                <Clock className="w-4 h-4 ml-2" />
                 <span>{formatTime(currentTime)}</span>
               </div>
             </div>
-            
-            {/* Student Profile Mini Card */}
             {studentProfile && (
               <div className="flex items-center gap-3 p-3 bg-white border border-gray-200">
-                <div className="h-10 w-10 md:h-12 md:w-12 bg-green-600 flex items-center justify-center">
-                  <span className="text-base md:text-lg font-bold text-white">
+                <div className="h-12 w-12 bg-green-600 rounded-full flex items-center justify-center">
+                  <span className="text-lg font-bold text-white">
                     {studentProfile.first_name?.[0]}{studentProfile.last_name?.[0]}
                   </span>
                 </div>
@@ -542,17 +507,16 @@ const StudentDashboard = () => {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="animate-spin h-8 w-8 md:h-12 md:w-12 text-blue-600" />
+            <Loader2 className="animate-spin h-12 w-12 text-blue-600" />
           </div>
         ) : (
           <>
-            {/* Stats Cards Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-8">
+            {/* ── Stat Cards ──────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <StatCard
                 title="Total Fees"
                 value={formatCurrency(feeSummary?.total_fees || 0)}
-                icon={DollarSign}
-                color="blue"
+                icon={DollarSign} color="blue"
                 subtitle={`Paid: ${formatCurrency(feeSummary?.total_paid || 0)}`}
               />
               <StatCard
@@ -565,46 +529,36 @@ const StudentDashboard = () => {
               <StatCard
                 title="Attendance"
                 value={`${attendanceSummary.total > 0 ? Math.round((attendanceSummary.present / attendanceSummary.total) * 100) : 0}%`}
-                icon={Calendar}
-                color="blue"
+                icon={Calendar} color="blue"
                 subtitle={`${attendanceSummary.present}/${attendanceSummary.total} days present`}
               />
               <StatCard
                 title="Discipline Points"
-                value={disciplineRecords.reduce((sum, d) => sum + (d.points_awarded || 0), 0)}
+                value={disciplineRecords.reduce((s, d) => s + (d.points_awarded || 0), 0)}
                 icon={Award}
-                color={disciplineRecords.reduce((sum, d) => sum + (d.points_awarded || 0), 0) > 0 ? 'red' : 'green'}
-                subtitle={disciplineRecords.reduce((sum, d) => sum + (d.points_awarded || 0), 0) > 0 ? 'Demerit points' : 'Clean record'}
+                color={disciplineRecords.reduce((s, d) => s + (d.points_awarded || 0), 0) > 0 ? 'red' : 'green'}
+                subtitle={disciplineRecords.reduce((s, d) => s + (d.points_awarded || 0), 0) > 0 ? 'Demerit points' : 'Clean record'}
               />
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8 border-t border-green-600 pt-4">
+            {/* ── Fee Chart + Recent Exams ─────────────────────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Fee Breakdown Chart */}
               <InfoCard title="Fee Breakdown" icon={PieChartIcon}>
                 {feeBreakdown.length > 0 && feeBreakdown[0]?.name !== 'No Fee Data' ? (
-                  <div style={{ width: '100%', height: 300, display: 'flex', justifyContent: 'center' }}>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={feeBreakdown}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={100}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {feeBreakdown.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => formatCurrency(value)} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie data={feeBreakdown} cx="50%" cy="50%" labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100} dataKey="value">
+                        {feeBreakdown.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={v => formatCurrency(v)} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div className="text-center py-8">
                     <PieChartIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -613,41 +567,40 @@ const StudentDashboard = () => {
                 )}
               </InfoCard>
 
-              {/* Academic Performance */}
-              <InfoCard title="Academic Performance" icon={Target}>
-                {academicPerformance.length > 0 ? (
-                  <div className="max-h-64 overflow-y-auto">
-                    {academicPerformance.map((subject, idx) => (
-                      <PerformanceItem
-                        key={idx}
-                        subject={subject.learning_area || subject.name}
-                        score={subject.score || subject.percentage}
-                        grade={subject.grade || subject.rating}
-                        trend={subject.trend}
-                      />
+              {/* ── Recent Published Exams ───────────────────────────────────── */}
+              {/* Each exam is a collapsible card showing all subjects + grades */}
+              <InfoCard title="Recent Exam Results" icon={Target}>
+                {recentExams.length > 0 ? (
+                  <div className="max-h-80 overflow-y-auto pr-1">
+                    {recentExams.map(exam => (
+                      <ExamResultCard key={exam.exam_id} exam={exam} />
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <Target className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500 text-sm">No performance data available</p>
+                    <p className="text-gray-500 text-sm">No published exam results yet</p>
                   </div>
+                )}
+                {recentExams.length > 0 && (
+                  <button onClick={() => navigateTo('/student/results')}
+                    className="mt-4 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                    View Full Results <ChevronRight className="w-4 h-4" />
+                  </button>
                 )}
               </InfoCard>
             </div>
 
-            {/* Recent Attendance and Discipline */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8">
+            {/* ── Attendance + Discipline ──────────────────────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               <InfoCard title="Recent Attendance" icon={Calendar}>
                 {recentAttendance.length > 0 ? (
                   <div className="max-h-64 overflow-y-auto">
                     {recentAttendance.map((record, idx) => (
-                      <AttendanceItem
-                        key={idx}
+                      <AttendanceItem key={idx}
                         date={record.date || record.session?.session_date}
                         status={record.attendance_status}
-                        subject={record.subject_name || 'General'}
-                      />
+                        subject={record.subject_name || 'General'} />
                     ))}
                   </div>
                 ) : (
@@ -662,13 +615,11 @@ const StudentDashboard = () => {
                 {disciplineRecords.length > 0 ? (
                   <div className="max-h-64 overflow-y-auto">
                     {disciplineRecords.map((record, idx) => (
-                      <DisciplineItem
-                        key={idx}
+                      <DisciplineItem key={idx}
                         date={record.incident_date}
                         incident={record.description || record.incident_type || 'Disciplinary action'}
                         points={record.points_awarded || 0}
-                        status={record.status || 'Recorded'}
-                      />
+                        status={record.status || 'Recorded'} />
                     ))}
                   </div>
                 ) : (
@@ -680,69 +631,49 @@ const StudentDashboard = () => {
               </InfoCard>
             </div>
 
-            {/* Recent Fee Transactions */}
+            {/* ── Recent Fee Transactions ──────────────────────────────────────── */}
             {feeSummary?.recent_transactions?.length > 0 && (
-              <div className="mb-4 md:mb-8">
+              <div className="mb-8">
                 <InfoCard title="Recent Fee Transactions" icon={DollarSign}>
                   <div className="max-h-64 overflow-y-auto">
-                    {feeSummary.recent_transactions.slice(0, 5).map((transaction, idx) => (
-                      <FeeItem
-                        key={idx}
-                        description={transaction.description || transaction.payment_for || 'Fee Payment'}
-                        amount={transaction.amount}
-                        dueDate={transaction.payment_date || transaction.date}
-                        status={transaction.status || (transaction.amount > 0 ? 'Paid' : 'Pending')}
-                      />
+                    {feeSummary.recent_transactions.slice(0, 5).map((t, idx) => (
+                      <FeeItem key={idx}
+                        description={t.description || t.payment_for || 'Fee Payment'}
+                        amount={t.amount}
+                        dueDate={t.payment_date || t.date}
+                        status={t.status || (t.amount > 0 ? 'Paid' : 'Pending')} />
                     ))}
                   </div>
                   {feeSummary.recent_transactions.length > 5 && (
-                    <button 
-                      onClick={() => navigateTo('/student/fees')}
-                      className="mt-4 text-xs md:text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                    >
-                      View All Transactions <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
+                    <button onClick={() => navigateTo('/student/fees')}
+                      className="mt-4 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                      View All Transactions <ChevronRight className="w-4 h-4" />
                     </button>
                   )}
                 </InfoCard>
               </div>
             )}
 
-            {/* Quick Links - Clear buttons with consistent colors */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
-              <button 
-                onClick={() => navigateTo('/student/fees')}
-                className="p-3 md:p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
-              >
-                <DollarSign className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2" />
-                <p className="text-xs md:text-sm font-medium text-gray-700">Fee Details</p>
-              </button>
-              <button 
-                onClick={() => navigateTo('/student/attendance')}
-                className="p-3 md:p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
-              >
-                <Calendar className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2" />
-                <p className="text-xs md:text-sm font-medium text-gray-700">Attendance</p>
-              </button>
-              <button 
-                onClick={() => navigateTo('/student/results')}
-                className="p-3 md:p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
-              >
-                <BookOpen className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2" />
-                <p className="text-xs md:text-sm font-medium text-gray-700">Results</p>
-              </button>
-              <button 
-                onClick={() => navigateTo('/student/profile')}
-                className="p-3 md:p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center"
-              >
-                <User className="w-5 h-5 md:w-8 md:h-8 text-blue-600 mx-auto mb-1 md:mb-2" />
-                <p className="text-xs md:text-sm font-medium text-gray-700">Profile</p>
-              </button>
+            {/* ── Quick Links ──────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { path: '/student/fees',       icon: DollarSign, label: 'Fee Details' },
+                { path: '/student/attendance',  icon: Calendar,   label: 'Attendance' },
+                { path: '/student/results',     icon: BookOpen,   label: 'Results' },
+                { path: '/student/profile',     icon: User,       label: 'Profile' },
+              ].map(({ path, icon: Icon, label }) => (
+                <button key={path} onClick={() => navigateTo(path)}
+                  className="p-4 bg-white border border-gray-300 hover:bg-gray-50 transition-all text-center">
+                  <Icon className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-gray-700">{label}</p>
+                </button>
+              ))}
             </div>
 
-            {/* Footer */}
-            <div className="mt-6 md:mt-8 text-center text-xs md:text-sm text-gray-500">
-              <p>© {new Date().getFullYear()} Jawabu. All rights reserved.</p>
-              <p className="mt-1 truncate">Student Portal | {studentProfile?.first_name} {studentProfile?.last_name}</p>
+            {/* ── Footer ──────────────────────────────────────────────────────── */}
+            <div className="mt-8 text-center text-sm text-gray-500">
+              <p>© {new Date().getFullYear()} Jawabu Academy. All rights reserved.</p>
+              <p className="mt-1">Student Portal | {studentProfile?.first_name} {studentProfile?.last_name}</p>
             </div>
           </>
         )}

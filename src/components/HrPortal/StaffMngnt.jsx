@@ -109,7 +109,7 @@ const StaffManagement = () => {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
   };
   
-  const apiRequest = async (endpoint, options = {}) => {
+  const apiRequest = useCallback(async (endpoint, options = {}) => {
     const defaultOptions = {
       headers: {
         'Content-Type': 'application/json',
@@ -125,7 +125,7 @@ const StaffManagement = () => {
     }
     
     return data;
-  };
+  }, [getAuthHeaders]);
   
   const fetchStaff = useCallback(async () => {
     setLoading(true);
@@ -152,7 +152,7 @@ const StaffManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, selectedCategory, selectedDepartment, pagination.page, pagination.pageSize]);
+  }, [apiRequest, pagination.page, pagination.pageSize, searchTerm, selectedCategory, selectedDepartment]);
   
   const fetchStats = useCallback(async () => {
     try {
@@ -161,9 +161,9 @@ const StaffManagement = () => {
     } catch (err) {
       console.error('Error fetching stats:', err);
     }
-  }, []);
+  }, [apiRequest]);
   
-  const fetchLookupData = async () => {
+  const fetchLookupData = useCallback(async () => {
     try {
       const [categoriesRes, departmentsRes, gradeLevelsRes, jssDeptsRes] = await Promise.all([
         apiRequest('/api/hr/teacher-categories/'),
@@ -180,7 +180,7 @@ const StaffManagement = () => {
       console.error('Error fetching lookup data:', err);
       showToast('Failed to load form data', 'error');
     }
-  };
+  }, [apiRequest]);
   
   const fetchStaffAssignments = async (staffId) => {
     try {
@@ -396,7 +396,7 @@ const StaffManagement = () => {
       fetchStats();
       fetchLookupData();
     }
-  }, [isAuthenticated, fetchStaff, fetchStats]);
+  }, [fetchLookupData, fetchStaff, fetchStats, isAuthenticated]);
   
   const getCategoryBadge = (category) => {
     const styles = {

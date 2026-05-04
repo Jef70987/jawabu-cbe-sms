@@ -56,11 +56,7 @@ const StudentSidebarData = [
     icon: <MonetizationOnIcon />,
     link: "/StudentPortal/Finance"
   },
-  {
-    title: "Report Card",
-    icon: <AssignmentIcon />,
-    link: "/StudentPortal/Results"
-  },
+  
 
   // {
   //   title: "Notices",
@@ -83,7 +79,17 @@ const StudentSidebarData = [
   //   link: "/StudentPortal/Help&Support"
   // },
   {
-    title: "Analytics & Chat Nasi",
+    title: "Results",
+    icon: <SchoolIcon sx={{fontSize:30}}/>,
+    link: "/StudentPortal/Results"
+  },
+  {
+    title: "Report Card",
+    icon: <AssignmentIcon />,
+    link: "/StudentPortal/Reportcard"
+  },
+  {
+    title: "Analytics & Chat Bot",
     icon: <BotIcon sx={{fontSize:30}}/>,
     link: "/StudentPortal/chat"
   },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { 
   FiPlus, FiTrash2, FiEdit, FiUsers, 
   FiSearch, FiFilter, FiUser, FiMail, 
@@ -86,26 +86,18 @@ const Payroll = () => {
   const [departmentFilter, setDepartmentFilter] = useState("all");
 
   // Statistics
-  const [stats, setStats] = useState({
-    totalStaff: 0,
-    totalPayroll: 0,
-    averageSalary: 0,
-    activeDepartments: 0
-  });
-
-  // Calculate statistics
-  useEffect(() => {
+  const stats = useMemo(() => {
     const totalStaff = staffMembers.length;
     const totalPayroll = staffMembers.reduce((sum, staff) => sum + staff.basicSalary, 0);
     const averageSalary = totalStaff > 0 ? totalPayroll / totalStaff : 0;
     const activeDepartments = [...new Set(staffMembers.map(staff => staff.department))].length;
 
-    setStats({
+    return {
       totalStaff,
       totalPayroll,
       averageSalary,
       activeDepartments
-    });
+    };
   }, [staffMembers]);
 
   // Add new staff member

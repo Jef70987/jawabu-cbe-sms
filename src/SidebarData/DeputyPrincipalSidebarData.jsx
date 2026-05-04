@@ -18,15 +18,15 @@ const DeputyPrincipalSidebarData = [
     },
     
     {
-        title: "Discilipline",
-        icon: <MonetizationOnIcon />,
+        title: "Discipline",
+        icon: <GraduationCapIcon />,
         link: "/DeputyPortal/Discipline"
     },
-    {
-        title: "Attendance",
-        icon: <MonetizationOnIcon />,
-        link: "/DeputyPortal/Attendance"
-    },
+    // {
+    //     title: "Attendance",
+    //     icon: <MonetizationOnIcon />,
+    //     link: "/DeputyPortal/Attendance"
+    // },
     {
         title: "Messages",
         icon: <MessageCircle />,
@@ -36,6 +36,11 @@ const DeputyPrincipalSidebarData = [
         title: "Assign Teacher",
         icon: <PenBoxIcon />,
         link: "/DeputyPortal/Assignments"
+    },
+    {
+        title: "Messages",
+        icon: <MessageCircle />,
+        link: "/DeputyPortal/Messages"
     },
     {
         title: "LogOut",

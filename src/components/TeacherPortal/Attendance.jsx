@@ -500,7 +500,7 @@ function Attendance() {
       <div className="bg-green-700 p-6 w-full">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Attendance Register</h1>
+            <h1 className="text-2xl font-bold text-white">Attendance Register For Your Assigned Subject Class</h1>
             <p className="text-green-100 mt-1">Quick and easy attendance marking for your classes</p>
           </div>
           <div className="flex gap-3">

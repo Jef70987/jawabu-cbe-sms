@@ -8,7 +8,7 @@ import StudentProfile from "./Profile";
 import Academic from "./Academic";
 import Grades from "./Grades";
 import Chatbot from "./Chatbot";
-
+import Reportcard from "./ReportCard";
 const Student = () => {
     return(
         <div style={{ display: "flex", height: "100vh", overflow: "hidden",gap:"2px" }}>
@@ -32,6 +32,7 @@ const Student = () => {
                     <Route path="/Profile" element={<StudentProfile/>}/>
                     <Route path="/Academic" element={<Academic/>}/>
                     <Route path="/Results" element={<Grades/>}/>
+                    <Route path="/Reportcard" element={<Reportcard/>}/>
                     <Route path="/Logout" element={<Logout/>}/>
                     <Route path="/chat" element={<Chatbot/>}/>
                 </Routes>

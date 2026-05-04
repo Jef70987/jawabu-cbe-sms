@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bar, Line, Pie } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -117,11 +117,11 @@ const Dashboard = () => {
   const [dailyCollection, setDailyCollection] = useState([]);
   const [topStudents, setTopStudents] = useState([]);
 
-  const handleApiError = (error) => {
+  const handleApiError = useCallback((error) => {
     if (error?.status === 401 || error?.message?.includes('Unauthorized')) {
       setShowSessionExpired(true);
     }
-  };
+  }, []);
 
   const handleLogout = () => {
     setShowSessionExpired(false);
@@ -148,7 +148,7 @@ const Dashboard = () => {
     setCurrentTime(`${hours}:${minutes} ${ampm}`);
   };
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (!isAuthenticated) return;
     
     try {
@@ -202,7 +202,29 @@ const Dashboard = () => {
         });
       } else {
         // Fallback to calculating from transactions
-        await calculateStatsFromTransactions();
+        try {
+          const headers = getAuthHeaders();
+          const res = await fetchData(`${API_BASE_URL}/api/accountant/fees/transactions/?limit=1000`, headers);
+          if (res.success && res.data) {
+            const transactions = res.data.data || res.data;
+            const total_collected = transactions
+              .filter(t => t.status === 'COMPLETED')
+              .reduce((sum, t) => sum + (t.amount_kes || 0), 0);
+            const today = new Date().toISOString().split('T')[0];
+            const today_collection = transactions
+              .filter(t => t.status === 'COMPLETED' && t.payment_date?.split('T')[0] === today)
+              .reduce((sum, t) => sum + (t.amount_kes || 0), 0);
+            
+            setDashboardStats(prev => ({
+              ...prev,
+              total_collected,
+              today_collection,
+              collection_rate: total_collected > 0 ? 75 : 0
+            }));
+          }
+        } catch (calcErr) {
+          console.error("Error calculating stats:", calcErr);
+        }
       }
 
       // Process recent transactions
@@ -235,34 +257,7 @@ const Dashboard = () => {
     } finally {
       setLoading(prev => ({ ...prev, stats: false }));
     }
-  };
-
-  // Fallback: Calculate stats from transactions if stats endpoint not available
-  const calculateStatsFromTransactions = async () => {
-    try {
-      const headers = getAuthHeaders();
-      const res = await fetchData(`${API_BASE_URL}/api/accountant/fees/transactions/?limit=1000`, headers);
-      if (res.success && res.data) {
-        const transactions = res.data.data || res.data;
-        const total_collected = transactions
-          .filter(t => t.status === 'COMPLETED')
-          .reduce((sum, t) => sum + (t.amount_kes || 0), 0);
-        const today = new Date().toISOString().split('T')[0];
-        const today_collection = transactions
-          .filter(t => t.status === 'COMPLETED' && t.payment_date?.split('T')[0] === today)
-          .reduce((sum, t) => sum + (t.amount_kes || 0), 0);
-        
-        setDashboardStats(prev => ({
-          ...prev,
-          total_collected,
-          today_collection,
-          collection_rate: total_collected > 0 ? 75 : 0
-        }));
-      }
-    } catch (err) {
-      console.error("Error calculating stats:", err);
-    }
-  };
+  }, [getAuthHeaders, handleApiError, isAuthenticated]);
 
   useEffect(() => { 
     if (isAuthenticated) {
@@ -274,7 +269,7 @@ const Dashboard = () => {
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [refreshKey, isAuthenticated]);
+  }, [refreshKey, isAuthenticated, fetchDashboardData]);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -411,11 +406,11 @@ const Dashboard = () => {
       <SessionExpiredModal isOpen={showSessionExpired} onLogout={handleLogout} />
       
       {/* Header Section */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 bg-green-700 p-4 rounded-l">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Accountant Dashboard</h1>
-          <p className="text-gray-600 mt-1">Financial overview and transaction monitoring</p>
-          {user && <p className="text-xs text-gray-400 mt-1">{user.first_name} {user.last_name} • {user.role}</p>}
+          <h1 className="text-2xl md:text-3xl font-bold text-white">Accountant Dashboard</h1>
+          <p className="text-white mt-1">Financial overview and transaction monitoring</p>
+          {user && <p className="text-xs text-white mt-1">{user.first_name} {user.last_name} • {user.role}</p>}
         </div>
         <div className="mt-4 lg:mt-0 flex flex-col md:flex-row items-start md:items-center gap-4">
           <div className="text-right">
@@ -437,7 +432,7 @@ const Dashboard = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl shadow-lg p-5 text-white">
+        <div className="bg-red-500 rounded-l shadow-lg p-5 text-white">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm font-medium opacity-90 mb-2">Total Collected</p>
@@ -448,7 +443,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl shadow-lg p-5 text-white">
+        <div className="bg-blue-500 rounded-l shadow-lg p-5 text-white">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm font-medium opacity-90 mb-2">Today's Collection</p>
@@ -459,7 +454,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl shadow-lg p-5 text-white">
+        <div className="bg-amber-500 rounded-l shadow-lg p-5 text-white">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm font-medium opacity-90 mb-2">Pending Collections</p>
@@ -470,7 +465,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-red-500 to-rose-600 rounded-xl shadow-lg p-5 text-white">
+        <div className="bg-orange-500 rounded-l shadow-lg p-5 text-white">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm font-medium opacity-90 mb-2">Overdue Payments</p>
@@ -575,7 +570,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-lg p-5 text-white">
+          <div className="bg-blue-500 rounded-l shadow-lg p-5 text-white">
             <h3 className="text-lg font-semibold mb-4">Performance Metrics</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/10 rounded-lg p-3"><div className="flex items-center gap-2 mb-1"><FiDollarSign /> <p className="text-sm opacity-90">Avg Transaction</p></div><p className="text-2xl font-bold">{formatCurrency(dashboardStats.avg_transaction)}</p></div>
@@ -587,7 +582,7 @@ const Dashboard = () => {
 
       {error && <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4"><div className="flex items-center gap-2 text-red-600 font-medium"><FiAlertCircle /> Error loading dashboard data: {error}</div></div>}
 
-      {loading.stats && <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50"><div className="bg-white rounded-xl p-6 shadow-2xl"><div className="flex items-center gap-3"><FiRefreshCw className="animate-spin text-blue-600" /><p className="text-gray-700 font-medium">Loading dashboard data...</p></div></div></div>}
+      {loading.stats && <div className="fixed inset-0 bg-opacity-10 flex items-center justify-center z-50"><div className="bg-white rounded-xl p-6 shadow-2xl"><div className="flex items-center gap-3"><FiRefreshCw className="animate-spin text-blue-600" /><p className="text-gray-700 font-medium">Loading dashboard data...</p></div></div></div>}
 
       <div className="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-500"><p>Accountant Dashboard • School ERP System • Data updates every 30 seconds</p></div>
     </div>

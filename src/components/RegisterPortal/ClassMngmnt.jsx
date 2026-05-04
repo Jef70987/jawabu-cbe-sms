@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, RefreshCw, School, CheckCircle, Users, 
   BarChart3, AlertCircle, X, Loader2, Info,
@@ -80,6 +80,7 @@ function ClassManagement() {
   const { user, getAuthHeaders, isAuthenticated } = useAuth();
   const [classes, setClasses] = useState([]);
   const [streams, setStreams] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [numericLevels, setNumericLevels] = useState([]);
   const [loading, setLoading] = useState({ classes: true, teachers: true, streams: true, levels: true });
   const [toasts, setToasts] = useState([]);
@@ -129,44 +130,37 @@ function ClassManagement() {
 
   const navigate = useNavigate();
 
-  const addToast = (type, message) => {
+  const addToast = useCallback((type, message) => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, type, message }]);
-  };
+  }, []);
 
   const removeToast = (id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      addToast('error', 'Please login to access class management');
-      return;
-    }
-    fetchInitialData();
-  }, [isAuthenticated]);
-
-  const fetchInitialData = async () => {
-    if (!isAuthenticated) return;
-    
-    setActionLoading(prev => ({ ...prev, fetchData: true }));
+    // Fetch with timeout
+  const fetchWithTimeout = useCallback(async (url, options, timeout = 8000) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
     
     try {
-      setLoading({ classes: true, teachers: true, streams: true, levels: true });
-      await fetchStreams();
-      await fetchNumericLevels();
-      await fetchClasses();
-      await fetchTeachers();
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return await response.json();
     } catch (error) {
-      console.error('Initial fetch error:', error);
-      addToast('error', 'Error fetching initial data. Please refresh the page.');
-    } finally {
-      setLoading({ classes: false, teachers: false, streams: false, levels: false });
-      setActionLoading(prev => ({ ...prev, fetchData: false }));
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout');
+      }
+      throw error;
     }
-  };
+  }, []);
 
-  const fetchStreams = async () => {
+  const fetchStreams = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/registrar/classes/streams/`, { headers: getAuthHeaders() });
       if (response.ok) {
@@ -179,9 +173,9 @@ function ClassManagement() {
     } finally {
       setLoading(prev => ({ ...prev, streams: false }));
     }
-  };
+  }, [addToast, getAuthHeaders]);
 
-  const fetchNumericLevels = async () => {
+  const fetchNumericLevels = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/registrar/classes/numeric-levels/`, { headers: getAuthHeaders() });
       if (response.ok) {
@@ -194,9 +188,9 @@ function ClassManagement() {
     } finally {
       setLoading(prev => ({ ...prev, levels: false }));
     }
-  };
+  }, [addToast, getAuthHeaders]);
 
-  const fetchClasses = async () => {
+  const fetchClasses = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/registrar/classes/`, { headers: getAuthHeaders() });
       if (!response.ok) {
@@ -215,9 +209,27 @@ function ClassManagement() {
     } finally {
       setLoading(prev => ({ ...prev, classes: false }));
     }
-  };
+  }, [addToast, getAuthHeaders, navigate]);
 
-  const fetchTeachers = async () => {
+  const fetchSubjects = useCallback(async () => {
+    try {
+      const data = await fetchWithTimeout(
+        `${API_BASE_URL}/api/registrar/classes/subjects/`,
+        { headers: getAuthHeaders() },
+        8000
+      );
+      if (data && data.success) {
+        setSubjects(data.data);
+        
+      }
+    } catch (error) {
+      addToast('error', 'Failed to load subjects');
+    } finally {
+      setLoading(prev => ({ ...prev, subjects: false }));
+    }
+  }, [addToast, fetchWithTimeout, getAuthHeaders]);
+
+  const fetchTeachers = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/registrar/classes/teachers/`, { headers: getAuthHeaders() });
       if (response.ok) {
@@ -229,7 +241,35 @@ function ClassManagement() {
     } finally {
       setLoading(prev => ({ ...prev, teachers: false }));
     }
-  };
+  }, [addToast, getAuthHeaders]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      addToast('error', 'Please login to access class management');
+      return;
+    }
+    const loadInitialData = async () => {
+      setActionLoading(prev => ({ ...prev, fetchData: true }));
+      try {
+        setLoading({ classes: true, teachers: true, streams: true, levels: true });
+        await fetchStreams();
+        await fetchNumericLevels();
+        await fetchClasses();
+        await fetchTeachers();
+      } catch (error) {
+        console.error('Initial fetch error:', error);
+        addToast('error', 'Error fetching initial data. Please refresh the page.');
+      } finally {
+        setLoading({ classes: false, teachers: false, streams: false, levels: false });
+        setActionLoading(prev => ({ ...prev, fetchData: false }));
+      }
+    };
+    loadInitialData();
+  }, [addToast, fetchClasses, fetchNumericLevels, fetchStreams, fetchTeachers, isAuthenticated]);
+
+  useEffect(() => {
+    fetchSubjects();
+  }, [fetchSubjects]);
 
   // Grade Levels Configuration based on Kenyan system
   const gradeLevels = [
@@ -986,7 +1026,7 @@ function ClassManagement() {
                   value={newStream.name}
                   onChange={(e) => setNewStream({ ...newStream, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" 
-                  placeholder="e.g., Kilimanjaro, Alpha, Kenya"
+                  placeholder="e.g., blue, red, green"
                   disabled={actionLoading.addStream || actionLoading.updateStream}
                 />
               </div>
@@ -997,7 +1037,7 @@ function ClassManagement() {
                   value={newStream.code}
                   onChange={(e) => setNewStream({ ...newStream, code: e.target.value.toUpperCase() })}
                   className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" 
-                  placeholder="e.g., KIL, ALP, KEN"
+                  placeholder="e.g., B001, R001, Y001"
                   disabled={actionLoading.addStream || actionLoading.updateStream}
                 />
               </div>
@@ -1117,14 +1157,11 @@ function ClassManagement() {
                   className="w-full px-3 py-2 border border-gray-400 text-sm bg-white"
                 >
                   <option value="">Select Subject</option>
-                  <option value="math">Mathematics</option>
-                  <option value="eng">English</option>
-                  <option value="kis">Kiswahili</option>
-                  <option value="sci">Integrated Science</option>
-                  <option value="pts">Pre-Technical Studies</option>
-                  <option value="cas">Creative Arts & Sports</option>
-                  <option value="sst">Social Studies</option>
-                  <option value="re">Religious Education</option>
+                  {subjects.map(subject => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="mb-4">
@@ -1154,7 +1191,7 @@ function ClassManagement() {
           </div>
         </div>
       )}
-      
+            
       {/* Add CSS animation for toasts */}
       <style jsx>{`
         @keyframes slideInRight {
