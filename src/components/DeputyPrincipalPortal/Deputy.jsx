@@ -6,6 +6,7 @@ import Discipline from "./DeputyDiscipline";
 import Login from "../Authentication/Login";
 import Logout from "../Authentication/Logout";
 import TeacherAssignment from "./TeacherAssign";
+import Messages from "../CommonService/StaffMessaging";
 
 
 const DeputyPrincipal = () => {
@@ -30,7 +31,7 @@ const DeputyPrincipal = () => {
                     <Route path="/dashboard" element={<DeputyPrincipalDashboard />} />
                     <Route path="/discipline" element={<Discipline />} />
                     <Route path="/Assignments" element={<TeacherAssignment/>}/>
-                    
+                    <Route path="/messages" element={<Messages />} />
 
                     <Route path="/login" element={<Login />} />
                     <Route path="/Logout" element={<Logout/>}/>
