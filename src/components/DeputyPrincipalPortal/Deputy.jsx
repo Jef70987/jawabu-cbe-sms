@@ -7,7 +7,7 @@ import Login from "../Authentication/Login";
 import Logout from "../Authentication/Logout";
 import Messages from "../CommonService/StaffMessaging";
 import TeacherAssignment from "./TeacherAssign";
-import Messages from "../CommonService/StaffMessaging";
+
 
 
 const DeputyPrincipal = () => {
