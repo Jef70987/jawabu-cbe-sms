@@ -161,7 +161,7 @@ const PaymentRecords = () => {
     setFilteredTransactions(filtered);
   }, [filters, transactions]);
 
-  useEffect(() => { if (isAuthenticated) { fetchTransactions(); fetchStats(); } }, [isAuthenticated]);
+  useEffect(() => { if (isAuthenticated) { fetchTransactions(); fetchStats(); } }, [fetchStats, fetchTransactions, isAuthenticated]);
   useEffect(() => { applyFilters(); }, [applyFilters]);
 
   const clearFilters = () => setFilters({ start_date: '', end_date: '', status: 'all', payment_mode: 'all', search_term: '' });

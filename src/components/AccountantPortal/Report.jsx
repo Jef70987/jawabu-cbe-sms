@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { 
   FiDownload, 
   FiPrinter, 
@@ -15,6 +15,18 @@ import {
   FiArrowDown,
   FiArrowUp
 } from "react-icons/fi";
+
+const createGeneratedReport = (type, now, id, recordCount) => ({
+  id,
+  title: `${type.charAt(0).toUpperCase() + type.slice(1)} Report - ${now.toLocaleDateString()}`,
+  type,
+  period: "Current",
+  generatedDate: now.toISOString().split("T")[0],
+  size: "1.2 MB",
+  records: recordCount,
+  status: "completed",
+  description: `Automatically generated ${type} report`
+});
 
 const Reports = () => {
   // State for reports data
@@ -116,14 +128,6 @@ const Reports = () => {
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [sortBy, setSortBy] = useState("newest");
 
-  // State for quick stats
-  const [stats, setStats] = useState({
-    totalReports: 0,
-    financialReports: 0,
-    recentReports: 0,
-    totalRecords: 0
-  });
-
   // State for modal
   const [selectedReport, setSelectedReport] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -143,7 +147,7 @@ const Reports = () => {
   ];
 
   // Calculate statistics
-  useEffect(() => {
+  const stats = useMemo(() => {
     const totalReports = reports.length;
     const financialReports = reports.filter(r => r.type === "financial").length;
     const recentReports = reports.filter(r => {
@@ -154,12 +158,12 @@ const Reports = () => {
     }).length;
     const totalRecords = reports.reduce((sum, report) => sum + report.records, 0);
 
-    setStats({
+    return {
       totalReports,
       financialReports,
       recentReports,
       totalRecords
-    });
+    };
   }, [reports]);
 
   // Filter and sort reports
@@ -231,17 +235,16 @@ const Reports = () => {
 
   // Quick generate report
   const quickGenerateReport = (type) => {
-    const newReport = {
-      id: Date.now(),
-      title: `${type.charAt(0).toUpperCase() + type.slice(1)} Report - ${new Date().toLocaleDateString()}`,
-      type: type,
-      period: "Current",
-      generatedDate: new Date().toISOString().split('T')[0],
-      size: "1.2 MB",
-      records: Math.floor(Math.random() * 200) + 50,
-      status: "completed",
-      description: `Automatically generated ${type} report`
-    };
+    const now = new Date();
+    const generatedId = now.getTime();
+    const existingTypeReports = reports.filter(report => report.type === type);
+    const averageRecords = existingTypeReports.length > 0
+      ? Math.round(
+          existingTypeReports.reduce((sum, report) => sum + report.records, 0) / existingTypeReports.length
+        )
+      : 100;
+    const recordCount = Math.max(50, averageRecords);
+    const newReport = createGeneratedReport(type, now, generatedId, recordCount);
     setReports([newReport, ...reports]);
   };
 

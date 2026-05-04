@@ -210,11 +210,13 @@ function TeacherCurriculum() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const addToast = (type, message) => {
+  const addToast = useCallback((type, message) => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, type, message }]);
-    setTimeout(() => removeToast(id), 5000);
-  };
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 5000);
+  }, []);
 
   const removeToast = (id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
@@ -234,59 +236,36 @@ function TeacherCurriculum() {
     }
   }, []);
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!isAuthenticated) {
-      addToast('error', 'Please login to access curriculum');
-      return;
-    }
-    fetchCurriculumData();
-    fetchLessonPlans();
-  }, [isAuthenticated, authLoading]);
-
-  useEffect(() => {
-    if (selectedSubject && selectedGrade) {
-      fetchStrandsForSubject(selectedSubject.id, selectedGrade.id);
-    }
-  }, [selectedSubject, selectedGrade]);
-
-  const fetchCurriculumData = async () => {
+  const fetchCurriculumData = useCallback(async () => {
     setLoading(prev => ({ ...prev, curriculum: true, subjects: true }));
     try {
-      await Promise.all([fetchSubjects(), fetchGradeLevels()]);
+      const [subjectsData, gradeLevelsData] = await Promise.all([
+        fetchWithTimeout(`${API_BASE_URL}/api/teacher/curriculum/subjects/`, { headers: getAuthHeaders() }, 30000),
+        fetchWithTimeout(`${API_BASE_URL}/api/teacher/curriculum/grade-levels/`, { headers: getAuthHeaders() }, 30000),
+      ]);
+
+      if (subjectsData?.success) {
+        setSubjects(subjectsData.data);
+        if (subjectsData.data.length > 0) {
+          setSelectedSubject(prev => prev || subjectsData.data[0]);
+        }
+      }
+
+      if (gradeLevelsData?.success) {
+        setGradeLevels(gradeLevelsData.data);
+        if (gradeLevelsData.data.length > 0) {
+          setSelectedGrade(prev => prev || gradeLevelsData.data[0]);
+        }
+      }
     } catch (error) {
       addToast('error', 'Failed to load curriculum data');
     } finally {
       setDataLoaded(true);
       setLoading(prev => ({ ...prev, curriculum: false, subjects: false }));
     }
-  };
+  }, [addToast, fetchWithTimeout, getAuthHeaders]);
 
-  const fetchSubjects = async () => {
-    try {
-      const data = await fetchWithTimeout(`${API_BASE_URL}/api/teacher/curriculum/subjects/`, { headers: getAuthHeaders() }, 30000);
-      if (data?.success) {
-        setSubjects(data.data);
-        if (data.data.length > 0 && !selectedSubject) setSelectedSubject(data.data[0]);
-      }
-    } catch (error) {
-      addToast('error', 'Network error - please check your connection');
-    }
-  };
-
-  const fetchGradeLevels = async () => {
-    try {
-      const data = await fetchWithTimeout(`${API_BASE_URL}/api/teacher/curriculum/grade-levels/`, { headers: getAuthHeaders() }, 30000);
-      if (data?.success) {
-        setGradeLevels(data.data);
-        if (data.data.length > 0 && !selectedGrade) setSelectedGrade(data.data[0]);
-      }
-    } catch (error) {
-      addToast('error', 'Network error loading grade levels');
-    }
-  };
-
-  const fetchStrandsForSubject = async (subjectId, gradeId) => {
+  const fetchStrandsForSubject = useCallback(async (subjectId, gradeId) => {
     if (!subjectId) return;
     setLoading(prev => ({ ...prev, curriculum: true }));
     try {
@@ -304,7 +283,7 @@ function TeacherCurriculum() {
     } finally {
       setLoading(prev => ({ ...prev, curriculum: false }));
     }
-  };
+  }, [addToast, fetchWithTimeout, getAuthHeaders]);
 
   const fetchLessonPlans = useCallback(async () => {
     setLoading(prev => ({ ...prev, lessonPlans: true }));
@@ -325,7 +304,23 @@ function TeacherCurriculum() {
     } finally {
       setLoading(prev => ({ ...prev, lessonPlans: false }));
     }
-  }, [fetchWithTimeout, getAuthHeaders]);
+  }, [addToast, fetchWithTimeout, getAuthHeaders]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      addToast('error', 'Please login to access curriculum');
+      return;
+    }
+    fetchCurriculumData();
+    fetchLessonPlans();
+  }, [addToast, authLoading, fetchCurriculumData, fetchLessonPlans, isAuthenticated]);
+
+  useEffect(() => {
+    if (selectedSubject && selectedGrade) {
+      fetchStrandsForSubject(selectedSubject.id, selectedGrade.id);
+    }
+  }, [fetchStrandsForSubject, selectedGrade, selectedSubject]);
 
   const handleSubjectChange = (subjectId) => {
     const subject = subjects.find(s => s.id === subjectId);

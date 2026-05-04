@@ -86,7 +86,7 @@ const HRDashboard = () => {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
   };
   
-  const apiRequest = async (endpoint) => {
+  const apiRequest = useCallback(async (endpoint) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
@@ -96,7 +96,7 @@ const HRDashboard = () => {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Request failed');
     return data;
-  };
+  }, [getAuthHeaders]);
   
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
@@ -139,7 +139,7 @@ const HRDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiRequest]);
   
   const refreshData = async () => {
     setRefreshing(true);

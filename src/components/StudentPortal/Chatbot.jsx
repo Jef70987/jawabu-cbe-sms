@@ -1,6 +1,6 @@
-/* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../Authentication/AuthContext";
+import { fetchStudentMLInsight } from "../../services/mlApi";
 import {
   MessageCircle,
   Send,
@@ -85,7 +85,6 @@ const getGradeCode = (pct, isFourPoint) => {
 };
 
 const getBarColor  = (code) => META[code]?.bar   || "bg-gray-400";
-const getBadgeClass= (code) => META[code]?.badge  || "bg-gray-100 text-gray-700 border-gray-200";
 
 const QUICK_SUGGESTIONS = [
   { text: "My competency summary", icon: TrendingUp, query: "Show me my competency mastery summary" },
@@ -99,6 +98,358 @@ const QUICK_SUGGESTIONS = [
 const getTimestamp = () =>
   new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+const formatRiskLevel = (level) => {
+  const normalized = typeof level === 'string' ? level.toLowerCase() : 'unknown';
+  if (normalized === 'high') return 'High risk';
+  if (normalized === 'medium') return 'Medium risk';
+  if (normalized === 'low') return 'Low risk';
+  return 'Risk unknown';
+};
+
+const formatPredictionValue = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'Prediction unavailable';
+  if (value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
+  return `${Math.round(value)}`;
+};
+
+const formatConfidenceValue = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'Confidence unavailable';
+  if (value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
+  if (value > 1 && value <= 100) return `${Math.round(value)}%`;
+  return `${Math.round(value)}`;
+};
+
+const formatConfidenceBand = (band) => {
+  const normalized = typeof band === 'string' ? band.toLowerCase() : 'unknown';
+  if (normalized === 'high') return 'High confidence';
+  if (normalized === 'medium') return 'Medium confidence';
+  if (normalized === 'low') return 'Low confidence';
+  return 'Confidence band unknown';
+};
+
+const formatMlSource = (source) => {
+  const normalized = typeof source === 'string' ? source.toLowerCase() : 'unknown';
+  if (normalized === 'ml_api') return 'ML API';
+  if (normalized === 'chatbot_api') return 'Chatbot API';
+  if (normalized === 'fallback') return 'Fallback data';
+  if (normalized === 'unavailable') return 'Unavailable';
+  return 'Unknown source';
+};
+
+const formatLastUpdated = (value) => {
+  if (!value) return 'Not updated yet';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Not updated yet';
+  return date.toLocaleString();
+};
+
+const humanizeFeatureName = (feature) => {
+  if (typeof feature !== 'string' || !feature.trim()) return 'Signal';
+  return feature
+    .split('_')
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+};
+
+const formatFactorImpact = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'Impact unavailable';
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+  const absoluteValue = Math.abs(value);
+  if (absoluteValue <= 1) return `${sign}${Math.round(absoluteValue * 100)}%`;
+  return `${sign}${absoluteValue.toFixed(1)}`;
+};
+
+const getFactorDirectionMeta = (direction) => {
+  const normalized = typeof direction === 'string' ? direction.toLowerCase() : 'neutral';
+  if (normalized === 'positive') {
+    return {
+      direction: 'positive',
+      label: 'Positive signal',
+      classes: 'bg-green-50 text-green-700 border-green-200',
+      fallbackExplanation: 'This signal is associated with a stronger estimate.',
+    };
+  }
+  if (normalized === 'negative') {
+    return {
+      direction: 'negative',
+      label: 'Needs attention',
+      classes: 'bg-amber-50 text-amber-700 border-amber-200',
+      fallbackExplanation: 'This signal is associated with a weaker estimate.',
+    };
+  }
+  return {
+    direction: 'neutral',
+    label: 'Context signal',
+    classes: 'bg-slate-50 text-slate-700 border-slate-200',
+    fallbackExplanation: 'This signal is included in the available ML context.',
+  };
+};
+
+const getFactorSourceLabel = (source) => {
+  const normalized = typeof source === 'string' ? source.toLowerCase() : '';
+  if (normalized === 'model') return 'Model signal';
+  if (normalized === 'rule_based') return 'Rule-based signal';
+  if (normalized === 'fallback') return 'Fallback signal';
+  return 'Signal';
+};
+
+const normalizeRecommendationPriority = (priority) => {
+  const normalized = typeof priority === 'string' ? priority.toLowerCase() : 'medium';
+  if (normalized === 'high' || normalized === 'medium' || normalized === 'low') return normalized;
+  return 'medium';
+};
+
+const getRecommendationPriorityMeta = (priority) => {
+  if (priority === 'high') {
+    return {
+      label: 'High priority',
+      classes: 'bg-amber-50 text-amber-700 border-amber-200',
+    };
+  }
+  if (priority === 'low') {
+    return {
+      label: 'Low priority',
+      classes: 'bg-green-50 text-green-700 border-green-200',
+    };
+  }
+  return {
+    label: 'Medium priority',
+    classes: 'bg-slate-50 text-slate-700 border-slate-200',
+  };
+};
+
+const normalizeRecommendationType = (type) => {
+  const normalized = typeof type === 'string' ? type.toLowerCase() : 'general';
+  if (normalized === 'academic' || normalized === 'attendance' || normalized === 'behavior' || normalized === 'career' || normalized === 'general') {
+    return normalized;
+  }
+  return 'general';
+};
+
+const getRecommendationTypeLabel = (type) => {
+  if (type === 'academic') return 'Academic';
+  if (type === 'attendance') return 'Attendance';
+  if (type === 'behavior') return 'Behavior';
+  if (type === 'career') return 'Career';
+  return 'General';
+};
+
+const getRecommendationSourceLabel = (source) => {
+  const normalized = typeof source === 'string' ? source.toLowerCase() : '';
+  if (normalized === 'ml') return 'ML recommendation';
+  if (normalized === 'rule_based') return 'Rule-based recommendation';
+  if (normalized === 'fallback') return 'Fallback recommendation';
+  return 'Recommendation';
+};
+
+const isMlInsightStale = (timestamp) => {
+  if (!timestamp) return false;
+  const updatedAt = new Date(timestamp).getTime();
+  if (Number.isNaN(updatedAt)) return false;
+  return Date.now() - updatedAt > 60 * 60 * 1000;
+};
+
+const ML_INSIGHT_UNAVAILABLE_MESSAGE = 'ML insight is not available yet. I can still give general study guidance, but personalized prediction-based advice requires the latest ML insight to load.';
+const LOW_CONFIDENCE_CAVEAT = 'This estimate may be incomplete because model confidence is low or unavailable.';
+const IMPROVEMENT_EMPTY_RECOMMENDATIONS = 'No personalized recommendations are available yet. Review your recent performance, attendance, and competency gaps with a teacher or advisor.';
+const CAREER_FALLBACK_MESSAGE = 'I do not have personalized career pathway recommendations yet. A teacher or career advisor should review your competencies, interests, and subject performance before choosing a pathway.';
+
+const normalizeMessageText = (message) => (typeof message === 'string' ? message.toLowerCase().trim() : '');
+
+const sanitizeMlErrorMessage = (error) => {
+  const raw = typeof error === 'string' ? error : error?.message;
+  const normalized = String(raw || '')
+    .replace(/\s+/g, ' ')
+    .replace(/^TypeError:\s*/i, '')
+    .trim();
+
+  if (!normalized) return 'ML insight unavailable';
+  if (normalized.toLowerCase().includes('failed to fetch')) {
+    return 'ML insight unavailable: Unable to reach ML services right now. Please try again.';
+  }
+
+  const clipped = normalized.slice(0, 180);
+  if (clipped.toLowerCase().startsWith('ml insight unavailable')) return clipped;
+  return `ML insight unavailable: ${clipped}`;
+};
+
+const detectMlIntent = (message) => {
+  const content = normalizeMessageText(message);
+  if (!content) return null;
+
+  const riskPatterns = [
+    'why at risk',
+    'why am i at risk',
+    'why this prediction',
+    'explain prediction',
+    'why predicted',
+    'what affects my risk',
+  ];
+  const improvementPatterns = [
+    'how can i improve',
+    'how do i improve',
+    'improve my performance',
+    'what should i focus on',
+    'what should i work on',
+    'next steps',
+  ];
+  const studyPlanPatterns = [
+    'study plan',
+    'revision plan',
+    'learning plan',
+    'recommend study',
+    'what should i study',
+  ];
+  const careerPatterns = [
+    'career pathway',
+    'career paths',
+    'future career',
+    'subject choice',
+    'career',
+    'pathway',
+  ];
+
+  if (riskPatterns.some((pattern) => content.includes(pattern))) return 'risk_explanation';
+  if (improvementPatterns.some((pattern) => content.includes(pattern))) return 'improvement';
+  if (studyPlanPatterns.some((pattern) => content.includes(pattern))) return 'study_plan';
+  if (careerPatterns.some((pattern) => content.includes(pattern))) return 'career';
+  return null;
+};
+
+const formatPredictionForMessage = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return null;
+  if (value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
+  return `${Math.round(value)}`;
+};
+
+const formatConfidenceForMessage = (value, band) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return band ? `Confidence band: ${formatConfidenceBand(band)}.` : null;
+  }
+
+  let formattedValue = null;
+  if (value >= 0 && value <= 1) formattedValue = `${Math.round(value * 100)}%`;
+  else if (value > 1 && value <= 100) formattedValue = `${Math.round(value)}%`;
+  else formattedValue = `${Math.round(value)}`;
+
+  if (band) return `${formattedValue} (${formatConfidenceBand(band)})`;
+  return formattedValue;
+};
+
+const hasLowOrUnknownConfidence = (insight) => {
+  const confidence = insight?.confidence;
+  const confidenceBand = typeof insight?.confidenceBand === 'string' ? insight.confidenceBand.toLowerCase() : 'unknown';
+  if (typeof confidence !== 'number' || Number.isNaN(confidence)) return true;
+  if (confidenceBand === 'low' || confidenceBand === 'unknown') return true;
+  return confidence < 0.5;
+};
+
+const summarizeFactorsForMessage = (factors, limit = 3) => {
+  if (!Array.isArray(factors)) return [];
+  return factors.slice(0, limit).map((factor) => {
+    const label = factor?.label || humanizeFeatureName(factor?.feature);
+    const directionMeta = getFactorDirectionMeta(factor?.direction);
+    return `${label}: ${directionMeta.fallbackExplanation}`;
+  });
+};
+
+const summarizeRecommendationsForMessage = (recommendations, limit = 3) => {
+  if (!Array.isArray(recommendations)) return [];
+  return recommendations.slice(0, limit).map((recommendation) => {
+    const title = recommendation?.title || 'Recommended action';
+    const description = recommendation?.description || 'Review this recommendation with a teacher or advisor.';
+    return `${title} - ${description}`;
+  });
+};
+
+const hasRuleBasedRecommendations = (recommendations) =>
+  Array.isArray(recommendations)
+  && recommendations.some((recommendation) => normalizeMessageText(recommendation?.source) === 'rule_based');
+
+const buildMlAwareResponse = (intent, insight) => {
+  if (!insight || insight?.source === 'unavailable') {
+    return ML_INSIGHT_UNAVAILABLE_MESSAGE;
+  }
+
+  const riskLevel = formatRiskLevel(insight?.riskLevel);
+  const prediction = formatPredictionForMessage(insight?.prediction);
+  const confidence = formatConfidenceForMessage(insight?.confidence, insight?.confidenceBand);
+  const factors = summarizeFactorsForMessage(insight?.factors, intent === 'improvement' ? 2 : 3);
+  const recommendations = summarizeRecommendationsForMessage(insight?.recommendations, 3);
+  const lowConfidence = hasLowOrUnknownConfidence(insight);
+  const ruleBasedRecommendation = hasRuleBasedRecommendations(insight?.recommendations);
+  const confidenceNote = lowConfidence ? LOW_CONFIDENCE_CAVEAT : '';
+  const ruleBasedNote = ruleBasedRecommendation ? 'Some recommendations are rule-based, not direct model decisions.' : '';
+
+  if (intent === 'risk_explanation') {
+    const sections = [];
+    sections.push(`Current estimate: ${riskLevel}${prediction ? `, with a prediction value of ${prediction}.` : '.'}`);
+    if (confidence) sections.push(`Confidence context: ${confidence}.`);
+    if (factors.length > 0) {
+      sections.push(`Top signals associated with this estimate:\n${factors.map((factor, index) => `${index + 1}. ${factor}`).join('\n')}`);
+    } else {
+      sections.push('Factor details are not available yet, so this estimate should be reviewed with your teacher or advisor.');
+    }
+    if (confidenceNote) sections.push(confidenceNote);
+    return sections.join('\n\n');
+  }
+
+  if (intent === 'improvement') {
+    if (recommendations.length === 0) {
+      return [IMPROVEMENT_EMPTY_RECOMMENDATIONS, confidenceNote].filter(Boolean).join('\n\n');
+    }
+
+    const sections = [];
+    sections.push(`Suggested next steps:\n${recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`).join('\n')}`);
+    if (factors.length > 0) {
+      sections.push(`Signals to review with your teacher:\n${factors.map((factor, index) => `${index + 1}. ${factor}`).join('\n')}`);
+    }
+    sections.push('Review these actions with a teacher or advisor before making major study changes.');
+    if (ruleBasedNote) sections.push(ruleBasedNote);
+    if (confidenceNote) sections.push(confidenceNote);
+    return sections.join('\n\n');
+  }
+
+  if (intent === 'study_plan') {
+    if (recommendations.length === 0) {
+      const generalPlan = [
+        'General guidance (not personalized):',
+        '1. Review your weakest topics first.',
+        '2. Practice recent assessments and track repeated mistakes.',
+        '3. Ask your teacher for targeted feedback on priority gaps.',
+        '4. Track progress weekly and adjust your plan.',
+      ].join('\n');
+      return [generalPlan, confidenceNote].filter(Boolean).join('\n\n');
+    }
+
+    const planFromRecommendations = `Study plan based on available recommendations:\n${recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`).join('\n')}`;
+    return [planFromRecommendations, ruleBasedNote, confidenceNote].filter(Boolean).join('\n\n');
+  }
+
+  if (intent === 'career') {
+    const careerRecommendations = Array.isArray(insight?.recommendations)
+      ? insight.recommendations.filter((recommendation) => normalizeRecommendationType(recommendation?.type) === 'career')
+      : [];
+
+    if (careerRecommendations.length === 0) {
+      return [CAREER_FALLBACK_MESSAGE, confidenceNote].filter(Boolean).join('\n\n');
+    }
+
+    const careerSummary = summarizeRecommendationsForMessage(careerRecommendations, 3);
+    const responseSections = [
+      `Career-related suggestions from your current insight:\n${careerSummary.map((item, index) => `${index + 1}. ${item}`).join('\n')}`,
+      'Review these options with a teacher or career advisor before choosing a pathway.',
+    ];
+    if (ruleBasedNote) responseSections.push(ruleBasedNote);
+    if (confidenceNote) responseSections.push(confidenceNote);
+    return responseSections.join('\n\n');
+  }
+
+  return ML_INSIGHT_UNAVAILABLE_MESSAGE;
+};
+
+// â”€â”€â”€ Bot message formatter (bold, italic, lists, paragraphs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const formatBotMessage = (text) => {
   if (!text) return null;
   const esc = (s) => s.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m] ?? m);
@@ -122,7 +473,7 @@ const formatBotMessage = (text) => {
   return <div dangerouslySetInnerHTML={{ __html: result.join("") }} />;
 };
 
-// ─── Discipline status config ─────────────────────────────────────────────────
+// Discipline status config 
 const DISCIPLINE_STATUS_CONFIG = {
   Good:       { bg: "bg-green-50",  border: "border-green-200",  text: "text-green-700",  icon: Shield,      label: "Good Standing"  },
   Warning:    { bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  icon: AlertTriangle,label: "Warning Issued" },
@@ -130,10 +481,10 @@ const DISCIPLINE_STATUS_CONFIG = {
   Suspension: { bg: "bg-red-50",    border: "border-red-200",    text: "text-red-700",    icon: ShieldX,      label: "Suspension"     },
 };
 
-// ─── Discipline card ──────────────────────────────────────────────────────────
+//  Discipline card
 // FIX: replaced the old card (which only showed a raw incident count) with a card
 // that surfaces discipline_status, discipline_points, open_discipline_cases,
-// active_suspensions, and suspension_detail — matching what Jawabu now knows.
+// active_suspensions, and suspension_detail  matching what Jawabu now knows.
 const DisciplineCard = ({ analyticsData, isMobile = false }) => {
   if (!analyticsData) return null;
 
@@ -210,7 +561,7 @@ const DisciplineCard = ({ analyticsData, isMobile = false }) => {
                       s.status === "Active" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
                     }`}>{s.status}</span>
                   </div>
-                  <p className="text-gray-500">{s.start_date} → {s.end_date}</p>
+                  <p className="text-gray-500">{s.start_date} â†’ {s.end_date}</p>
                   {s.reason && <p className="mt-1 text-gray-600 italic">{s.reason}</p>}
                   {!s.parent_notified && (
                     <p className="mt-1 text-red-600 font-medium">Parent / guardian not yet notified.</p>
@@ -235,10 +586,10 @@ const ChatInput = ({ value, onChange, onKeyDown, placeholder, disabled, inputRef
 
 const CompetencyBadge = ({ code }) => {
   const meta = META[code];
-  if (!meta) return <span className="text-xs text-gray-400">—</span>;
+  if (!meta) return <span className="text-xs text-gray-400"></span>;
   return (
     <span className={`inline-flex px-2.5 py-1 text-xs font-bold border ${meta.badge}`}>
-      {code} · {meta.label}
+      {code} {meta.label}
     </span>
   );
 };
@@ -261,7 +612,7 @@ const CBCLegend = ({ isFourPoint }) => {
   );
 };
 
-const RiskCard = ({ title, value, riskLevel, icon: Icon, description }) => {
+const RiskCard = ({ title, value, riskLevel, icon: IconComponent, description }) => {
   const MAP = {
     low:    { bg: "bg-green-50", border: "border-green-200", text: "text-green-700", label: "Low Risk"    },
     medium: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", label: "Medium Risk" },
@@ -272,7 +623,7 @@ const RiskCard = ({ title, value, riskLevel, icon: Icon, description }) => {
     <div className={`p-4 border ${c.border} ${c.bg} rounded-xl`}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Icon className={`w-4 h-4 ${c.text}`} />
+          {IconComponent ? React.createElement(IconComponent, { className: `w-4 h-4 ${c.text}` }) : null}
           <span className="text-xs font-medium text-gray-500">{title}</span>
         </div>
         <span className={`text-xs font-semibold ${c.text}`}>{c.label}</span>
@@ -347,10 +698,10 @@ const SplitPerformanceTrend = ({ examTrend = [], assessmentTrend = [], isFourPoi
   );
 };
 
-const CompetencySection = ({ title, icon: Icon, items, color, emptyMsg, isFourPoint }) => (
+const CompetencySection = ({ title, icon: IconComponent, items, color, emptyMsg, isFourPoint }) => (
   <div className="space-y-3">
     <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-      <Icon className={`w-3.5 h-3.5 ${color}`} />
+      {IconComponent ? React.createElement(IconComponent, { className: `w-3.5 h-3.5 ${color}` }) : null}
       <span className={`text-xs font-bold uppercase tracking-wider ${color}`}>{title}</span>
       <span className="text-xs text-gray-400 ml-auto">{items.length} subject{items.length !== 1 ? "s" : ""}</span>
     </div>
@@ -366,7 +717,7 @@ const CompetencySection = ({ title, icon: Icon, items, color, emptyMsg, isFourPo
             <div className="flex justify-between text-xs">
               <div>
                 <span className="text-gray-700 font-medium">{comp.name}</span>
-                {comp.exam_title && <span className="text-gray-400 ml-1 text-[10px]">· {comp.exam_title}</span>}
+                {comp.exam_title && <span className="text-gray-400 ml-1 text-[10px]"> {comp.exam_title}</span>}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-gray-600">{comp.mastery}%</span>
@@ -446,7 +797,7 @@ const ChatPanel = ({
         <Bot className="w-5 h-5 text-green-700" />
       </div>
       <div className="flex-1">
-        <h3 className="text-base font-semibold text-white">Jawabu — Academic Assistant</h3>
+        <h3 className="text-base font-semibold text-white">Jawabu  Academic Assistant</h3>
         <p className="text-xs text-green-100">AI-Powered | CBC Curriculum Support</p>
       </div>
       {isMobileView && <button onClick={onClose} className="text-white/70 hover:text-white ml-2"><X className="w-5 h-5" /></button>}
@@ -458,13 +809,13 @@ const ChatPanel = ({
           <div className="w-20 h-20 bg-green-100 flex items-center justify-center rounded-xl mb-4">
             <Brain className="w-10 h-10 text-green-700" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Hi, I'm Jawabu — your CBC Academic Assistant</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Hi, I'm Jawabu your CBC Academic Assistant</h3>
           <p className="text-gray-600 mb-3 text-sm max-w-md">
             I can help you understand your grades, explain the difference between exams and assessments, recommend career pathways, and much more.
           </p>
           {analyticsError && (
             <p className="text-xs text-amber-600 mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Analytics could not be loaded — I'll answer from general knowledge.
+              Analytics could not be loaded  I'll answer from general knowledge.
             </p>
           )}
           <div className="w-full">
@@ -512,24 +863,49 @@ const ChatPanel = ({
           {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>
       </div>
-      <p className="text-xs text-gray-400 mt-2 text-center">AI Assistant — CBC Competency-Based Curriculum</p>
+      <p className="text-xs text-gray-400 mt-2 text-center">AI Assistant CBC Competency-Based Curriculum</p>
     </div>
   </div>
 );
 
-// ─── Main component ───────────────────────────────────────────────────────────
+//  Main component 
 const Chatbot = () => {
   const { user, getAuthHeaders, isAuthenticated } = useAuth();
 
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
-  const [messages,         setMessages]          = useState([]);
-  const [inputValue,       setInputValue]        = useState("");
-  const [isTyping,         setIsTyping]          = useState(false);
-  const [isSending,        setIsSending]         = useState(false);
-  const [isMobile,         setIsMobile]          = useState(false);
-  const [analyticsData,    setAnalyticsData]     = useState(null);
-  const [analyticsLoading, setAnalyticsLoading]  = useState(true);
-  const [analyticsError,   setAnalyticsError]    = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState(null);
+  const [mlInsight, setMlInsight] = useState(null);
+  const [mlLoading, setMlLoading] = useState(false);
+  const [mlError, setMlError] = useState(null);
+  const [mlLastUpdated, setMlLastUpdated] = useState(null);
+  const [mlReloadKey, setMlReloadKey] = useState(0);
+  const refreshMlInsight = useCallback(() => {
+    setMlReloadKey((prev) => prev + 1);
+  }, []);
+  const studentId = useMemo(() => {
+    return user?.student_id || user?.student?.id || user?.student_profile?.id || null;
+  }, [user]);
+  const isChatOpen = !isMobile || isMobileChatOpen;
+  const canRefreshMlInsight = isAuthenticated && isChatOpen && !mlLoading;
+  const mlInsights = useMemo(() => ({
+    prediction: mlInsight?.prediction ?? null,
+    confidence: mlInsight?.confidence ?? null,
+    recommendations: mlInsight?.recommendations ?? [],
+    factors: mlInsight?.factors ?? [],
+    overall_competency: analyticsData?.overall_competency ?? 0,
+    exam_trend: analyticsData?.exam_trend ?? [],
+    assessment_trend: analyticsData?.assessment_trend ?? [],
+    competencies: analyticsData?.competencies ?? [],
+    risks: analyticsData?.risks ?? {},
+    career_pathways: analyticsData?.career_pathways ?? [],
+  }), [analyticsData, mlInsight]);
 
   const messagesEndRef = useRef(null);
   const inputRef       = useRef(null);
@@ -545,20 +921,66 @@ const Chatbot = () => {
     setAnalyticsLoading(true);
     setAnalyticsError(null);
     try {
-      const res  = await fetch(`${API_BASE_URL}/api/student/chatbot/analytics/`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE_URL}/api/student/chatbot/analytics/`, {
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const json = await res.json();
-      if (json.success) setAnalyticsData(json.data);
-      else setAnalyticsError(json.error || "Failed to load analytics.");
+      if (json.success) {
+        setAnalyticsData(json.data);
+      } else {
+        setAnalyticsError(json.error || "Failed to load analytics.");
+      }
     } catch (err) {
       setAnalyticsError(err.message || "Failed to connect to server.");
     } finally {
       setAnalyticsLoading(false);
     }
   }, [getAuthHeaders]);
+  useEffect(() => {
+    if (!isChatOpen) return;
+    if (!isAuthenticated) {
+      setMlInsight(null);
+      setMlError(null);
+      setMlLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    const loadMlInsight = async () => {
+      setMlLoading(true);
+      setMlError(null);
+      try {
+        const token = getAuthHeaders()?.Authorization || null;
+        const insight = await fetchStudentMLInsight({
+          studentId,
+          token,
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        setMlInsight(insight);
+        setMlLastUpdated(insight?.lastUpdated || new Date().toISOString());
+        if (insight?.source === "unavailable") {
+          setMlError("ML insight unavailable");
+        }
+      } catch (err) {
+        if (err?.name === "AbortError") return;
+        setMlError(sanitizeMlErrorMessage(err));
+      } finally {
+        if (!controller.signal.aborted) {
+          setMlLoading(false);
+        }
+      }
+    };
+    loadMlInsight();
+    return () => controller.abort();
+  }, [isChatOpen, isAuthenticated, studentId, getAuthHeaders, mlReloadKey]);
 
   useEffect(() => {
-    if (!isAuthenticated) { setAnalyticsLoading(false); return; }
+    if (!isAuthenticated) {
+      setAnalyticsLoading(false);
+      setAnalyticsData(null);
+      return;
+    }
     fetchAnalytics();
   }, [isAuthenticated, fetchAnalytics]);
 
@@ -571,17 +993,38 @@ const Chatbot = () => {
     setMessages((prev) => [...prev, { id: Date.now(), text: message, isUser: true, timestamp: getTimestamp() }]);
     setInputValue("");
     setIsTyping(true);
+    const mlIntent = detectMlIntent(message);
+    if (mlIntent) {
+      const mlAwareReply = buildMlAwareResponse(mlIntent, mlInsight);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          text: mlAwareReply,
+          isUser: false,
+          timestamp: getTimestamp(),
+        },
+      ]);
+      setIsTyping(false);
+      setIsSending(false);
+      return;
+    }
     try {
       const context = analyticsData ? {
-        student_name:  analyticsData.student_name || `${user?.first_name || ""} ${user?.last_name || ""}`.trim(),
+        student_name: analyticsData.student_name || `${user?.first_name || ""} ${user?.last_name || ""}`.trim(),
         student_class: analyticsData.student_class || "",
-        admission_no:  analyticsData.admission_no  || "",
-        student_role:  user?.role || "student",
-      } : {};
-      const res  = await fetch(`${API_BASE_URL}/api/student/chatbot/message/`, {
-        method:  "POST",
+        admission_no: analyticsData.admission_no || "",
+        student_role: user?.role || "student",
+      } : {
+        student_name: `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "Student",
+        student_class: user?.student_class || user?.class_name || "",
+        admission_no: user?.admission_no || "",
+        student_role: user?.role || "student",
+      };
+      const res = await fetch(`${API_BASE_URL}/api/student/chatbot/message/`, {
+        method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body:    JSON.stringify({
+        body: JSON.stringify({
           message,
           context,
           conversation_history: messages.slice(-10).map((m) => ({ role: m.isUser ? "user" : "assistant", content: m.text })),
@@ -596,11 +1039,190 @@ const Chatbot = () => {
       setIsTyping(false);
       setIsSending(false);
     }
-  }, [analyticsData, user, getAuthHeaders, messages, isSending]);
+  }, [analyticsData, getAuthHeaders, isSending, messages, mlInsight, user]);
 
+  const handleSuggestionClick = useCallback((query) => sendMessage(query), [sendMessage]);
+  const handleSend = useCallback(() => {
+    if (inputValue.trim() && !isSending) sendMessage(inputValue);
+  }, [inputValue, isSending, sendMessage]);
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === "Enter" && !isSending) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend, isSending]);
+  const handleInputChange = useCallback((e) => setInputValue(e.target.value), []);
   const studentName = analyticsData?.student_name || user?.first_name || "Student";
 
-  if (analyticsLoading) {
+  const riskDisplay = formatRiskLevel(mlInsight?.riskLevel);
+  const predictionDisplay = formatPredictionValue(mlInsight?.prediction);
+  const confidenceDisplay = formatConfidenceValue(mlInsight?.confidence);
+  const confidenceBandDisplay = formatConfidenceBand(mlInsight?.confidenceBand);
+  const sourceDisplay = formatMlSource(mlInsight?.source);
+  const lastUpdatedDisplay = formatLastUpdated(mlLastUpdated || mlInsight?.lastUpdated);
+  const isInsightStale = isMlInsightStale(mlLastUpdated || mlInsight?.lastUpdated);
+  const missingMlFields = predictionDisplay === 'Prediction unavailable'
+    || confidenceDisplay === 'Confidence unavailable';
+  const mlErrorDisplay = mlError ? sanitizeMlErrorMessage(mlError) : null;
+  const explainabilityFactors = Array.isArray(mlInsight?.factors) ? mlInsight.factors : [];
+  const mlRecommendations = Array.isArray(mlInsight?.recommendations) ? mlInsight.recommendations : [];
+
+  const mlSummaryPanel = (
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-green-700" />
+          <h3 className="font-semibold text-gray-800">ML Insight Summary</h3>
+          {mlLoading && (
+            <span className="text-xs text-blue-600">Updating...</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={refreshMlInsight}
+          disabled={!canRefreshMlInsight}
+          title="Refresh ML insight"
+          aria-label="Refresh ML insight"
+          className="self-start md:self-auto px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {mlLoading ? 'Refreshing...' : 'Refresh ML insight'}
+        </button>
+      </div>
+
+      {analyticsLoading && (
+        <p className="text-xs text-gray-500 mb-3">Loading ML insights...</p>
+      )}
+
+      {mlErrorDisplay && (
+        <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-700">
+          {mlErrorDisplay}
+        </div>
+      )}
+
+      {missingMlFields && !analyticsLoading && (
+        <p className="text-xs text-gray-500 mb-3">Some ML fields are missing.</p>
+      )}
+
+      {isInsightStale && !mlLoading && (
+        <p className="text-xs text-amber-700 mb-3">Insight may be out of date</p>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div>
+          <p className="text-xs text-gray-500">Risk estimate</p>
+          <p className="font-medium text-gray-800">{riskDisplay}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Prediction</p>
+          <p className="font-medium text-gray-800">{predictionDisplay}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Prediction confidence</p>
+          <p className="font-medium text-gray-800">{confidenceDisplay}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Confidence band</p>
+          <p className="font-medium text-gray-800">{confidenceBandDisplay}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">ML source</p>
+          <p className="font-medium text-gray-800">{sourceDisplay}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Last updated</p>
+          <p className="font-medium text-gray-800">{lastUpdatedDisplay}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const mlExplainabilityPanel = (
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="mb-4">
+        <h3 className="font-semibold text-gray-800">Why this prediction?</h3>
+        <p className="text-xs text-gray-500">Main signals associated with this estimate</p>
+      </div>
+
+      {explainabilityFactors.length === 0 ? (
+        <p className="text-sm text-gray-500">Explanation is not available for this prediction yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {explainabilityFactors.map((factor, index) => {
+            const directionMeta = getFactorDirectionMeta(factor?.direction);
+            const factorLabel = factor?.label || humanizeFeatureName(factor?.feature);
+            const factorExplanation = factor?.explanation || directionMeta.fallbackExplanation;
+
+            return (
+              <div
+                key={factor?.feature || factor?.label || `factor-${index}`}
+                className="border border-gray-200 rounded-lg p-3 bg-gray-50"
+              >
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                  <p className="text-sm font-medium text-gray-800">{factorLabel}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-600">
+                      {formatFactorImpact(factor?.impact)}
+                    </span>
+                    <span className={`text-xs font-medium border px-2 py-0.5 rounded-full ${directionMeta.classes}`}>
+                      {directionMeta.label}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600 mb-2">{factorExplanation}</p>
+                <p className="text-[11px] text-gray-500">{getFactorSourceLabel(factor?.source)}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const mlRecommendationsPanel = (
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="mb-4">
+        <h3 className="font-semibold text-gray-800">Recommended actions</h3>
+        <p className="text-xs text-gray-500">Personalized next steps based on available ML context</p>
+      </div>
+
+      {mlRecommendations.length === 0 ? (
+        <p className="text-sm text-gray-500">No personalized recommendations are available yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {mlRecommendations.map((recommendation, index) => {
+            const priority = normalizeRecommendationPriority(recommendation?.priority);
+            const type = normalizeRecommendationType(recommendation?.type);
+            const priorityMeta = getRecommendationPriorityMeta(priority);
+            const title = recommendation?.title || 'Recommended action';
+            const description = recommendation?.description || 'Review this recommendation with a teacher or advisor.';
+
+            return (
+              <div
+                key={recommendation?.id || recommendation?.title || `recommendation-${index}`}
+                className="border border-gray-200 rounded-lg p-3 bg-gray-50"
+              >
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                  <p className="text-sm font-medium text-gray-800">{title}</p>
+                  <span className={`text-xs font-medium border px-2 py-0.5 rounded-full ${priorityMeta.classes}`}>
+                    {priorityMeta.label}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mb-2">{description}</p>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                  <span className="px-2 py-0.5 bg-white border border-gray-200 rounded-full">
+                    {getRecommendationTypeLabel(type)}
+                  </span>
+                  <span>{getRecommendationSourceLabel(recommendation?.source)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  if (analyticsLoading && !analyticsData) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
         <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
@@ -609,31 +1231,35 @@ const Chatbot = () => {
     );
   }
 
-  const overall      = analyticsData?.overall_competency ?? 0;
-  const examTrend    = analyticsData?.exam_trend          ?? [];
-  const assessTrend  = analyticsData?.assessment_trend    ?? [];
-  const competencies = analyticsData?.competencies        ?? [];
-  const risks        = analyticsData?.risks               ?? {};
-  const pathways     = analyticsData?.career_pathways     ?? [];
-  const isFourPoint  = getIsFourPoint(analyticsData?.student_class);
-  const overallCode  = analyticsData?.competency_level    || getGradeCode(overall, isFourPoint);
-  const overallBar   = getBarColor(overallCode);
+  const overall = mlInsights?.overall_competency ?? 0;
+  const examTrend = mlInsights?.exam_trend ?? [];
+  const assessTrend = mlInsights?.assessment_trend ?? [];
+  const competencies = mlInsights?.competencies ?? [];
+  const pathways = mlInsights?.career_pathways ?? [];
+  const isFourPoint = getIsFourPoint(analyticsData?.student_class);
+  const overallCode = analyticsData?.competency_level || getGradeCode(overall, isFourPoint);
+  const overallBar = getBarColor(overallCode);
 
   const chatPanelProps = {
-    messages, isTyping, isSending, inputValue,
-    handleInputChange:    (e) => setInputValue(e.target.value),
-    handleKeyPress:       (e) => { if (e.key === "Enter" && !isSending) { e.preventDefault(); sendMessage(inputValue); } },
-    handleSend:           () => sendMessage(inputValue),
-    handleSuggestionClick:(q) => sendMessage(q),
-    analyticsError, messagesEndRef, inputRef,
+    messages,
+    isTyping,
+    isSending,
+    inputValue,
+    handleInputChange,
+    handleKeyPress,
+    handleSend,
+    handleSuggestionClick,
+    analyticsError: analyticsError || mlError,
+    messagesEndRef,
+    inputRef,
   };
 
-  // ── Desktop ────────────────────────────────────────────────────────────────
+  // Desktop 
   if (!isMobile) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="flex h-screen gap-6 p-6 overflow-hidden">
-          {/* Left — dashboard */}
+          {/* Left dashboard */}
           <div className="flex-1 overflow-y-auto space-y-6 pr-2">
             <div className="bg-green-700 border border-green-800 rounded-xl px-6 py-5">
               <div className="flex items-center gap-4">
@@ -647,14 +1273,22 @@ const Chatbot = () => {
               </div>
             </div>
 
-            {analyticsError && (
+            {(analyticsError || mlErrorDisplay) && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
-                Analytics error: {analyticsError}
-                <button onClick={fetchAnalytics} className="ml-3 underline text-amber-800 font-medium">Retry</button>
+                {analyticsError && <span>Analytics error: {analyticsError}</span>}
+                {!analyticsError && mlErrorDisplay && <span>{mlErrorDisplay}</span>}
+                <button
+                  onClick={analyticsError ? fetchAnalytics : refreshMlInsight}
+                  className="ml-3 underline text-amber-800 font-medium"
+                >
+                  Retry
+                </button>
               </div>
             )}
-
-            {/* Overall competency */}
+            {mlSummaryPanel}
+            {mlExplainabilityPanel}
+            {mlRecommendationsPanel}
+            {/* Overall Competency */}
             <div className="bg-white border border-gray-200 rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -714,7 +1348,7 @@ const Chatbot = () => {
             </div>
           </div>
 
-          {/* Right — chat */}
+          {/* Right chat */}
           <div className="w-[380px] flex-shrink-0">
             <ChatPanel isMobileView={false} onClose={() => {}} {...chatPanelProps} />
           </div>
@@ -723,7 +1357,7 @@ const Chatbot = () => {
     );
   }
 
-  // ── Mobile ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Mobile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {!isMobileChatOpen && (
@@ -751,12 +1385,17 @@ const Chatbot = () => {
           </div>
         </div>
 
-        {analyticsError && (
+        {(analyticsError || mlErrorDisplay) && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
-            {analyticsError}
-            <button onClick={fetchAnalytics} className="ml-2 underline font-medium">Retry</button>
+            {analyticsError && <span>Analytics error: {analyticsError}</span>}
+            {!analyticsError && mlErrorDisplay && <span>{mlErrorDisplay}</span>}
+            <button onClick={analyticsError ? fetchAnalytics : refreshMlInsight} className="ml-2 underline font-medium">Retry</button>
           </div>
         )}
+
+        {mlSummaryPanel}
+        {mlExplainabilityPanel}
+        {mlRecommendationsPanel}
 
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
@@ -818,7 +1457,7 @@ const Chatbot = () => {
                 <Bot className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-800">Jawabu — Academic Assistant</p>
+                <p className="text-sm font-semibold text-gray-800">Jawabu an Academic Assistant</p>
                 <p className="text-xs text-gray-600">Ask about your grades, exams, or career</p>
               </div>
             </div>

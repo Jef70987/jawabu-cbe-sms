@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { 
   FiDollarSign, FiPrinter, FiDownload, 
   FiCreditCard, FiPieChart, FiBarChart2, 
@@ -9,7 +9,7 @@ import {
 
 const PayrollManagement = () => {
   // Sample data from HR (would come from API/database in real app)
-  const [employees, setEmployees] = useState([
+  const [employees] = useState([
     {
       id: 1,
       name: "John Mwangi",
@@ -40,14 +40,14 @@ const PayrollManagement = () => {
   ]);
 
   // Allowances from HR
-  const [allowances, setAllowances] = useState([
+  const [allowances] = useState([
     { id: 1, name: "Housing Allowance", amount: 15000, type: "fixed" },
     { id: 2, name: "Transport Allowance", amount: 8000, type: "fixed" },
     { id: 3, name: "Medical Allowance", amount: 5000, type: "fixed" }
   ]);
 
   // Deductions from HR
-  const [deductions, setDeductions] = useState([
+  const [deductions] = useState([
     { id: 1, name: "PAYE Tax", amount: 7500, type: "percentage", percentage: 15 },
     { id: 2, name: "NSSF", amount: 1080, type: "fixed" },
     { id: 3, name: "NHIF", amount: 1500, type: "fixed" },
@@ -88,14 +88,6 @@ const PayrollManagement = () => {
     }
   ]);
 
-  // Financial statistics
-  const [financialStats, setFinancialStats] = useState({
-    totalProcessed: 0,
-    currentMonthPayroll: 0,
-    taxLiabilities: 0,
-    pendingPayments: 0
-  });
-
   // Selected employee for processing
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employeeAdjustments, setEmployeeAdjustments] = useState({
@@ -106,18 +98,18 @@ const PayrollManagement = () => {
   });
 
   // Calculate financial statistics
-  useEffect(() => {
+  const financialStats = useMemo(() => {
     const totalProcessed = payrollRecords.reduce((sum, record) => sum + record.totalNet, 0);
     const currentMonthPayroll = employees.reduce((sum, emp) => sum + emp.basicSalary, 0);
     const taxLiabilities = payrollRecords.reduce((sum, record) => sum + (record.totalDeductions * 0.6), 0);
     const pendingPayments = currentMonthPayroll;
 
-    setFinancialStats({
+    return {
       totalProcessed,
       currentMonthPayroll,
       taxLiabilities,
       pendingPayments
-    });
+    };
   }, [payrollRecords, employees]);
 
   // Calculate payroll for an employee

@@ -535,26 +535,26 @@ const PaymentManagement = () => {
   const [isCheckingInvoice, setIsCheckingInvoice] = useState(false);
   const [currentClass, setCurrentClass] = useState("");
 
-  const showToast = (message, type = "info") => {
+  const showToast = useCallback((message, type = "info") => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(
       () => setToasts((prev) => prev.filter((t) => t.id !== id)),
       5000,
     );
-  };
+  }, []);
 
-  const handleApiError = (error) => {
+  const handleApiError = useCallback((error) => {
     if (error?.status === 401 || error?.message?.includes("Unauthorized"))
       setShowSessionExpired(true);
-  };
+  }, []);
   const handleLogout = () => {
     setShowSessionExpired(false);
     logout();
     window.location.href = "/logout";
   };
 
-  const fetchClasses = async () => {
+  const fetchClasses = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/registrar/classes/`, {
         headers: getAuthHeaders(),
@@ -568,9 +568,9 @@ const PaymentManagement = () => {
     } catch {
       showToast("Failed to load classes", "error");
     }
-  };
+  }, [getAuthHeaders, handleApiError, showToast]);
 
-  const fetchRecentTransactions = async () => {
+  const fetchRecentTransactions = useCallback(async () => {
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/bursar/transactions/recent/?limit=5`,
@@ -585,14 +585,14 @@ const PaymentManagement = () => {
     } catch {
       console.error("Error fetching transactions");
     }
-  };
+  }, [getAuthHeaders, handleApiError]);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchClasses();
       fetchRecentTransactions();
     }
-  }, [isAuthenticated]);
+  }, [fetchClasses, fetchRecentTransactions, isAuthenticated]);
 
   const searchByAdmission = async () => {
     if (!searchQuery.trim()) {
