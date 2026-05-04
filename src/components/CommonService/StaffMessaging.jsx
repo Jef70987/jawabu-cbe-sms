@@ -10,10 +10,10 @@ import {
 import { useAuth } from "../Authentication/AuthContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-const WS_BASE_URL  = API_BASE_URL
+// FIX: WebSocket URL should be derived correctly - keep /api in the path
+const WS_BASE_URL = (import.meta.env.VITE_WS_URL || API_BASE_URL
   .replace(/^http/, "ws")
-  .replace(/^https/, "wss")
-  .replace(/\/api$/, "");
+  .replace(/^https/, "wss")).replace(/\/api$/, "");
 
 const BROADCAST_ROLES = ["registrar"];
 
@@ -122,7 +122,10 @@ const api = {
     else delete headers["Content-Type"];
     const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
     if (csrf) headers["X-CSRFToken"] = csrf;
-    const res = await fetch(`${API_BASE_URL}${path}`, { headers, credentials: "include", ...opts });
+    // FIX: Ensure path starts with / and doesn't double-slash
+    const fullPath = path.startsWith('/') ? path : `/${path}`;
+    const url = `${API_BASE_URL}${fullPath}`;
+    const res = await fetch(url, { headers, credentials: "include", ...opts });
     if (res.status === 401) { window.location.href = "/auth/login/"; return; }
     if (!res.ok) {
       let errMsg = `HTTP ${res.status}`;
@@ -1219,7 +1222,7 @@ function BroadcastSendView({ onSend }) {
         <label style={labelStyle}>Attachments</label>
         <div style={{ marginBottom: 14 }}>
           <input ref={fileInputRef} type="file" multiple style={{ display: "none" }}
-            accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+            accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
             onChange={e => setAttachments(prev => [...prev, ...Array.from(e.target.files || [])])} />
           <button onClick={() => fileInputRef.current?.click()} style={{
             fontSize: 13, padding: "7px 14px", borderRadius: 8,
@@ -1323,8 +1326,6 @@ export default function StaffMessaging() {
   const [activeBroadcast, setActiveBroadcast] = useState(null);
   const [view, setView]                       = useState("chat");
   const [chatUnread, setChatUnread]           = useState(0);
-  // FIX: inboxUnread now comes ONLY from the API's inbox_unread counter,
-  // which counts DMs only. Broadcasts are counted separately below.
   const [inboxUnread, setInboxUnread]         = useState(0);
   const [chatLoading, setChatLoading]         = useState(false);
   const [staffLoading, setStaffLoading]       = useState(true);
@@ -1348,8 +1349,6 @@ export default function StaffMessaging() {
       const [cr, ur] = await Promise.all([apiCall("/notifications/conversations/"), apiCall("/notifications/unread-count/")]);
       setConversations(cr?.conversations || []);
       setChatUnread(ur?.chat_unread ?? 0);
-      // FIX: store only the API-provided DM unread count here.
-      // Do NOT add inbox-state counts — that would double-count.
       setInboxUnread(ur?.inbox_unread ?? 0);
     } catch (e) { console.error(e); }
   }, [apiCall]);
@@ -1362,8 +1361,6 @@ export default function StaffMessaging() {
         apiCall("/notifications/inbox/?page=1&page_size=100"),
       ]);
       setBroadcasts(br?.notifications || []);
-      // FIX: inbox only holds non-broadcast, non-message notifications sent
-      // directly to this user. Broadcasts are shown separately in InboxView.
       setInbox((all?.notifications || []).filter(n => n.recipient_type === "User"));
     } catch (e) { console.error(e); }
     finally { setInboxLoading(false); }
@@ -1391,14 +1388,15 @@ export default function StaffMessaging() {
     if (!currentUserId || initDone.current) return;
     initDone.current = true;
     loadStaff(); loadConversations(); loadInbox();
-  }, [currentUserId]); // eslint-disable-line
+  }, [currentUserId]);
 
   // WebSocket
   useEffect(() => {
     if (!currentUserId) return;
     const token = localStorage.getItem("access_token") || localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
-    const ws = new WebSocket(`${WS_BASE_URL}/ws/notifications/?token=${token}`);
-    ws.onopen  = () => console.log("[WS] Connected");
+    const wsUrl = `${WS_BASE_URL}/ws/notifications/?token=${token}`;
+    const ws = new WebSocket(wsUrl);
+    ws.onopen  = () => console.log("[WS] Connected to", wsUrl);
     ws.onclose = e => console.log("[WS] Closed", e.code);
     ws.onerror = e => console.error("[WS] Error", e);
 
@@ -1550,14 +1548,8 @@ export default function StaffMessaging() {
 
   activePartnerRef.current = activePartner;
 
-  // FIX: inbox badge = API-provided DM unread count ONLY.
-  // Broadcasts are tracked via chatUnread (they appear in the Chat tab sidebar).
-  // We do NOT add inbox state array counts here — that was the double-counting bug.
-  // If your API's inbox_unread also includes broadcasts, subtract broadcast unread:
   const unreadBroadcasts = broadcasts.filter(b => b.status === "Unread").length;
-  // inboxUnread from the API = DMs + possibly broadcasts; show just DM portion:
   const dmInboxUnread    = Math.max(0, inboxUnread - unreadBroadcasts);
-  // Inbox tab badge = DM unread + broadcast unread (shown together in inbox view)
   const inboxBadgeCount  = dmInboxUnread + unreadBroadcasts;
 
   if (!currentUserId) {
@@ -1604,8 +1596,6 @@ export default function StaffMessaging() {
           )}
 
           {view === "inbox" && (
-            // FIX: pass broadcasts separately so InboxView can render them
-            // in their own section without duplicating them in the DM/notification list
             <InboxView
               notifications={inbox}
               broadcasts={broadcasts}
