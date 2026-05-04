@@ -1,7 +1,6 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Authentication/AuthContext';
-import { fetchStudentMLInsight, getMLInsightUnavailable } from '../../services/mlApi';
 import { API_BASE_URL } from '../../services/apiBase';
 import {
   User,
@@ -28,8 +27,6 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
-  Activity,
-  Brain,
 } from 'lucide-react';
 import {
   PieChart,
@@ -39,32 +36,6 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-
-const formatMlPrediction = (value) => {
-  if (typeof value !== 'number' || Number.isNaN(value)) return 'Prediction unavailable';
-  if (value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
-  return `${Math.round(value)}`;
-};
-
-const formatMlConfidence = (value, band) => {
-  if (typeof value !== 'number' || Number.isNaN(value)) return 'Confidence unavailable';
-  const raw = value >= 0 && value <= 1 ? `${Math.round(value * 100)}%` : `${Math.round(value)}`;
-  return band && band !== 'unknown' ? `${raw} (${band})` : raw;
-};
-
-const formatMlSource = (source) => {
-  const normalized = String(source || '').toLowerCase();
-  if (normalized === 'ml_api') return 'ML API';
-  if (normalized === 'unavailable') return 'Unavailable';
-  return 'Unknown source';
-};
-
-const formatMlLastUpdated = (value) => {
-  if (!value) return 'Not updated yet';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'Not updated yet';
-  return parsed.toLocaleString();
-};
 
 // ── EXAM TYPE LABELS ──────────────────────────────────────────────────────────
 const EXAM_TYPE_LABELS = {
@@ -331,14 +302,8 @@ const StudentDashboard = () => {
   const [showSessionExpired,  setShowSessionExpired]  = useState(false);
   const [currentTime,         setCurrentTime]         = useState(new Date());
   const [greeting,            setGreeting]            = useState('');
-  const [mlInsight,           setMlInsight]           = useState(null);
-  const [mlLoading,           setMlLoading]           = useState(false);
-  const [mlError,             setMlError]             = useState(null);
-  const [mlLastUpdated,       setMlLastUpdated]       = useState(null);
-  const [mlReloadKey,         setMlReloadKey]         = useState(0);
 
   const COLORS = ['#108529', '#d42424', '#F59E0B', '#1636d6'];
-  const studentId = useMemo(() => user?.student_id || user?.student?.id || user?.student_profile?.id || null, [user]);
 
   useEffect(() => {
     const update = () => {
@@ -452,41 +417,8 @@ const StudentDashboard = () => {
     }
   }, [getAuthHeaders, handleApiError, isAuthenticated, showToast]);
 
-  const loadDashboardMLInsight = useCallback(async ({ signal } = {}) => {
-    if (!isAuthenticated || user?.role !== 'student' || !studentId) {
-      setMlInsight(getMLInsightUnavailable(studentId));
-      setMlError(null);
-      return;
-    }
-
-    setMlLoading(true);
-    setMlError(null);
-
-    try {
-      const token = getAuthHeaders()?.Authorization || null;
-      const insight = await fetchStudentMLInsight({
-        studentId,
-        token,
-        signal,
-      });
-      const normalized = insight || getMLInsightUnavailable(studentId);
-      setMlInsight(normalized);
-      setMlLastUpdated(normalized.lastUpdated || new Date().toISOString());
-      if (normalized.error) {
-        setMlError(normalized.error);
-      }
-    } catch (error) {
-      if (error?.name === 'AbortError') return;
-      setMlInsight(getMLInsightUnavailable(studentId));
-      setMlError('ML insight is unavailable right now.');
-    } finally {
-      setMlLoading(false);
-    }
-  }, [getAuthHeaders, isAuthenticated, studentId, user?.role]);
-
   const refreshData = () => {
     fetchDashboardData();
-    setMlReloadKey((prev) => prev + 1);
     showToast('Dashboard refreshed', 'success');
   };
   const navigateTo = path => { window.location.href = path; };
@@ -495,13 +427,6 @@ const StudentDashboard = () => {
     if (isAuthenticated && user?.role === 'student') fetchDashboardData();
     else setLoading(false);
   }, [fetchDashboardData, isAuthenticated, user?.role]);
-
-  useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'student' || !studentId) return;
-    const controller = new AbortController();
-    loadDashboardMLInsight({ signal: controller.signal });
-    return () => controller.abort();
-  }, [isAuthenticated, loadDashboardMLInsight, mlReloadKey, studentId, user?.role]);
 
   if (!isAuthenticated) {
     return (
@@ -619,71 +544,6 @@ const StudentDashboard = () => {
             </div>
 
             {/* ── Fee Chart + Recent Exams ─────────────────────────────────────── */}
-            <div className="bg-white border border-gray-300 p-4 mb-8">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-green-700" />
-                  <h3 className="text-base font-semibold text-gray-900">ML Insight Summary</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMlReloadKey((prev) => prev + 1)}
-                  disabled={mlLoading}
-                  className="px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {mlLoading ? 'Refreshing...' : 'Refresh ML insight'}
-                </button>
-              </div>
-
-              {mlLoading && <p className="text-sm text-gray-500 mb-3">Loading ML insight...</p>}
-              {mlError && <p className="text-sm text-amber-700 mb-3">{mlError}</p>}
-              {mlInsight?.source === 'unavailable' && !mlLoading && (
-                <p className="text-sm text-gray-500 mb-3">ML insight unavailable</p>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                  <p className="text-xs text-gray-500 mb-1">Risk estimate</p>
-                  <p className="text-sm font-semibold text-gray-900 capitalize">{mlInsight?.riskLevel || 'unknown'}</p>
-                  <p className="text-xs text-gray-500 mt-1">{formatMlPrediction(mlInsight?.prediction)}</p>
-                </div>
-                <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                  <p className="text-xs text-gray-500 mb-1">Prediction confidence</p>
-                  <p className="text-sm font-semibold text-gray-900">{formatMlConfidence(mlInsight?.confidence, mlInsight?.confidenceBand)}</p>
-                  <p className="text-xs text-gray-500 mt-1">Confidence band: {mlInsight?.confidenceBand || 'unknown'}</p>
-                </div>
-                <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                  <p className="text-xs text-gray-500 mb-1">Last updated / source</p>
-                  <p className="text-sm font-semibold text-gray-900">{formatMlLastUpdated(mlLastUpdated || mlInsight?.lastUpdated)}</p>
-                  <p className="text-xs text-gray-500 mt-1">{formatMlSource(mlInsight?.source)}</p>
-                </div>
-              </div>
-
-              <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                <div className="flex items-center gap-2 mb-2">
-                  <Brain className="w-4 h-4 text-green-700" />
-                  <h4 className="text-sm font-semibold text-gray-900">ML recommendations</h4>
-                </div>
-                {Array.isArray(mlInsight?.recommendations) && mlInsight.recommendations.length > 0 ? (
-                  <div className="space-y-2">
-                    {mlInsight.recommendations.slice(0, 3).map((item, index) => (
-                      <div key={item?.id || `${item?.title || 'recommendation'}-${index}`} className="border border-gray-200 rounded-lg p-2 bg-white">
-                        <p className="text-sm font-medium text-gray-900">{item?.title || 'Recommendation'}</p>
-                        <p className="text-xs text-gray-600 mt-1">{item?.description || 'Review this recommendation with your teacher or advisor.'}</p>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                          {(item?.priority || 'medium')} priority · {(item?.type || 'general')} · {(item?.source || 'rule_based')}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">No personalized recommendations are available yet.</p>
-                )}
-              </div>
-
-              <p className="text-xs text-gray-500 mt-3">This insight supports review and planning.</p>
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Fee Breakdown Chart */}
               <InfoCard title="Fee Breakdown" icon={PieChartIcon}>
