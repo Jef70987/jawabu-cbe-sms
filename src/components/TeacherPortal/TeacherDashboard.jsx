@@ -209,39 +209,7 @@ function TeacherDashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Timetable */}
-          <div className="lg:col-span-2 bg-white border border-gray-300 rounded">
-            <div className="border-b border-gray-300 px-4 py-3 bg-gray-100 flex justify-between items-center rounded-t">
-              <h2 className="font-bold text-gray-900">Today's Timetable</h2>
-              <Link to="/teacher/timetable" className="text-sm text-blue-600 hover:text-blue-800">View Full Schedule</Link>
-            </div>
-            <div className="divide-y divide-gray-200">
-              {isLoading ? (
-                <div className="p-8 text-center">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-                </div>
-              ) : dashboardData.timetable?.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">No lessons scheduled for today</div>
-              ) : (
-                dashboardData.timetable.map((lesson, idx) => (
-                  <div key={idx} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-20 text-sm font-bold text-gray-700">{lesson.time}</div>
-                      <div>
-                        <p className="font-medium text-gray-900">{lesson.subject}</p>
-                        <p className="text-xs text-gray-500">{lesson.class} | {lesson.room}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{lesson.topic}</p>
-                      </div>
-                    </div>
-                    <Link to={`/teacher/lesson-log?subject=${lesson.subject}&class=${lesson.class}`} className="px-3 py-1 bg-blue-600 text-white text-xs font-medium border border-blue-700 hover:bg-blue-700 rounded">
-                      Log Lesson
-                    </Link>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
+         
           {/* Pending Tasks */}
           <div className="bg-white border border-gray-300 rounded">
             <div className="border-b border-gray-300 px-4 py-3 bg-gray-100 rounded-t">
