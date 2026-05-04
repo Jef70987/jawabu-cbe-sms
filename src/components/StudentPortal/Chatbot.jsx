@@ -454,7 +454,7 @@ const buildMlAwareResponse = (intent, insight) => {
   return ML_INSIGHT_UNAVAILABLE_MESSAGE;
 };
 
-// â”€â”€â”€ Bot message formatter (bold, italic, lists, paragraphs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Bot message formatter (bold, italic, lists, paragraphs)
 const formatBotMessage = (text) => {
   if (!text) return null;
   const esc = (s) => s.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m] ?? m);
@@ -478,7 +478,7 @@ const formatBotMessage = (text) => {
   return <div dangerouslySetInnerHTML={{ __html: result.join("") }} />;
 };
 
-// â”€â”€â”€ Discipline status config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Discipline status config
 const DISCIPLINE_STATUS_CONFIG = {
   Good:       { bg: "bg-green-50",  border: "border-green-200",  text: "text-green-700",  icon: Shield,      label: "Good Standing"  },
   Warning:    { bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  icon: AlertTriangle,label: "Warning Issued" },
@@ -486,10 +486,10 @@ const DISCIPLINE_STATUS_CONFIG = {
   Suspension: { bg: "bg-red-50",    border: "border-red-200",    text: "text-red-700",    icon: ShieldX,      label: "Suspension"     },
 };
 
-// â”€â”€â”€ Discipline card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Discipline card
 // FIX: replaced the old card (which only showed a raw incident count) with a card
 // that surfaces discipline_status, discipline_points, open_discipline_cases,
-// active_suspensions, and suspension_detail â€” matching what Jawabu now knows.
+// active_suspensions, and suspension_detail - matching what Jawabu now knows.
 const DisciplineCard = ({ analyticsData, isMobile = false }) => {
   if (!analyticsData) return null;
 
@@ -566,7 +566,7 @@ const DisciplineCard = ({ analyticsData, isMobile = false }) => {
                       s.status === "Active" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
                     }`}>{s.status}</span>
                   </div>
-                  <p className="text-gray-500">{s.start_date} â†’ {s.end_date}</p>
+                  <p className="text-gray-500">{s.start_date} -&gt; {s.end_date}</p>
                   {s.reason && <p className="mt-1 text-gray-600 italic">{s.reason}</p>}
                   {!s.parent_notified && (
                     <p className="mt-1 text-red-600 font-medium">Parent / guardian not yet notified.</p>
@@ -591,10 +591,10 @@ const ChatInput = ({ value, onChange, onKeyDown, placeholder, disabled, inputRef
 
 const CompetencyBadge = ({ code }) => {
   const meta = META[code];
-  if (!meta) return <span className="text-xs text-gray-400">â€”</span>;
+  if (!meta) return <span className="text-xs text-gray-400">-</span>;
   return (
     <span className={`inline-flex px-2.5 py-1 text-xs font-bold border ${meta.badge}`}>
-      {code} Â· {meta.label}
+      {code} - {meta.label}
     </span>
   );
 };
@@ -722,7 +722,7 @@ const CompetencySection = ({ title, icon: IconComponent, items, color, emptyMsg,
             <div className="flex justify-between text-xs">
               <div>
                 <span className="text-gray-700 font-medium">{comp.name}</span>
-                {comp.exam_title && <span className="text-gray-400 ml-1 text-[10px]">Â· {comp.exam_title}</span>}
+                {comp.exam_title && <span className="text-gray-400 ml-1 text-[10px]">- {comp.exam_title}</span>}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-gray-600">{comp.mastery}%</span>
@@ -802,7 +802,7 @@ const ChatPanel = ({
         <Bot className="w-5 h-5 text-green-700" />
       </div>
       <div className="flex-1">
-        <h3 className="text-base font-semibold text-white">Jawabu â€” Academic Assistant</h3>
+        <h3 className="text-base font-semibold text-white">Jawabu - Academic Assistant</h3>
         <p className="text-xs text-green-100">AI-Powered | CBC Curriculum Support</p>
       </div>
       {isMobileView && <button onClick={onClose} className="text-white/70 hover:text-white ml-2"><X className="w-5 h-5" /></button>}
@@ -814,13 +814,13 @@ const ChatPanel = ({
           <div className="w-20 h-20 bg-green-100 flex items-center justify-center rounded-xl mb-4">
             <Brain className="w-10 h-10 text-green-700" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Hi, I'm Jawabu â€” your CBC Academic Assistant</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Hi, I'm Jawabu - your CBC Academic Assistant</h3>
           <p className="text-gray-600 mb-3 text-sm max-w-md">
             I can help you understand your grades, explain the difference between exams and assessments, recommend career pathways, and much more.
           </p>
           {analyticsError && (
             <p className="text-xs text-amber-600 mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Analytics could not be loaded â€” I'll answer from general knowledge.
+              Analytics could not be loaded - I'll answer from general knowledge.
             </p>
           )}
           <div className="w-full">
@@ -868,12 +868,12 @@ const ChatPanel = ({
           {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>
       </div>
-      <p className="text-xs text-gray-400 mt-2 text-center">AI Assistant â€” CBC Competency-Based Curriculum</p>
+      <p className="text-xs text-gray-400 mt-2 text-center">AI Assistant - CBC Competency-Based Curriculum</p>
     </div>
   </div>
 );
 
-// â”€â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Main component
 const Chatbot = () => {
   const { user, getAuthHeaders, isAuthenticated } = useAuth();
 
@@ -1259,12 +1259,12 @@ const Chatbot = () => {
     inputRef,
   };
 
-  // â”€â”€ Desktop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Desktop
   if (!isMobile) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="flex h-screen gap-6 p-6 overflow-hidden">
-          {/* Left â€” dashboard */}
+          {/* Left - dashboard */}
           <div className="flex-1 overflow-y-auto space-y-6 pr-2">
             <div className="bg-green-700 border border-green-800 rounded-xl px-6 py-5">
               <div className="flex items-center gap-4">
@@ -1353,7 +1353,7 @@ const Chatbot = () => {
             </div>
           </div>
 
-          {/* Right â€” chat */}
+          {/* Right - chat */}
           <div className="w-[380px] flex-shrink-0">
             <ChatPanel isMobileView={false} onClose={() => {}} {...chatPanelProps} />
           </div>
@@ -1362,7 +1362,7 @@ const Chatbot = () => {
     );
   }
 
-  // â”€â”€ Mobile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Mobile
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {!isMobileChatOpen && (
@@ -1462,7 +1462,7 @@ const Chatbot = () => {
                 <Bot className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-800">Jawabu â€” Academic Assistant</p>
+                <p className="text-sm font-semibold text-gray-800">Jawabu - Academic Assistant</p>
                 <p className="text-xs text-gray-600">Ask about your grades, exams, or career</p>
               </div>
             </div>
