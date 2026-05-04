@@ -30,7 +30,7 @@ const DeputyPrincipal = () => {
                     <Route path="/dashboard" element={<DeputyPrincipalDashboard />} />
                     <Route path="/discipline" element={<Discipline />} />
                     <Route path="/Assignments" element={<TeacherAssignment/>}/>
-                    <Route path="/messages" element={<Messages />} />
+                    
 
                     <Route path="/login" element={<Login />} />
                     <Route path="/Logout" element={<Logout/>}/>
