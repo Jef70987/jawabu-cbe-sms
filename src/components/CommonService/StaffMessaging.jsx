@@ -2976,7 +2976,7 @@ export default function StaffMessaging() {
   const loadStaff = useCallback(async () => {
     setStaffLoading(true);
     try {
-      const r = await apiCall("/notifications/staff/list/");
+      const r = await apiCall("/api/notifications/staff/list/");
       setStaff(r?.staff || []);
     } catch (e) {
       console.error(e);
@@ -2988,8 +2988,8 @@ export default function StaffMessaging() {
   const loadConversations = useCallback(async () => {
     try {
       const [cr, ur] = await Promise.all([
-        apiCall("/notifications/conversations/"),
-        apiCall("/notifications/unread-count/"),
+        apiCall("/api/notifications/conversations/"),
+        apiCall("/api/notifications/unread-count/"),
       ]);
       setConversations(cr?.conversations || []);
       setChatUnread(ur?.chat_unread ?? 0);
@@ -3005,8 +3005,8 @@ export default function StaffMessaging() {
     setInboxLoading(true);
     try {
       const [br, all] = await Promise.all([
-        apiCall("/notifications/inbox/?scope=broadcast&page=1&page_size=50"),
-        apiCall("/notifications/inbox/?page=1&page_size=100"),
+        apiCall("/api/notifications/inbox/?scope=broadcast&page=1&page_size=50"),
+        apiCall("/api/notifications/inbox/?page=1&page_size=100"),
       ]);
       setBroadcasts(br?.notifications || []);
       // FIX: inbox only holds non-broadcast, non-message notifications sent
@@ -3026,7 +3026,7 @@ export default function StaffMessaging() {
       if (!partner) return;
       if (delay) await new Promise((res) => setTimeout(res, delay));
       try {
-        const r = await apiCall(`/notifications/conversation/${partner.id}/`);
+        const r = await apiCall(`/api/notifications/conversation/${partner.id}/`);
         const serverMsgs = (r?.messages || []).map(normalizeNotification);
         setMessages((prev) => {
           if (!prev.length) return serverMsgs;
@@ -3162,13 +3162,13 @@ export default function StaffMessaging() {
             f.name,
           );
         });
-        const r = await apiCall("/notifications/send/", {
+        const r = await apiCall("/api/notifications/send/", {
           method: "POST",
           body: fd,
         });
         notification = r?.notification;
       } else {
-        const r = await apiCall("/notifications/send/", {
+        const r = await apiCall("/api/notifications/send/", {
           method: "POST",
           body: JSON.stringify({
             recipient_type: recipientType,
@@ -3187,7 +3187,7 @@ export default function StaffMessaging() {
       }
 
       if (pollMeta && notification?.id) {
-        await apiCall("/notifications/polls/create/", {
+        await apiCall("/api/notifications/polls/create/", {
           method: "POST",
           body: JSON.stringify({
             notification_id: notification.id,
@@ -3221,7 +3221,7 @@ export default function StaffMessaging() {
 
   const handleEdit = async (notificationId, newMessage) => {
     try {
-      const r = await apiCall(`/notifications/${notificationId}/edit/`, {
+      const r = await apiCall(`/api/notifications/${notificationId}/edit/`, {
         method: "PATCH",
         body: JSON.stringify({ message: newMessage }),
       });
@@ -3238,7 +3238,7 @@ export default function StaffMessaging() {
 
   const handleDelete = async (notificationId) => {
     try {
-      await apiCall(`/notifications/${notificationId}/delete/`, {
+      await apiCall(`/api/notifications/${notificationId}/delete/`, {
         method: "DELETE",
       });
       setMessages((prev) => prev.filter((m) => m.id !== notificationId));
@@ -3250,7 +3250,7 @@ export default function StaffMessaging() {
 
   const handleVote = async (pollId, optionIndex) => {
     try {
-      const r = await apiCall(`/notifications/polls/${pollId}/vote/`, {
+      const r = await apiCall(`/api/notifications/polls/${pollId}/vote/`, {
         method: "POST",
         body: JSON.stringify({ option_index: optionIndex }),
       });
@@ -3269,7 +3269,7 @@ export default function StaffMessaging() {
   };
 
   const handleMarkAll = async () => {
-    await apiCall("/notifications/mark-all-read/", { method: "POST" });
+    await apiCall("/api/notifications/mark-all-read/", { method: "POST" });
     await loadInbox();
     await loadConversations();
   };
@@ -3285,7 +3285,7 @@ export default function StaffMessaging() {
     if (wasUnread) {
       setChatUnread((u) => Math.max(0, u - 1));
       try {
-        await apiCall(`/notifications/${b.id}/read/`, { method: "PATCH" });
+        await apiCall(`/api/notifications/${b.id}/read/`, { method: "PATCH" });
       } catch (err) {
         alert("Failed to mark as read: " + err.message);
       }
