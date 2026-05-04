@@ -9,7 +9,6 @@ import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PeopleIcon from '@mui/icons-material/People';
 import { HouseIcon, MessageCircle } from 'lucide-react';
-import { HouseIcon,MessageCircle } from 'lucide-react';
 
 const HrData = [
     {

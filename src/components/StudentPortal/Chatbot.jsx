@@ -1,136 +1,622 @@
-﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+﻿﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../Authentication/AuthContext";
 import { fetchStudentMLInsight } from "../../services/mlApi";
 import {
-  MessageCircle, Send, X, Bot, User, Loader2,
-  Clock, Calendar, TrendingUp, Award, GraduationCap,
-  FileText, Target, Lightbulb, Brain, Activity,
-  Shield, AlertTriangle, LineChart, PieChart,
-} from 'lucide-react';
+  MessageCircle,
+  Send,
+  X,
+  Bot,
+  User,
+  Loader2,
+  Clock,
+  Calendar,
+  TrendingUp,
+  Award,
+  GraduationCap,
+  FileText,
+  Target,
+  Lightbulb,
+  Brain,
+  Activity,
+  Shield,
+  AlertTriangle,
+  LineChart,
+  PieChart,
+  BookOpen,
+  ClipboardList,
+  Info,
+  ShieldAlert,
+  ShieldX,
+} from "lucide-react";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const COMPETENCY_LEVELS = [
-  { code: 'EE1', label: 'Exceptional',        range: '90-100%', color: 'bg-emerald-600' },
-  { code: 'EE2', label: 'Very Good',           range: '75-89%',  color: 'bg-emerald-500' },
-  { code: 'ME1', label: 'Good',                range: '58-74%',  color: 'bg-blue-500'    },
-  { code: 'ME2', label: 'Fair',                range: '41-57%',  color: 'bg-blue-400'    },
-  { code: 'AE1', label: 'Needs Improvement',   range: '31-40%',  color: 'bg-amber-500'   },
-  { code: 'AE2', label: 'Below Average',       range: '21-30%',  color: 'bg-amber-400'   },
-  { code: 'BE1', label: 'Well Below',          range: '11-20%',  color: 'bg-red-500'     },
-  { code: 'BE2', label: 'Minimal',             range: '0-10%',   color: 'bg-red-600'     },
+const META = {
+  EE1: { label: "Exceptional",       badge: "bg-emerald-100 text-emerald-800 border-emerald-200", bar: "bg-emerald-600" },
+  EE2: { label: "Very Good",         badge: "bg-emerald-100 text-emerald-800 border-emerald-200", bar: "bg-emerald-500" },
+  ME1: { label: "Good",              badge: "bg-blue-100 text-blue-800 border-blue-200",           bar: "bg-blue-600"   },
+  ME2: { label: "Fair",              badge: "bg-blue-100 text-blue-800 border-blue-200",           bar: "bg-blue-400"   },
+  AE1: { label: "Needs Improvement", badge: "bg-yellow-100 text-yellow-800 border-yellow-200",    bar: "bg-yellow-500" },
+  AE2: { label: "Below Average",     badge: "bg-yellow-100 text-yellow-800 border-yellow-200",    bar: "bg-yellow-400" },
+  BE1: { label: "Well Below Average",badge: "bg-red-100 text-red-800 border-red-200",             bar: "bg-red-600"    },
+  BE2: { label: "Minimal",           badge: "bg-red-100 text-red-800 border-red-200",             bar: "bg-red-400"    },
+  EE:  { label: "Exceeding Expectations",  badge: "bg-emerald-100 text-emerald-800 border-emerald-200", bar: "bg-emerald-600" },
+  ME:  { label: "Meeting Expectations",    badge: "bg-blue-100 text-blue-800 border-blue-200",          bar: "bg-blue-600"    },
+  AE:  { label: "Approaching Expectations",badge: "bg-yellow-100 text-yellow-800 border-yellow-200",   bar: "bg-yellow-500"  },
+  BE:  { label: "Below Expectations",      badge: "bg-red-100 text-red-800 border-red-200",             bar: "bg-red-600"     },
+};
+
+const LEGEND_4POINT = [
+  { sub: "EE", pts: 4, label: "Exceeding Expectations",  range: "90-100%", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  { sub: "ME", pts: 3, label: "Meeting Expectations",    range: "75-89%",  cls: "bg-blue-100 text-blue-800 border-blue-200"           },
+  { sub: "AE", pts: 2, label: "Approaching Expectations",range: "58-74%",  cls: "bg-yellow-100 text-yellow-800 border-yellow-200"    },
+  { sub: "BE", pts: 1, label: "Below Expectations",      range: "0-57%",   cls: "bg-red-100 text-red-800 border-red-200"             },
 ];
+
+const LEGEND_8POINT = [
+  { sub: "EE1", pts: 8, label: "Exceptional",        range: "90-100%", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  { sub: "EE2", pts: 7, label: "Very Good",           range: "75-89%",  cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  { sub: "ME1", pts: 6, label: "Good",                range: "58-74%",  cls: "bg-blue-100 text-blue-800 border-blue-200"          },
+  { sub: "ME2", pts: 5, label: "Fair",                range: "41-57%",  cls: "bg-blue-100 text-blue-800 border-blue-200"          },
+  { sub: "AE1", pts: 4, label: "Needs Improvement",  range: "31-40%",  cls: "bg-yellow-100 text-yellow-800 border-yellow-200"    },
+  { sub: "AE2", pts: 3, label: "Below Average",       range: "21-30%",  cls: "bg-yellow-100 text-yellow-800 border-yellow-200"    },
+  { sub: "BE1", pts: 2, label: "Well Below Average",  range: "11-20%",  cls: "bg-red-100 text-red-800 border-red-200"             },
+  { sub: "BE2", pts: 1, label: "Minimal",             range: "1-10%",   cls: "bg-red-100 text-red-800 border-red-200"             },
+];
+
+const getIsFourPoint = (className) => {
+  if (!className) return false;
+  const c = className.toLowerCase();
+  if (c.includes("pp")) return true;
+  const match = className.match(/(\d+)/);
+  if (match) { const g = parseInt(match[1]); return g >= 1 && g <= 6; }
+  return false;
+};
+
+const getGradeCode = (pct, isFourPoint) => {
+  if (pct == null || isNaN(pct)) return isFourPoint ? "BE" : "BE2";
+  const n = parseFloat(pct);
+  if (isFourPoint) {
+    if (n >= 90) return "EE"; if (n >= 75) return "ME"; if (n >= 58) return "AE"; return "BE";
+  }
+  if (n >= 90) return "EE1"; if (n >= 75) return "EE2"; if (n >= 58) return "ME1";
+  if (n >= 41) return "ME2"; if (n >= 31) return "AE1"; if (n >= 21) return "AE2";
+  if (n >= 11) return "BE1"; return "BE2";
+};
+
+const getBarColor  = (code) => META[code]?.bar   || "bg-gray-400";
 
 const QUICK_SUGGESTIONS = [
-  { text: 'My competency summary', icon: TrendingUp, query: 'Show me my competency mastery summary' },
-  { text: 'Fee balance',           icon: FileText,   query: 'What is my current fee balance?'        },
-  { text: 'Upcoming assessments',  icon: Calendar,   query: 'When are my upcoming assessments?'      },
-  { text: 'Career pathway',        icon: Target,     query: 'Recommend career pathways based on my competencies' },
-  { text: 'Areas to improve',      icon: Lightbulb,  query: 'Which competency areas need improvement?' },
-  { text: 'Attendance record',     icon: Clock,      query: 'Show my attendance record'               },
+  { text: "My competency summary", icon: TrendingUp, query: "Show me my competency mastery summary" },
+  { text: "Fee balance",           icon: FileText,   query: "What is my current fee balance?" },
+  { text: "Upcoming assessments",  icon: Calendar,   query: "When are my upcoming assessments?" },
+  { text: "Career pathway",        icon: Target,     query: "Recommend career pathways based on my competencies" },
+  { text: "Areas to improve",      icon: Lightbulb,  query: "Which competency areas need improvement?" },
+  { text: "Attendance record",     icon: Clock,      query: "Show my attendance record" },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const getCompetencyLevel = (pct) => {
-  if (pct >= 90) return COMPETENCY_LEVELS[0];
-  if (pct >= 75) return COMPETENCY_LEVELS[1];
-  if (pct >= 58) return COMPETENCY_LEVELS[2];
-  if (pct >= 41) return COMPETENCY_LEVELS[3];
-  if (pct >= 31) return COMPETENCY_LEVELS[4];
-  if (pct >= 21) return COMPETENCY_LEVELS[5];
-  if (pct >= 11) return COMPETENCY_LEVELS[6];
-  return COMPETENCY_LEVELS[7];
+const getTimestamp = () =>
+  new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+const formatRiskLevel = (level) => {
+  const normalized = typeof level === 'string' ? level.toLowerCase() : 'unknown';
+  if (normalized === 'high') return 'High risk';
+  if (normalized === 'medium') return 'Medium risk';
+  if (normalized === 'low') return 'Low risk';
+  return 'Risk unknown';
 };
 
-const barColor = (pct) =>
-  pct >= 75 ? 'bg-green-600' : pct >= 58 ? 'bg-blue-500' : pct >= 41 ? 'bg-amber-500' : 'bg-red-500';
+const formatPredictionValue = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'Prediction unavailable';
+  if (value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
+  return `${Math.round(value)}`;
+};
 
-const getTimestamp = () =>
-  new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const formatConfidenceValue = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'Confidence unavailable';
+  if (value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
+  if (value > 1 && value <= 100) return `${Math.round(value)}%`;
+  return `${Math.round(value)}`;
+};
 
-// ─── Bot message formatter (bold, italic, lists, paragraphs) ─────────────────
+const formatConfidenceBand = (band) => {
+  const normalized = typeof band === 'string' ? band.toLowerCase() : 'unknown';
+  if (normalized === 'high') return 'High confidence';
+  if (normalized === 'medium') return 'Medium confidence';
+  if (normalized === 'low') return 'Low confidence';
+  return 'Confidence band unknown';
+};
+
+const formatMlSource = (source) => {
+  const normalized = typeof source === 'string' ? source.toLowerCase() : 'unknown';
+  if (normalized === 'ml_api') return 'ML API';
+  if (normalized === 'chatbot_api') return 'Chatbot API';
+  if (normalized === 'fallback') return 'Fallback data';
+  if (normalized === 'unavailable') return 'Unavailable';
+  return 'Unknown source';
+};
+
+const formatLastUpdated = (value) => {
+  if (!value) return 'Not updated yet';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Not updated yet';
+  return date.toLocaleString();
+};
+
+const humanizeFeatureName = (feature) => {
+  if (typeof feature !== 'string' || !feature.trim()) return 'Signal';
+  return feature
+    .split('_')
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+};
+
+const formatFactorImpact = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'Impact unavailable';
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+  const absoluteValue = Math.abs(value);
+  if (absoluteValue <= 1) return `${sign}${Math.round(absoluteValue * 100)}%`;
+  return `${sign}${absoluteValue.toFixed(1)}`;
+};
+
+const getFactorDirectionMeta = (direction) => {
+  const normalized = typeof direction === 'string' ? direction.toLowerCase() : 'neutral';
+  if (normalized === 'positive') {
+    return {
+      direction: 'positive',
+      label: 'Positive signal',
+      classes: 'bg-green-50 text-green-700 border-green-200',
+      fallbackExplanation: 'This signal is associated with a stronger estimate.',
+    };
+  }
+  if (normalized === 'negative') {
+    return {
+      direction: 'negative',
+      label: 'Needs attention',
+      classes: 'bg-amber-50 text-amber-700 border-amber-200',
+      fallbackExplanation: 'This signal is associated with a weaker estimate.',
+    };
+  }
+  return {
+    direction: 'neutral',
+    label: 'Context signal',
+    classes: 'bg-slate-50 text-slate-700 border-slate-200',
+    fallbackExplanation: 'This signal is included in the available ML context.',
+  };
+};
+
+const getFactorSourceLabel = (source) => {
+  const normalized = typeof source === 'string' ? source.toLowerCase() : '';
+  if (normalized === 'model') return 'Model signal';
+  if (normalized === 'rule_based') return 'Rule-based signal';
+  if (normalized === 'fallback') return 'Fallback signal';
+  return 'Signal';
+};
+
+const normalizeRecommendationPriority = (priority) => {
+  const normalized = typeof priority === 'string' ? priority.toLowerCase() : 'medium';
+  if (normalized === 'high' || normalized === 'medium' || normalized === 'low') return normalized;
+  return 'medium';
+};
+
+const getRecommendationPriorityMeta = (priority) => {
+  if (priority === 'high') {
+    return {
+      label: 'High priority',
+      classes: 'bg-amber-50 text-amber-700 border-amber-200',
+    };
+  }
+  if (priority === 'low') {
+    return {
+      label: 'Low priority',
+      classes: 'bg-green-50 text-green-700 border-green-200',
+    };
+  }
+  return {
+    label: 'Medium priority',
+    classes: 'bg-slate-50 text-slate-700 border-slate-200',
+  };
+};
+
+const normalizeRecommendationType = (type) => {
+  const normalized = typeof type === 'string' ? type.toLowerCase() : 'general';
+  if (normalized === 'academic' || normalized === 'attendance' || normalized === 'behavior' || normalized === 'career' || normalized === 'general') {
+    return normalized;
+  }
+  return 'general';
+};
+
+const getRecommendationTypeLabel = (type) => {
+  if (type === 'academic') return 'Academic';
+  if (type === 'attendance') return 'Attendance';
+  if (type === 'behavior') return 'Behavior';
+  if (type === 'career') return 'Career';
+  return 'General';
+};
+
+const getRecommendationSourceLabel = (source) => {
+  const normalized = typeof source === 'string' ? source.toLowerCase() : '';
+  if (normalized === 'ml') return 'ML recommendation';
+  if (normalized === 'rule_based') return 'Rule-based recommendation';
+  if (normalized === 'fallback') return 'Fallback recommendation';
+  return 'Recommendation';
+};
+
+const isMlInsightStale = (timestamp) => {
+  if (!timestamp) return false;
+  const updatedAt = new Date(timestamp).getTime();
+  if (Number.isNaN(updatedAt)) return false;
+  return Date.now() - updatedAt > 60 * 60 * 1000;
+};
+
+const ML_INSIGHT_UNAVAILABLE_MESSAGE = 'ML insight is not available yet. I can still give general study guidance, but personalized prediction-based advice requires the latest ML insight to load.';
+const LOW_CONFIDENCE_CAVEAT = 'This estimate may be incomplete because model confidence is low or unavailable.';
+const IMPROVEMENT_EMPTY_RECOMMENDATIONS = 'No personalized recommendations are available yet. Review your recent performance, attendance, and competency gaps with a teacher or advisor.';
+const CAREER_FALLBACK_MESSAGE = 'I do not have personalized career pathway recommendations yet. A teacher or career advisor should review your competencies, interests, and subject performance before choosing a pathway.';
+
+const normalizeMessageText = (message) => (typeof message === 'string' ? message.toLowerCase().trim() : '');
+
+const sanitizeMlErrorMessage = (error) => {
+  const raw = typeof error === 'string' ? error : error?.message;
+  const normalized = String(raw || '')
+    .replace(/\s+/g, ' ')
+    .replace(/^TypeError:\s*/i, '')
+    .trim();
+
+  if (!normalized) return 'ML insight unavailable';
+  if (normalized.toLowerCase().includes('failed to fetch')) {
+    return 'ML insight unavailable: Unable to reach ML services right now. Please try again.';
+  }
+
+  const clipped = normalized.slice(0, 180);
+  if (clipped.toLowerCase().startsWith('ml insight unavailable')) return clipped;
+  return `ML insight unavailable: ${clipped}`;
+};
+
+const detectMlIntent = (message) => {
+  const content = normalizeMessageText(message);
+  if (!content) return null;
+
+  const riskPatterns = [
+    'why at risk',
+    'why am i at risk',
+    'why this prediction',
+    'explain prediction',
+    'why predicted',
+    'what affects my risk',
+  ];
+  const improvementPatterns = [
+    'how can i improve',
+    'how do i improve',
+    'improve my performance',
+    'what should i focus on',
+    'what should i work on',
+    'next steps',
+  ];
+  const studyPlanPatterns = [
+    'study plan',
+    'revision plan',
+    'learning plan',
+    'recommend study',
+    'what should i study',
+  ];
+  const careerPatterns = [
+    'career pathway',
+    'career paths',
+    'future career',
+    'subject choice',
+    'career',
+    'pathway',
+  ];
+
+  if (riskPatterns.some((pattern) => content.includes(pattern))) return 'risk_explanation';
+  if (improvementPatterns.some((pattern) => content.includes(pattern))) return 'improvement';
+  if (studyPlanPatterns.some((pattern) => content.includes(pattern))) return 'study_plan';
+  if (careerPatterns.some((pattern) => content.includes(pattern))) return 'career';
+  return null;
+};
+
+const formatPredictionForMessage = (value) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return null;
+  if (value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
+  return `${Math.round(value)}`;
+};
+
+const formatConfidenceForMessage = (value, band) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return band ? `Confidence band: ${formatConfidenceBand(band)}.` : null;
+  }
+
+  let formattedValue = null;
+  if (value >= 0 && value <= 1) formattedValue = `${Math.round(value * 100)}%`;
+  else if (value > 1 && value <= 100) formattedValue = `${Math.round(value)}%`;
+  else formattedValue = `${Math.round(value)}`;
+
+  if (band) return `${formattedValue} (${formatConfidenceBand(band)})`;
+  return formattedValue;
+};
+
+const hasLowOrUnknownConfidence = (insight) => {
+  const confidence = insight?.confidence;
+  const confidenceBand = typeof insight?.confidenceBand === 'string' ? insight.confidenceBand.toLowerCase() : 'unknown';
+  if (typeof confidence !== 'number' || Number.isNaN(confidence)) return true;
+  if (confidenceBand === 'low' || confidenceBand === 'unknown') return true;
+  return confidence < 0.5;
+};
+
+const summarizeFactorsForMessage = (factors, limit = 3) => {
+  if (!Array.isArray(factors)) return [];
+  return factors.slice(0, limit).map((factor) => {
+    const label = factor?.label || humanizeFeatureName(factor?.feature);
+    const directionMeta = getFactorDirectionMeta(factor?.direction);
+    return `${label}: ${directionMeta.fallbackExplanation}`;
+  });
+};
+
+const summarizeRecommendationsForMessage = (recommendations, limit = 3) => {
+  if (!Array.isArray(recommendations)) return [];
+  return recommendations.slice(0, limit).map((recommendation) => {
+    const title = recommendation?.title || 'Recommended action';
+    const description = recommendation?.description || 'Review this recommendation with a teacher or advisor.';
+    return `${title} - ${description}`;
+  });
+};
+
+const hasRuleBasedRecommendations = (recommendations) =>
+  Array.isArray(recommendations)
+  && recommendations.some((recommendation) => normalizeMessageText(recommendation?.source) === 'rule_based');
+
+const buildMlAwareResponse = (intent, insight) => {
+  if (!insight || insight?.source === 'unavailable') {
+    return ML_INSIGHT_UNAVAILABLE_MESSAGE;
+  }
+
+  const riskLevel = formatRiskLevel(insight?.riskLevel);
+  const prediction = formatPredictionForMessage(insight?.prediction);
+  const confidence = formatConfidenceForMessage(insight?.confidence, insight?.confidenceBand);
+  const factors = summarizeFactorsForMessage(insight?.factors, intent === 'improvement' ? 2 : 3);
+  const recommendations = summarizeRecommendationsForMessage(insight?.recommendations, 3);
+  const lowConfidence = hasLowOrUnknownConfidence(insight);
+  const ruleBasedRecommendation = hasRuleBasedRecommendations(insight?.recommendations);
+  const confidenceNote = lowConfidence ? LOW_CONFIDENCE_CAVEAT : '';
+  const ruleBasedNote = ruleBasedRecommendation ? 'Some recommendations are rule-based, not direct model decisions.' : '';
+
+  if (intent === 'risk_explanation') {
+    const sections = [];
+    sections.push(`Current estimate: ${riskLevel}${prediction ? `, with a prediction value of ${prediction}.` : '.'}`);
+    if (confidence) sections.push(`Confidence context: ${confidence}.`);
+    if (factors.length > 0) {
+      sections.push(`Top signals associated with this estimate:\n${factors.map((factor, index) => `${index + 1}. ${factor}`).join('\n')}`);
+    } else {
+      sections.push('Factor details are not available yet, so this estimate should be reviewed with your teacher or advisor.');
+    }
+    if (confidenceNote) sections.push(confidenceNote);
+    return sections.join('\n\n');
+  }
+
+  if (intent === 'improvement') {
+    if (recommendations.length === 0) {
+      return [IMPROVEMENT_EMPTY_RECOMMENDATIONS, confidenceNote].filter(Boolean).join('\n\n');
+    }
+
+    const sections = [];
+    sections.push(`Suggested next steps:\n${recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`).join('\n')}`);
+    if (factors.length > 0) {
+      sections.push(`Signals to review with your teacher:\n${factors.map((factor, index) => `${index + 1}. ${factor}`).join('\n')}`);
+    }
+    sections.push('Review these actions with a teacher or advisor before making major study changes.');
+    if (ruleBasedNote) sections.push(ruleBasedNote);
+    if (confidenceNote) sections.push(confidenceNote);
+    return sections.join('\n\n');
+  }
+
+  if (intent === 'study_plan') {
+    if (recommendations.length === 0) {
+      const generalPlan = [
+        'General guidance (not personalized):',
+        '1. Review your weakest topics first.',
+        '2. Practice recent assessments and track repeated mistakes.',
+        '3. Ask your teacher for targeted feedback on priority gaps.',
+        '4. Track progress weekly and adjust your plan.',
+      ].join('\n');
+      return [generalPlan, confidenceNote].filter(Boolean).join('\n\n');
+    }
+
+    const planFromRecommendations = `Study plan based on available recommendations:\n${recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`).join('\n')}`;
+    return [planFromRecommendations, ruleBasedNote, confidenceNote].filter(Boolean).join('\n\n');
+  }
+
+  if (intent === 'career') {
+    const careerRecommendations = Array.isArray(insight?.recommendations)
+      ? insight.recommendations.filter((recommendation) => normalizeRecommendationType(recommendation?.type) === 'career')
+      : [];
+
+    if (careerRecommendations.length === 0) {
+      return [CAREER_FALLBACK_MESSAGE, confidenceNote].filter(Boolean).join('\n\n');
+    }
+
+    const careerSummary = summarizeRecommendationsForMessage(careerRecommendations, 3);
+    const responseSections = [
+      `Career-related suggestions from your current insight:\n${careerSummary.map((item, index) => `${index + 1}. ${item}`).join('\n')}`,
+      'Review these options with a teacher or career advisor before choosing a pathway.',
+    ];
+    if (ruleBasedNote) responseSections.push(ruleBasedNote);
+    if (confidenceNote) responseSections.push(confidenceNote);
+    return responseSections.join('\n\n');
+  }
+
+  return ML_INSIGHT_UNAVAILABLE_MESSAGE;
+};
+
+// â”€â”€â”€ Bot message formatter (bold, italic, lists, paragraphs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const formatBotMessage = (text) => {
   if (!text) return null;
-  const escapeHtml = (str) => str.replace(/[&<>]/g, (m) => {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    return m;
-  });
-  let escaped = escapeHtml(text);
-  escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  const lines = escaped.split('\n');
+  const esc = (s) => s.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m] ?? m);
+  let escaped = esc(text);
+  escaped = escaped.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  escaped = escaped.replace(/\*(.*?)\*/g, "<em>$1</em>");
+  const lines = escaped.split("\n");
   const result = [];
   let inList = false;
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-    if (line.trim().startsWith('- ')) {
-      if (!inList) {
-        result.push('<ul class="list-disc pl-5 my-2 space-y-1">');
-        inList = true;
-      }
-      const content = line.trim().substring(2);
-      result.push(`<li>${content}</li>`);
+  for (const line of lines) {
+    if (line.trim().startsWith("- ")) {
+      if (!inList) { result.push('<ul class="list-disc pl-5 my-2 space-y-1">'); inList = true; }
+      result.push(`<li>${line.trim().substring(2)}</li>`);
     } else {
-      if (inList) {
-        result.push('</ul>');
-        inList = false;
-      }
-      if (line.trim() === '') {
-        result.push('<br />');
-      } else {
-        result.push(`<p class="mb-2">${line}</p>`);
-      }
+      if (inList) { result.push("</ul>"); inList = false; }
+      if (line.trim() === "") result.push("<br />");
+      else result.push(`<p class="mb-2">${line}</p>`);
     }
   }
-  if (inList) result.push('</ul>');
-  return <div dangerouslySetInnerHTML={{ __html: result.join('') }} />;
+  if (inList) result.push("</ul>");
+  return <div dangerouslySetInnerHTML={{ __html: result.join("") }} />;
 };
 
-// ─── Chat input — defined OUTSIDE Chatbot so it never remounts on re-render ──
-const ChatInput = ({ value, onChange, onKeyDown, placeholder, disabled, inputRef }) => (
-  <input
-    ref={inputRef}
-    type="text"
-    value={value}
-    onChange={onChange}
-    onKeyDown={onKeyDown}
-    placeholder={placeholder}
-    disabled={disabled}
-    className="flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm rounded-xl bg-white"
-  />
-);
+// Discipline status config 
+const DISCIPLINE_STATUS_CONFIG = {
+  Good:       { bg: "bg-green-50",  border: "border-green-200",  text: "text-green-700",  icon: Shield,      label: "Good Standing"  },
+  Warning:    { bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  icon: AlertTriangle,label: "Warning Issued" },
+  Probation:  { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", icon: ShieldAlert,  label: "On Probation"   },
+  Suspension: { bg: "bg-red-50",    border: "border-red-200",    text: "text-red-700",    icon: ShieldX,      label: "Suspension"     },
+};
 
-// ─── Small UI components ──────────────────────────────────────────────────────
-const CompetencyBadge = ({ percentage }) => {
-  const level = getCompetencyLevel(percentage);
+//  Discipline card
+// FIX: replaced the old card (which only showed a raw incident count) with a card
+// that surfaces discipline_status, discipline_points, open_discipline_cases,
+// active_suspensions, and suspension_detail  matching what Jawabu now knows.
+const DisciplineCard = ({ analyticsData, isMobile = false }) => {
+  if (!analyticsData) return null;
+
+  const {
+    open_discipline_cases = 0,
+    discipline_points     = 0,
+    discipline_status     = "Good",
+    active_suspensions    = 0,
+    suspension_detail     = [],
+  } = analyticsData;
+
+  // Only render if there is something to report
+  const hasIssue =
+    discipline_status !== "Good" ||
+    open_discipline_cases > 0   ||
+    active_suspensions > 0;
+
+  if (!hasIssue) return null;
+
+  const cfg   = DISCIPLINE_STATUS_CONFIG[discipline_status] || DISCIPLINE_STATUS_CONFIG.Warning;
+  const Icon  = cfg.icon;
+  const p     = isMobile ? "p-4" : "p-5";
+  const title = isMobile ? "text-sm" : "text-base";
+
   return (
-    <div className="flex items-center gap-2">
-      <div className={`w-2 h-2 rounded-full ${level.color}`} />
-      <span className="text-xs font-medium text-gray-600">{level.code}</span>
-      <span className="text-xs text-gray-400">{level.label}</span>
+    <div className={`${cfg.bg} ${cfg.border} border rounded-xl ${p}`}>
+      {/* Header row */}
+      <div className="flex items-start gap-3">
+        <Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${cfg.text}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className={`font-semibold text-gray-800 ${title}`}>
+              Discipline Record
+            </h3>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.border} ${cfg.text}`}>
+              {cfg.label}
+            </span>
+          </div>
+
+          {/* Stats row */}
+          <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-600">
+            <span>
+              <span className="font-semibold text-gray-800">{discipline_points}</span> discipline pts
+            </span>
+            {open_discipline_cases > 0 && (
+              <span>
+                <span className="font-semibold text-gray-800">{open_discipline_cases}</span> open case{open_discipline_cases > 1 ? "s" : ""}
+              </span>
+            )}
+            {active_suspensions > 0 && (
+              <span className="text-red-700 font-semibold">
+                {active_suspensions} active suspension{active_suspensions > 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+
+          {/* Contextual message */}
+          <p className={`mt-2 text-xs ${cfg.text}`}>
+            {discipline_status === "Suspension" || active_suspensions > 0
+              ? "You have an active or pending suspension. Your parent/guardian must be involved. Report to the Deputy Headteacher immediately."
+              : discipline_status === "Probation"
+              ? "You are currently on probation due to accumulated discipline points. Please urgently speak with the Deputy Headteacher."
+              : "You have an open discipline matter. Please speak with your class teacher or Deputy Headteacher to resolve it."}
+          </p>
+
+          {/* Suspension detail */}
+          {suspension_detail.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {suspension_detail.map((s, idx) => (
+                <div key={idx} className="bg-white border border-red-200 rounded-lg px-3 py-2 text-xs text-gray-700">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-semibold">{s.type} Suspension</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      s.status === "Active" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                    }`}>{s.status}</span>
+                  </div>
+                  <p className="text-gray-500">{s.start_date} â†’ {s.end_date}</p>
+                  {s.reason && <p className="mt-1 text-gray-600 italic">{s.reason}</p>}
+                  {!s.parent_notified && (
+                    <p className="mt-1 text-red-600 font-medium">Parent / guardian not yet notified.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
 
-const CBCLegend = () => (
-  <div className="grid grid-cols-4 gap-2">
-    {COMPETENCY_LEVELS.map((l) => (
-      <div key={l.code} className="flex items-center gap-1">
-        <div className={`w-2 h-2 rounded-full ${l.color}`} />
-        <span className="text-xs text-gray-500">{l.code}</span>
-      </div>
-    ))}
-  </div>
+const ChatInput = ({ value, onChange, onKeyDown, placeholder, disabled, inputRef }) => (
+  <input
+    ref={inputRef} type="text" value={value} onChange={onChange} onKeyDown={onKeyDown}
+    placeholder={placeholder} disabled={disabled}
+    className="flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm rounded-xl bg-white"
+  />
 );
 
-const RiskCard = ({ title, value, riskLevel, icon: Icon, description }) => {
+const CompetencyBadge = ({ code }) => {
+  const meta = META[code];
+  if (!meta) return <span className="text-xs text-gray-400"></span>;
+  return (
+    <span className={`inline-flex px-2.5 py-1 text-xs font-bold border ${meta.badge}`}>
+      {code} {meta.label}
+    </span>
+  );
+};
+
+const CBCLegend = ({ isFourPoint }) => {
+  const legends = isFourPoint ? LEGEND_4POINT : LEGEND_8POINT;
+  return (
+    <div className={`grid ${isFourPoint ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-4 lg:grid-cols-8"} gap-2`}>
+      {legends.map((r) => (
+        <div key={r.sub} className={`px-3 py-2 border text-center ${r.cls}`}>
+          <div className="flex justify-between items-center mb-1">
+            <span className="font-bold text-xs">{r.sub}</span>
+            <span className="text-xs opacity-50">{r.pts}pt</span>
+          </div>
+          <p className="text-xs font-medium leading-tight">{r.label}</p>
+          <p className="text-xs opacity-50 mt-0.5">{r.range}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const RiskCard = ({ title, value, riskLevel, icon: IconComponent, description }) => {
   const MAP = {
-    low:    { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', label: 'Low Risk'    },
-    medium: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', label: 'Medium Risk' },
-    high:   { bg: 'bg-red-50',   border: 'border-red-200',   text: 'text-red-700',   label: 'High Risk'   },
+    low:    { bg: "bg-green-50", border: "border-green-200", text: "text-green-700", label: "Low Risk"    },
+    medium: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", label: "Medium Risk" },
+    high:   { bg: "bg-red-50",   border: "border-red-200",   text: "text-red-700",   label: "High Risk"   },
   };
   const c = MAP[riskLevel] || MAP.low;
   return (
@@ -166,7 +652,7 @@ const TrendBar = ({ label, value, isFourPoint }) => {
       </div>
     </div>
   );
-});
+};
 
 const SplitPerformanceTrend = ({ examTrend = [], assessmentTrend = [], isFourPoint }) => {
   const [activeTab, setActiveTab] = useState(examTrend.length > 0 ? "exams" : "assessments");
@@ -257,6 +743,102 @@ const CompetencyMastery = ({ competencies = [], isFourPoint }) => {
       {examComps.length > 0   && <CompetencySection title="From Formal Exams"      icon={BookOpen}    items={examComps}   color="text-blue-600"   emptyMsg="No exam results available."       isFourPoint={isFourPoint} />}
       {assessComps.length > 0 && <CompetencySection title="From Class Assessments" icon={ClipboardList}items={assessComps} color="text-purple-600" emptyMsg="No assessment results available." isFourPoint={isFourPoint} />}
     </div>
+  );
+};
+
+const ChatMessage = React.memo(({ message, isUser, timestamp }) => {
+  const content = isUser
+    ? <p className="text-sm whitespace-pre-wrap break-words">{message}</p>
+    : formatBotMessage(message);
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
+      <div className={`flex max-w-[85%] ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+        <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center ${isUser ? "ml-2" : "mr-2"}`}>
+          <div className={`w-8 h-8 flex items-center justify-center rounded-xl ${isUser ? "bg-blue-600" : "bg-green-700"}`}>
+            {isUser ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
+          </div>
+        </div>
+        <div className={`flex-1 ${isUser ? "items-end" : "items-start"}`}>
+          <div className={`px-4 py-2 rounded-xl border border-gray-200 ${isUser ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800"}`}>
+            {content}
+          </div>
+          <p className="text-xs text-gray-400 mt-1 px-1">{timestamp}</p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const TypingIndicator = React.memo(() => (
+  <div className="flex justify-start mb-4">
+    <div className="flex max-w-[85%] flex-row">
+      <div className="w-8 h-8 bg-green-700 flex items-center justify-center rounded-xl mr-2">
+        <Bot className="w-4 h-4 text-white" />
+      </div>
+      <div className="px-4 py-3 bg-gray-100 rounded-xl border border-gray-200">
+        <div className="flex gap-1">
+          {[0, 150, 300].map((d) => (
+            <div key={d} className="w-2 h-2 bg-gray-500 animate-bounce rounded-full" style={{ animationDelay: `${d}ms` }} />
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+));
+
+const ChatPanel = ({
+  isMobileView, onClose, messages, isTyping, isSending,
+  inputValue, handleInputChange, handleKeyPress, handleSend,
+  handleSuggestionClick, analyticsError, messagesEndRef, inputRef,
+}) => (
+  <div className={`flex flex-col bg-white border border-gray-200 shadow-xl ${isMobileView ? "fixed inset-0 z-50" : "h-full rounded-xl"}`}>
+    <div className={`flex items-center ${isMobileView ? "justify-between" : ""} gap-3 p-4 bg-green-700 border-b border-green-800 ${!isMobileView ? "rounded-t-xl" : ""}`}>
+      <div className="w-10 h-10 bg-white flex items-center justify-center rounded-xl flex-shrink-0">
+        <Bot className="w-5 h-5 text-green-700" />
+      </div>
+      <div className="flex-1">
+        <h3 className="text-base font-semibold text-white">Jawabu  Academic Assistant</h3>
+        <p className="text-xs text-green-100">AI-Powered | CBC Curriculum Support</p>
+      </div>
+      {isMobileView && <button onClick={onClose} className="text-white/70 hover:text-white ml-2"><X className="w-5 h-5" /></button>}
+    </div>
+
+    <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+      {messages.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-full text-center">
+          <div className="w-20 h-20 bg-green-100 flex items-center justify-center rounded-xl mb-4">
+            <Brain className="w-10 h-10 text-green-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Hi, I'm Jawabu your CBC Academic Assistant</h3>
+          <p className="text-gray-600 mb-3 text-sm max-w-md">
+            I can help you understand your grades, explain the difference between exams and assessments, recommend career pathways, and much more.
+          </p>
+          {analyticsError && (
+            <p className="text-xs text-amber-600 mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Analytics could not be loaded  I'll answer from general knowledge.
+            </p>
+          )}
+          <div className="w-full">
+            <p className="text-xs font-medium text-gray-500 mb-3 text-left">QUICK QUESTIONS</p>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_SUGGESTIONS.map((s, idx) => (
+                <button key={idx} onClick={() => handleSuggestionClick(s.query)}
+                  className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-sm rounded-xl">
+                  <s.icon className="w-3 h-3 text-blue-600" />
+                  <span className="text-gray-700">{s.text}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {messages.map((msg) => <ChatMessage key={msg.id} message={msg.text} isUser={msg.isUser} timestamp={msg.timestamp} />)}
+          {isTyping && <TypingIndicator />}
+          <div ref={messagesEndRef} />
+        </>
+      )}
+    </div>
 
     {messages.length > 0 && !isTyping && (
       <div className="px-4 py-2 border-t border-gray-200 bg-white overflow-x-auto">
@@ -274,28 +856,19 @@ const CompetencyMastery = ({ competencies = [], isFourPoint }) => {
 
     <div className="p-4 border-t border-gray-200 bg-white rounded-b-xl">
       <div className="flex gap-2">
-        <ChatInput
-          inputRef={inputRef}
-          value={inputValue}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyPress}
-          placeholder="Ask about your competencies, career pathways, or risks..."
-          disabled={isSending}
-        />
-        <button
-          onClick={handleSend}
-          disabled={!inputValue.trim() || isSending}
-          className="px-4 py-2 bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-xl flex-shrink-0"
-        >
+        <ChatInput inputRef={inputRef} value={inputValue} onChange={handleInputChange} onKeyDown={handleKeyPress}
+          placeholder="Ask about your grades, exams, assessments, career..." disabled={isSending} />
+        <button onClick={handleSend} disabled={!inputValue.trim() || isSending}
+          className="px-4 py-2 bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-xl flex-shrink-0">
           {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>
       </div>
-      <p className="text-xs text-gray-400 mt-2 text-center">AI Assistant for CBC Competency-Based Curriculum</p>
+      <p className="text-xs text-gray-400 mt-2 text-center">AI Assistant CBC Competency-Based Curriculum</p>
     </div>
   </div>
 );
 
-// ─── Main Chatbot component ───────────────────────────────────────────────────
+//  Main component 
 const Chatbot = () => {
   const { user, getAuthHeaders, isAuthenticated } = useAuth();
 
