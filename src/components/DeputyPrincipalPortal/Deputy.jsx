@@ -7,7 +7,7 @@ import Login from "../Authentication/Login";
 import Logout from "../Authentication/Logout";
 import Messages from "../CommonService/StaffMessaging";
 import TeacherAssignment from "./TeacherAssign";
-import Messages from "../CommonService/StaffMessaging";
+import Message from "../CommonService/StaffMessaging";
 
 
 
@@ -33,7 +33,7 @@ const DeputyPrincipal = () => {
                     <Route path="/dashboard" element={<DeputyPrincipalDashboard />} />
                     <Route path="/discipline" element={<Discipline />} />
                     <Route path="/student-affairs/" element={<DeputyStudentAffairs />} />
-                    <Route path="/messages" element={<Messages />} />
+                    <Route path="/messages" element={<Message />} />
                     <Route path="/Assignments" element={<TeacherAssignment/>}/>
                     <Route path="/messages" element={<Messages />} />
 
