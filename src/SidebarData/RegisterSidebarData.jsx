@@ -65,6 +65,7 @@ const RegisterSidebarData = [
     link: "/Logout"
   },
   
+  
 ];
 
 export default RegisterSidebarData;

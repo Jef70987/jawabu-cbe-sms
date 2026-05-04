@@ -208,9 +208,7 @@ function AcademicManagement() {
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [showPublishConfirmModal, setShowPublishConfirmModal] = useState(false);
-  const [showGradeModal, setShowGradeModal] = useState(false);
-  const [showCompetencyModal, setShowCompetencyModal] = useState(false);
-  const [showValueModal, setShowValueModal] = useState(false);
+  const [showGradeModal, setShowGradeModal] = useState(false); // NEW: Grade CRUD modal
   const [itemToDelete, setItemToDelete] = useState(null);
 
   // Editing states for different entities
@@ -251,43 +249,9 @@ function AcademicManagement() {
     academicYear: "",
     isActive: false,
   });
-  const [gradeForm, setGradeForm] = useState({
-    name: "",
-    level: "",
-    description: "",
-  });
-  const [competencyForm, setCompetencyForm] = useState({
-    name: "",
-    code: "",
-    indicators: "",
-  });
-  const [valueForm, setValueForm] = useState({
-    name: "",
-    indicators: "",
-  });
-
-  // Academic years and terms
-  const [academicYears, setAcademicYears] = useState([]);
-  const [showAcademicYearModal, setShowAcademicYearModal] = useState(false);
-  const [editingAcademicYear, setEditingAcademicYear] = useState(null);
-  const [academicYearForm, setAcademicYearForm] = useState({
-    year_code: "",
-    year_name: "",
-    start_date: "",
-    end_date: "",
-    is_current: false,
-  });
-  const [terms, setTerms] = useState([]);
-  const [showTermModal, setShowTermModal] = useState(false);
-  const [editingTerm, setEditingTerm] = useState(null);
-  const [termForm, setTermForm] = useState({
-    academic_year: "",
-    term: "Term 1",
-    start_date: "",
-    end_date: "",
-    is_current: false,
-  });
-  const [termAcademicYearFilter, setTermAcademicYearFilter] = useState("");
+  const [versionForm, setVersionForm] = useState({ name: '', academicYear: '', isActive: false });
+  const [gradeForm, setGradeForm] = useState({ name: '', level: '', description: '' }); // NEW
+  const [editingGrade, setEditingGrade] = useState(null); // NEW
 
   // Bulk Import
   const [uploadFile, setUploadFile] = useState(null);
@@ -326,7 +290,7 @@ function AcademicManagement() {
         addNotification("error", data.error || "Failed to load curriculum");
       }
     } catch (error) {
-      addNotification("error", "Failed to load curriculum data");
+      addNotification('error', 'Failed to load curriculum data');
     }
   }, [addNotification, getAuthHeaders, selectedGrade]);
 
@@ -1253,23 +1217,108 @@ function AcademicManagement() {
     }
   };
 
+  // --- GRADE LEVEL CRUD ---
+
+  const handleCreateGrade = async () => {
+    if (!gradeForm.name || !gradeForm.level) {
+      addNotification('warning', 'Please fill in name and level');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/registrar/academic/grade-levels/create/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: gradeForm.name,
+          level: parseInt(gradeForm.level),
+          description: gradeForm.description
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'Grade level created');
+        setShowGradeModal(false);
+        setGradeForm({ name: '', level: '', description: '' });
+        fetchGradeLevels();
+      } else {
+        addNotification('error', data.error || 'Failed to create grade level');
+      }
+    } catch (err) {
+      addNotification('error', 'Network error');
+    }
+  };
+
+  const handleUpdateGrade = async () => {
+    if (!editingGrade) return;
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/registrar/academic/grade-levels/${editingGrade.id}/`,
+        {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            name: gradeForm.name,
+            level: parseInt(gradeForm.level),
+            description: gradeForm.description
+          })
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        addNotification('success', 'Grade level updated');
+        setShowGradeModal(false);
+        setEditingGrade(null);
+        setGradeForm({ name: '', level: '', description: '' });
+        fetchGradeLevels();
+      } else {
+        addNotification('error', data.error || 'Failed to update grade level');
+      }
+    } catch (err) {
+      addNotification('error', 'Network error');
+    }
+  };
+
   const handleDeleteGrade = async (grade) => {
     if (!window.confirm(`Delete ${grade.name}?`)) return;
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/registrar/academic/grade-levels/${grade.id}/`,
-        { method: "DELETE", headers: getAuthHeaders() },
+        { method: 'DELETE', headers: getAuthHeaders() }
       );
       const data = await response.json();
       if (data.success) {
-        addNotification("success", "Grade level deleted");
+        addNotification('success', 'Grade level deleted');
         fetchGradeLevels();
       } else {
-        addNotification("error", data.error || "Failed to delete");
+        addNotification('error', data.error || 'Failed to delete');
       }
     } catch (err) {
-      addNotification("error", "Network error");
+      addNotification('error', 'Network error');
     }
+  };
+
+  const openEditGrade = (grade) => {
+    setEditingGrade(grade);
+    setGradeForm({
+      name: grade.name,
+      level: grade.level.toString(),
+      description: grade.description || ''
+    });
+    setShowGradeModal(true);
+  };
+
+  const openAddGrade = () => {
+    setEditingGrade(null);
+    setGradeForm({ name: '', level: '', description: '' });
+    setShowGradeModal(true);
+  };
+
+  // --- end grade level CRUD ---
+
+  const resetSubjectForm = () => {
+    setSubjectForm({
+      name: '', code: '', gradeLevel: selectedGrade, isCore: true, isActive: true, description: ''
+    });
   };
 
   const openEditGrade = (grade) => {
@@ -1684,26 +1733,12 @@ function AcademicManagement() {
           <Database className="h-4 w-4 inline mr-2" />
           Version History
         </button>
-        <button
-          onClick={() => setActiveTab("grade-levels")}
-          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === "grade-levels" ? "bg-green-700 text-white" : "bg-gray-200 text-gray-800"}`}
+        <button 
+          onClick={() => setActiveTab('grade-levels')} 
+          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === 'grade-levels' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-800'}`}
         >
           <School className="h-4 w-4 inline mr-2" />
           Grade Levels
-        </button>
-        <button
-          onClick={() => setActiveTab("academic-years")}
-          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === "academic-years" ? "bg-green-700 text-white" : "bg-gray-200 text-gray-800"}`}
-        >
-          <Calendar className="h-4 w-4 inline mr-2" />
-          Academic Years
-        </button>
-        <button
-          onClick={() => setActiveTab("terms")}
-          className={`px-5 py-2 border border-gray-300 text-sm font-medium ${activeTab === "terms" ? "bg-green-700 text-white" : "bg-gray-200 text-gray-800"}`}
-        >
-          <Clock className="h-4 w-4 inline mr-2" />
-          Terms
         </button>
       </div>
 
@@ -2388,14 +2423,11 @@ function AcademicManagement() {
         </div>
       )}
 
-      {/* TAB 5: GRADE LEVELS */}
-      {activeTab === "grade-levels" && (
+      {/* TAB 5: GRADE LEVELS - NEW */}
+      {activeTab === 'grade-levels' && (
         <div>
           <div className="flex justify-end mb-4">
-            <button
-              onClick={openAddGrade}
-              className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800"
-            >
+            <button onClick={openAddGrade} className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800">
               <Plus className="h-4 w-4 inline mr-2" /> Add Grade Level
             </button>
           </div>
@@ -2403,317 +2435,26 @@ function AcademicManagement() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-gray-100 border-b border-gray-300">
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    Level
-                  </th>
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    Name
-                  </th>
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    Description
-                  </th>
-                  <th className="px-4 py-3 text-center font-bold text-gray-700">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-left font-bold text-gray-700">Level</th>
+                  <th className="px-4 py-3 text-left font-bold text-gray-700">Name</th>
+                  <th className="px-4 py-3 text-left font-bold text-gray-700">Description</th>
+                  <th className="px-4 py-3 text-center font-bold text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {gradeLevels.map((grade) => (
-                  <tr
-                    key={grade.id}
-                    className="border-b border-gray-200 hover:bg-gray-50"
-                  >
+                {gradeLevels.map(grade => (
+                  <tr key={grade.id} className="border-b border-gray-200 hover:bg-gray-50">
                     <td className="px-4 py-3 font-mono">{grade.level}</td>
                     <td className="px-4 py-3 font-medium">{grade.name}</td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {grade.description || "—"}
-                    </td>
+                    <td className="px-4 py-3 text-gray-600">{grade.description || '—'}</td>
                     <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => openEditGrade(grade)}
-                        className="mr-2 p-1.5 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteGrade(grade)}
-                        className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <button onClick={() => openEditGrade(grade)} className="mr-2 p-1.5 bg-yellow-600 text-white rounded hover:bg-yellow-700"><Edit2 className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => handleDeleteGrade(grade)} className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"><Trash2 className="h-3.5 w-3.5" /></button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 6: ACADEMIC YEARS */}
-      {activeTab === "academic-years" && (
-        <div>
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => {
-                setEditingAcademicYear(null);
-                setAcademicYearForm({
-                  year_code: "",
-                  year_name: "",
-                  start_date: "",
-                  end_date: "",
-                  is_current: false,
-                });
-                setShowAcademicYearModal(true);
-              }}
-              className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800"
-            >
-              <Plus className="h-4 w-4 inline mr-2" /> Add Academic Year
-            </button>
-          </div>
-          <div className="bg-white border border-gray-300 overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-100 border-b border-gray-300">
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    Year Code
-                  </th>
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    Year Name
-                  </th>
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    Start Date
-                  </th>
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    End Date
-                  </th>
-                  <th className="px-4 py-3 text-center font-bold text-gray-700">
-                    Current
-                  </th>
-                  <th className="px-4 py-3 text-center font-bold text-gray-700">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {academicYears.map((yr) => (
-                  <tr
-                    key={yr.id}
-                    className="border-b border-gray-200 hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3 font-mono font-bold">
-                      {yr.year_code}
-                    </td>
-                    <td className="px-4 py-3 font-medium">{yr.year_name}</td>
-                    <td className="px-4 py-3">{yr.start_date}</td>
-                    <td className="px-4 py-3">{yr.end_date}</td>
-                    <td className="px-4 py-3 text-center">
-                      {yr.is_current ? (
-                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium border border-green-200">
-                          Current
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs border border-gray-200">
-                          —
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => openEditAcademicYear(yr)}
-                        className="mr-2 p-1.5 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteAcademicYear(yr)}
-                        className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {academicYears.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="px-4 py-8 text-center text-gray-400"
-                    >
-                      No academic years found. Click "Add Academic Year" to
-                      create one.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 7: TERMS */}
-      {activeTab === "terms" && (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-bold text-gray-700">
-                Filter by Year:
-              </label>
-              <select
-                value={termAcademicYearFilter}
-                onChange={(e) => setTermAcademicYearFilter(e.target.value)}
-                className="px-3 py-1 border border-gray-400 text-sm bg-white"
-              >
-                <option value="">All Years</option>
-                {academicYears.map((yr) => (
-                  <option key={yr.id} value={yr.id}>
-                    {yr.year_code}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              onClick={() => {
-                setEditingTerm(null);
-                setTermForm({
-                  academic_year: "",
-                  term: "Term 1",
-                  start_date: "",
-                  end_date: "",
-                  is_current: false,
-                });
-                setShowTermModal(true);
-              }}
-              className="px-4 py-2 bg-green-700 text-white text-sm font-medium border border-green-800 hover:bg-green-800"
-            >
-              <Plus className="h-4 w-4 inline mr-2" /> Add Term
-            </button>
-          </div>
-
-          <div className="bg-white border border-gray-300 overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-100 border-b border-gray-300">
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    Academic Year
-                  </th>
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    Term
-                  </th>
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    Start Date
-                  </th>
-                  <th className="px-4 py-3 text-left font-bold text-gray-700">
-                    End Date
-                  </th>
-                  <th className="px-4 py-3 text-center font-bold text-gray-700">
-                    Current
-                  </th>
-                  <th className="px-4 py-3 text-center font-bold text-gray-700">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {terms.map((t) => (
-                  <tr
-                    key={t.id}
-                    className="border-b border-gray-200 hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3 font-medium">
-                      {t.academic_year_name || t.academic_year?.year_code}
-                    </td>
-                    <td className="px-4 py-3">Term {t.term}</td>
-                    <td className="px-4 py-3">{t.start_date}</td>
-                    <td className="px-4 py-3">{t.end_date}</td>
-                    <td className="px-4 py-3 text-center">
-                      {t.is_current ? (
-                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium border border-green-200">
-                          Current
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs border border-gray-200">
-                          —
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => openEditTerm(t)}
-                        className="mr-2 p-1.5 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTerm(t)}
-                        className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {terms.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="px-4 py-8 text-center text-gray-400"
-                    >
-                      No terms found. Select an academic year or add a new term.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ================ MODALS ================ */}
-
-      {/* Weight Config Modal */}
-      {showWeightModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowWeightModal(false)}
-        >
-          <div
-            className="bg-white border border-gray-400 max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
-              <h3 className="text-md font-bold text-gray-900">
-                Confirm Weight Configuration
-              </h3>
-              <button
-                onClick={() => setShowWeightModal(false)}
-                className="text-gray-600 hover:text-gray-900 text-xl font-bold"
-              >
-                &times;
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-sm text-gray-800">
-                Are you sure you want to update the weight configuration?
-              </p>
-              <p className="text-xs text-gray-600 mt-2">
-                SBA: {weightConfig.sbaWeight}% | Exam: {weightConfig.examWeight}%
-              </p>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
-              <button
-                onClick={() => setShowWeightModal(false)}
-                className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={updateWeightConfig}
-                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
-              >
-                Confirm
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -3932,6 +3673,45 @@ function AcademicManagement() {
                 className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800"
               >
                 Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grade Level Modal */}
+      {showGradeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowGradeModal(false)}>
+          <div className="bg-white border border-gray-400 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-300 bg-gray-100 flex justify-between items-center">
+              <h3 className="text-md font-bold text-gray-900">{editingGrade ? 'Edit Grade Level' : 'Add Grade Level'}</h3>
+              <button onClick={() => setShowGradeModal(false)} className="text-gray-600 hover:text-gray-900 text-xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Level Number *</label>
+                <input type="number" min="1" max="12" value={gradeForm.level}
+                  onChange={(e) => setGradeForm({...gradeForm, level: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Grade Name *</label>
+                <input type="text" value={gradeForm.name}
+                  onChange={(e) => setGradeForm({...gradeForm, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" placeholder="e.g., Grade 7" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                <textarea value={gradeForm.description}
+                  onChange={(e) => setGradeForm({...gradeForm, description: e.target.value})}
+                  rows="2" className="w-full px-3 py-2 border border-gray-400 text-sm bg-white" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-300 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setShowGradeModal(false)} className="px-4 py-2 border border-gray-400 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
+              <button onClick={editingGrade ? handleUpdateGrade : handleCreateGrade}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-bold border border-green-800 hover:bg-green-800">
+                {editingGrade ? 'Update' : 'Create'}
               </button>
             </div>
           </div>

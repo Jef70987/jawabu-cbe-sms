@@ -8,6 +8,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { MessageCircle } from 'lucide-react';
+
 const BursarData = [
     {
         title: "Dashboard",
@@ -55,6 +56,7 @@ const BursarData = [
         icon: <LogoutIcon sx={{color:'red',fontSize:30}}/>,
         link: "/Logout"
     },
+ 
 ];
 
 export default BursarData;
