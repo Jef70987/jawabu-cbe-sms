@@ -60,6 +60,14 @@ const DEFAULT_UNAVAILABLE_INSIGHT = {
   raw: null,
 };
 
+const isDevEnvironment = Boolean(import.meta?.env?.DEV);
+
+function logMlInsightDebug(event, detail) {
+  if (!isDevEnvironment) return;
+  // Debug logging is development-only and intentionally avoids auth token values.
+  console.debug(`[ml-insight-api] ${event}`, detail);
+}
+
 const DEFAULT_UNAVAILABLE_MONITORING = {
   source: "unavailable",
   modelVersion: null,
@@ -403,9 +411,35 @@ export function normalizeRecommendationsPayload(payload) {
   });
 }
 
-export function normalizeMLInsight(payload) {
+export function normalizeMLInsight(payload, options = {}) {
+  const fallbackStudentId = options?.studentId ?? null;
   const body = payload && typeof payload === "object" ? payload : {};
   const data = body?.data && typeof body.data === "object" ? body.data : body;
+  const predictionValue = (() => {
+    const directPrediction = data?.prediction;
+    if (typeof directPrediction === "number" || typeof directPrediction === "string") {
+      return asNumber(directPrediction);
+    }
+    return asNumber(
+      data?.risk_probability ??
+      data?.riskProbability ??
+      data?.risk_score ??
+      data?.prediction?.value ??
+      data?.prediction?.score
+    );
+  })();
+  const confidenceValue = (() => {
+    const directConfidence = data?.confidence;
+    if (typeof directConfidence === "number" || typeof directConfidence === "string") {
+      return asNumber(directConfidence);
+    }
+    return asNumber(
+      data?.risk_confidence ??
+      data?.riskConfidence ??
+      data?.confidence_score ??
+      data?.confidence?.value
+    );
+  })();
 
   const recommendations = asArray(data?.recommendations).map((item) => ({
     id: item?.id ?? item?.recommendation_id ?? null,
@@ -421,13 +455,19 @@ export function normalizeMLInsight(payload) {
 
   const insight = {
     ...DEFAULT_UNAVAILABLE_INSIGHT,
-    studentId: data?.student_id ?? data?.studentId ?? null,
-    prediction: asNumber(data?.prediction ?? data?.risk_probability ?? data?.risk_score),
+    studentId:
+      data?.student_id ??
+      data?.studentId ??
+      data?.student?.id ??
+      data?.student?.student_id ??
+      fallbackStudentId ??
+      null,
+    prediction: predictionValue,
     riskLevel: normalizeRiskLevel(data?.risk_level ?? data?.riskLevel),
-    confidence: asNumber(data?.confidence ?? data?.risk_confidence ?? data?.confidence_score),
+    confidence: confidenceValue,
     confidenceBand:
       String((data?.confidence_band ?? data?.confidenceBand) || "").toLowerCase() ||
-      confidenceBandFromValue(asNumber(data?.confidence ?? data?.risk_confidence ?? data?.confidence_score)),
+      confidenceBandFromValue(confidenceValue),
     recommendations,
     factors,
     source: String(data?.source || "unavailable").toLowerCase(),
@@ -451,11 +491,12 @@ export function normalizeMLInsight(payload) {
   return insight;
 }
 
-export function getMLInsightUnavailable(studentId, error = null) {
+export function getMLInsightUnavailable(studentId, error = null, raw = null) {
   return {
     ...DEFAULT_UNAVAILABLE_INSIGHT,
     studentId: studentId ?? null,
     error,
+    raw,
   };
 }
 
@@ -477,11 +518,22 @@ export async function fetchStudentRecommendations({ studentId, token, signal } =
 
 export async function fetchStudentMLInsight({ studentId, token, signal, timeoutMs = 15000 } = {}) {
   if (!studentId) {
-    return getMLInsightUnavailable(studentId);
+    const missingStudentIdError = "student_id is required";
+    logMlInsightDebug("request_skipped_missing_student_id", {
+      hasToken: Boolean(token || localStorage.getItem("token")),
+      reason: missingStudentIdError,
+    });
+    return getMLInsightUnavailable(studentId, missingStudentIdError);
   }
 
   const url = withQuery(`${API_BASE_URL}/ml/student-insight/`, {
     student_id: studentId,
+  });
+
+  logMlInsightDebug("request", {
+    studentId,
+    hasToken: Boolean(token || localStorage.getItem("token")),
+    url,
   });
 
   const controller = new AbortController();
@@ -519,40 +571,75 @@ export async function fetchStudentMLInsight({ studentId, token, signal, timeoutM
       payload = null;
     }
 
+    logMlInsightDebug("response", {
+      studentId,
+      responseStatus: response.status,
+      responseOk: response.ok,
+      rawPayload: payload,
+    });
+
     if (response.status === 401 || response.status === 403) {
-      return getMLInsightUnavailable(studentId, "You are not permitted to view this ML insight.");
+      return getMLInsightUnavailable(
+        studentId,
+        "You are not permitted to view this ML insight.",
+        payload
+      );
     }
 
     if (response.status === 429) {
       return getMLInsightUnavailable(
         studentId,
-        "ML insight is temporarily rate-limited. Please try again shortly."
+        "ML insight is temporarily rate-limited. Please try again shortly.",
+        payload
       );
     }
 
     if (!response.ok || payload?.status === "error") {
       const apiError = payload && typeof payload === "object" ? String(payload.error || "").toLowerCase() : "";
       if (apiError.includes("not permitted")) {
-        return getMLInsightUnavailable(studentId, "You are not permitted to view this ML insight.");
+        return getMLInsightUnavailable(
+          studentId,
+          "You are not permitted to view this ML insight.",
+          payload
+        );
       }
       if (apiError.includes("rate-limited") || apiError.includes("rate limited")) {
         return getMLInsightUnavailable(
           studentId,
-          "ML insight is temporarily rate-limited. Please try again shortly."
+          "ML insight is temporarily rate-limited. Please try again shortly.",
+          payload
         );
       }
       if (apiError.includes("student_id is required") || apiError.includes("invalid student_id")) {
-        return getMLInsightUnavailable(studentId, "ML insight is unavailable for this student right now.");
+        return getMLInsightUnavailable(
+          studentId,
+          "ML insight is unavailable for this student right now.",
+          payload
+        );
       }
-      return getMLInsightUnavailable(studentId, "ML insight is unavailable right now.");
+      return getMLInsightUnavailable(
+        studentId,
+        `ML insight request failed with status ${response.status}.`,
+        payload
+      );
     }
 
-    const normalized = normalizeMLInsight(payload);
+    const normalized = normalizeMLInsight(payload, { studentId });
+    logMlInsightDebug("normalized", normalized);
     if (normalized.source === "unavailable" && !normalized.error) {
-      return getMLInsightUnavailable(studentId, "ML insight is not available yet.");
+      return getMLInsightUnavailable(
+        studentId,
+        "ML insight is not available yet.",
+        payload
+      );
     }
     return normalized;
   } catch (error) {
+    logMlInsightDebug("request_exception", {
+      studentId,
+      errorName: error?.name || null,
+      errorMessage: error?.message || String(error),
+    });
     if (isAbortError(error)) {
       if (abortedByTimeout && !abortedByCaller) {
         return getMLInsightUnavailable(

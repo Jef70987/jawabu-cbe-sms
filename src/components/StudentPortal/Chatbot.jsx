@@ -255,6 +255,15 @@ const CAREER_FALLBACK_MESSAGE = 'I do not have personalized career pathway recom
 const STALE_ML_REPLY_CAVEAT = 'Note: I am using the last available ML insight, so some fields may be stale or unavailable.';
 
 const normalizeMessageText = (message) => (typeof message === 'string' ? message.toLowerCase().trim() : '');
+const resolveStudentIdFromUserShape = (candidateUser) => (
+  candidateUser?.student_id
+  || candidateUser?.student?.id
+  || candidateUser?.student_profile?.id
+  || candidateUser?.studentProfile?.id
+  || candidateUser?.profile?.student_id
+  || candidateUser?.profile?.id
+  || null
+);
 
 const detectMlIntent = (message) => {
   const content = normalizeMessageText(message);
@@ -295,8 +304,15 @@ const detectMlIntent = (message) => {
     'career',
     'pathway',
   ];
+  const competencySummaryPatterns = [
+    'competency mastery summary',
+    'competency summary',
+    'competency mastery',
+    'mastery summary',
+  ];
 
   if (riskPatterns.some((pattern) => content.includes(pattern))) return 'risk_explanation';
+  if (competencySummaryPatterns.some((pattern) => content.includes(pattern))) return 'competency_summary';
   if (improvementPatterns.some((pattern) => content.includes(pattern))) return 'improvement';
   if (studyPlanPatterns.some((pattern) => content.includes(pattern))) return 'study_plan';
   if (careerPatterns.some((pattern) => content.includes(pattern))) return 'career';
@@ -378,6 +394,19 @@ const buildMlAwareResponse = (intent, insight) => {
       sections.push('Factor details are not available yet, so this estimate should be reviewed with your teacher or advisor.');
     }
     sections.push('This insight supports review and planning with your teacher or advisor.');
+    if (confidenceNote) sections.push(confidenceNote);
+    return sections.join('\n\n');
+  }
+
+  if (intent === 'competency_summary') {
+    const sections = [];
+    sections.push(`Current competency-linked estimate: ${riskLevel}${prediction ? `, with a prediction value of ${prediction}.` : '.'}`);
+    if (confidence) sections.push(`Confidence context: ${confidence}.`);
+    if (recommendations.length > 0) {
+      sections.push(`Priority actions connected to your current context:\n${recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`).join('\n')}`);
+    } else {
+      sections.push('Personalized competency recommendations are not available yet. Review your latest competency and assessment records with your teacher.');
+    }
     if (confidenceNote) sections.push(confidenceNote);
     return sections.join('\n\n');
   }
@@ -874,9 +903,14 @@ const Chatbot = () => {
   const [mlError, setMlError] = useState(null);
   const [mlInsightStale, setMlInsightStale] = useState(false);
   const [mlLastUpdated, setMlLastUpdated] = useState(null);
+  const [resolvedProfileStudentId, setResolvedProfileStudentId] = useState(null);
+  const resolveStudentIdFromUser = useCallback(
+    (candidateUser) => resolveStudentIdFromUserShape(candidateUser),
+    [],
+  );
   const studentId = useMemo(() => {
-    return user?.student_id || user?.student?.id || user?.student_profile?.id || null;
-  }, [user]);
+    return resolveStudentIdFromUser(user) || resolvedProfileStudentId || null;
+  }, [resolveStudentIdFromUser, resolvedProfileStudentId, user]);
   const mlInsights = useMemo(() => ({
     prediction: mlInsight?.prediction ?? null,
     confidence: mlInsight?.confidence ?? null,
@@ -897,12 +931,91 @@ const Chatbot = () => {
   const activeMlControllerRef = useRef(null);
   const mlRequestSeqRef = useRef(0);
   const retryInFlightRef = useRef(false);
+  const studentIdLookupPromiseRef = useRef(null);
+  const studentIdLookupBlockedRef = useRef(false);
   const logMlDebug = useCallback((event, detail) => {
     if (import.meta.env.DEV) {
       // Debug details are developer-only and not rendered to students.
       console.debug(`[student-ml-insight] ${event}`, detail);
     }
   }, []);
+  const ensureStudentId = useCallback(async () => {
+    if (!isAuthenticated) {
+      return null;
+    }
+
+    const fromUser = resolveStudentIdFromUser(user);
+    if (fromUser) {
+      return fromUser;
+    }
+
+    if (resolvedProfileStudentId) {
+      return resolvedProfileStudentId;
+    }
+
+    if (studentIdLookupBlockedRef.current) {
+      return null;
+    }
+
+    if (studentIdLookupPromiseRef.current) {
+      return studentIdLookupPromiseRef.current;
+    }
+
+    const lookupPromise = (async () => {
+      try {
+        const authHeaders = getAuthHeaders();
+        if (!authHeaders?.Authorization) {
+          logMlDebug("student_id_lookup_skipped_missing_auth", {});
+          return null;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/student/profile/`, {
+          headers: authHeaders,
+        });
+
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch {
+          payload = null;
+        }
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            studentIdLookupBlockedRef.current = true;
+          }
+          logMlDebug("student_id_lookup_failed", {
+            responseStatus: response.status,
+            responseOk: response.ok,
+            payload,
+          });
+          return null;
+        }
+
+        const profile = payload?.data && typeof payload.data === "object"
+          ? payload.data
+          : payload;
+        const profileStudentId = profile?.id || profile?.student_id || null;
+        if (!profileStudentId) {
+          logMlDebug("student_id_lookup_empty", { payload });
+          return null;
+        }
+
+        setResolvedProfileStudentId(profileStudentId);
+        studentIdLookupBlockedRef.current = false;
+        logMlDebug("student_id_lookup_success", { studentId: profileStudentId });
+        return profileStudentId;
+      } catch (error) {
+        logMlDebug("student_id_lookup_exception", error);
+        return null;
+      } finally {
+        studentIdLookupPromiseRef.current = null;
+      }
+    })();
+
+    studentIdLookupPromiseRef.current = lookupPromise;
+    return lookupPromise;
+  }, [getAuthHeaders, isAuthenticated, logMlDebug, resolveStudentIdFromUser, resolvedProfileStudentId, user]);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024);
@@ -915,9 +1028,27 @@ const Chatbot = () => {
     mlInsightRef.current = mlInsight;
   }, [mlInsight]);
 
+  useEffect(() => {
+    if (isAuthenticated && localStorage.getItem("token")) {
+      studentIdLookupBlockedRef.current = false;
+    }
+  }, [isAuthenticated, user?.id]);
+
   const refreshMlInsight = useCallback(async ({ showRefreshing = true } = {}) => {
     if (!isAuthenticated) {
       return { ok: false, reason: "unauthenticated" };
+    }
+
+    const resolvedStudentId = await ensureStudentId();
+    if (!resolvedStudentId) {
+      logMlDebug("refresh_blocked_missing_student_id", {});
+      const hasToken = Boolean(localStorage.getItem("token"));
+      setMlError(
+        hasToken
+          ? "Student profile not loaded yet. Please refresh the page or sign in again."
+          : "Session expired. Please sign in again."
+      );
+      return { ok: false, reason: "missing_student_id" };
     }
 
     mlRequestSeqRef.current += 1;
@@ -932,7 +1063,7 @@ const Chatbot = () => {
     const previousInsight = mlInsightRef.current;
     const hasPreviousInsightForCurrentStudent =
       Boolean(previousInsight)
-      && String(previousInsight?.studentId || "") === String(studentId || "");
+      && String(previousInsight?.studentId || "") === String(resolvedStudentId || "");
 
     setMlLoading(true);
     if (showRefreshing) setMlRefreshing(true);
@@ -940,9 +1071,13 @@ const Chatbot = () => {
 
     try {
       const storedToken = localStorage.getItem("token");
+      if (!storedToken) {
+        setMlError("Session expired. Please sign in again.");
+        return { ok: false, reason: "missing_token" };
+      }
       const token = storedToken ? `Bearer ${storedToken.replace(/^Bearer\s+/i, "")}` : null;
       const insight = await fetchStudentMLInsight({
-        studentId,
+        studentId: resolvedStudentId,
         token,
         signal: controller.signal,
       });
@@ -950,7 +1085,7 @@ const Chatbot = () => {
         return { ok: false, reason: "aborted" };
       }
 
-      const normalizedInsight = insight || getMLInsightUnavailable(studentId);
+      const normalizedInsight = insight || getMLInsightUnavailable(resolvedStudentId);
       const insightUnavailable = normalizedInsight?.source === "unavailable" || Boolean(normalizedInsight?.error);
       if (insightUnavailable && hasPreviousInsightForCurrentStudent) {
         logMlDebug("refresh_failed_using_stale", normalizedInsight?.error || normalizedInsight);
@@ -989,7 +1124,7 @@ const Chatbot = () => {
       }
 
       logMlDebug("refresh_exception_no_prior", err);
-      setMlInsight(getMLInsightUnavailable(studentId));
+      setMlInsight(getMLInsightUnavailable(resolvedStudentId));
       setMlInsightStale(false);
       setMlError("ML insight unavailable. Please try again.");
       return { ok: false, reason: "unavailable" };
@@ -1002,7 +1137,7 @@ const Chatbot = () => {
         activeMlControllerRef.current = null;
       }
     }
-  }, [isAuthenticated, logMlDebug, studentId]);
+  }, [ensureStudentId, isAuthenticated, logMlDebug]);
 
   const retryDataPath = useCallback(async (target = "ml") => {
     if (retryInFlightRef.current) return;
@@ -1026,7 +1161,10 @@ const Chatbot = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setMlInsight(getMLInsightUnavailable(studentId));
+      setResolvedProfileStudentId(null);
+      studentIdLookupPromiseRef.current = null;
+      studentIdLookupBlockedRef.current = false;
+      setMlInsight(getMLInsightUnavailable(null));
       setMlError(null);
       setMlInsightStale(false);
       setMlLoading(false);
