@@ -280,8 +280,11 @@ const sanitizeMlErrorMessage = (error) => {
   if (lowered.includes('rate-limited') || lowered.includes('rate limited')) {
     return 'ML insight unavailable: ML insight is temporarily rate-limited. Please try again shortly.';
   }
-
   const clipped = normalized.slice(0, 180);
+  if (lowered.includes('refresh failed')) {
+    return clipped;
+  }
+
   if (clipped.toLowerCase().startsWith('ml insight unavailable')) return clipped;
   return `ML insight unavailable: ${clipped}`;
 };
@@ -902,18 +905,15 @@ const Chatbot = () => {
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState(null);
   const [analyticsRetrying, setAnalyticsRetrying] = useState(false);
+  const [analyticsLastUpdated, setAnalyticsLastUpdated] = useState(null);
   const [isAnalyticsEndpointMissing, setIsAnalyticsEndpointMissing] = useState(false);
   const [mlInsight, setMlInsight] = useState(null);
   const [mlLoading, setMlLoading] = useState(false);
   const [mlRefreshing, setMlRefreshing] = useState(false);
   const [mlError, setMlError] = useState(null);
+  const [mlInsightStale, setMlInsightStale] = useState(false);
   const [mlLastUpdated, setMlLastUpdated] = useState(null);
   const [mlReloadKey, setMlReloadKey] = useState(0);
-  const refreshMlInsight = useCallback(() => {
-    if (mlRefreshing) return;
-    setMlRefreshing(true);
-    setMlReloadKey((prev) => prev + 1);
-  }, [mlRefreshing]);
   const studentId = useMemo(() => {
     return user?.student_id || user?.student?.id || user?.student_profile?.id || null;
   }, [user]);
@@ -929,9 +929,20 @@ const Chatbot = () => {
     risks: analyticsData?.risks ?? {},
     career_pathways: analyticsData?.career_pathways ?? [],
   }), [analyticsData, mlInsight]);
+  const chatbotMlContext = mlInsight;
 
   const messagesEndRef = useRef(null);
-  const inputRef       = useRef(null);
+  const inputRef = useRef(null);
+  const mlInsightRef = useRef(null);
+  const mlRequestSeqRef = useRef(0);
+  const retryInFlightRef = useRef(false);
+
+  const isAnalyticsStale = useMemo(() => {
+    if (!analyticsLastUpdated) return false;
+    const updatedAt = new Date(analyticsLastUpdated).getTime();
+    if (Number.isNaN(updatedAt)) return false;
+    return Date.now() - updatedAt > 60 * 60 * 1000;
+  }, [analyticsLastUpdated]);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024);
@@ -943,7 +954,7 @@ const Chatbot = () => {
   const fetchAnalytics = useCallback(async () => {
     if (isAnalyticsEndpointMissing) {
       setAnalyticsLoading(false);
-      return;
+      return false;
     }
     setAnalyticsLoading(true);
     setAnalyticsError(null);
@@ -955,55 +966,143 @@ const Chatbot = () => {
         setIsAnalyticsEndpointMissing(true);
         setAnalyticsData(null);
         setAnalyticsError(null);
-        return;
+        return false;
       }
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const json = await res.json();
       if (json.success) {
         setAnalyticsData(json.data);
+        setAnalyticsLastUpdated(new Date().toISOString());
+        return true;
       } else {
         setAnalyticsError(json.error || "Failed to load analytics.");
+        return false;
       }
     } catch (err) {
       if (String(err?.message || "").includes("404")) {
         setIsAnalyticsEndpointMissing(true);
         setAnalyticsData(null);
         setAnalyticsError(null);
-        return;
+        return false;
       }
       setAnalyticsError(err.message || "Failed to connect to server.");
+      return false;
     } finally {
       setAnalyticsLoading(false);
     }
   }, [getAuthHeaders, isAnalyticsEndpointMissing]);
 
-  const handleRetry = useCallback(async () => {
-    if (analyticsError) {
-      if (analyticsLoading || analyticsRetrying) return;
-      setAnalyticsRetrying(true);
-      try {
+  useEffect(() => {
+    mlInsightRef.current = mlInsight;
+  }, [mlInsight]);
+
+  const refreshMlInsight = useCallback(async ({ allowAnalyticsRefresh = true } = {}) => {
+    if (allowAnalyticsRefresh && !isAnalyticsEndpointMissing) {
+      const shouldRefreshAnalytics = analyticsError || !analyticsData || isAnalyticsStale;
+      if (shouldRefreshAnalytics && !analyticsLoading && !analyticsRetrying) {
         await fetchAnalytics();
-      } finally {
-        setAnalyticsRetrying(false);
       }
-      return;
     }
 
-    refreshMlInsight();
-  }, [analyticsError, analyticsLoading, analyticsRetrying, fetchAnalytics, refreshMlInsight]);
+    mlRequestSeqRef.current += 1;
+    setMlRefreshing(true);
+    setMlReloadKey((prev) => prev + 1);
+  }, [
+    analyticsData,
+    analyticsError,
+    analyticsLoading,
+    analyticsRetrying,
+    fetchAnalytics,
+    isAnalyticsEndpointMissing,
+    isAnalyticsStale,
+  ]);
 
-  const isRetryDisabled = analyticsError
-    ? (analyticsLoading || analyticsRetrying)
-    : mlRefreshing;
+  const retryDataPath = useCallback(async (target = "auto") => {
+    if (retryInFlightRef.current) return;
+    retryInFlightRef.current = true;
+    setAnalyticsRetrying(true);
+
+    try {
+      if (target === "analytics") {
+        const analyticsSucceeded = await fetchAnalytics();
+        if (analyticsSucceeded) {
+          await refreshMlInsight({ allowAnalyticsRefresh: false });
+        }
+        return;
+      }
+
+      if (target === "ml" || target === "recommendations" || target === "chatbotContext") {
+        await refreshMlInsight({ allowAnalyticsRefresh: false });
+        return;
+      }
+
+      if (target === "all") {
+        if (!isAnalyticsEndpointMissing && (analyticsError || !analyticsData || isAnalyticsStale)) {
+          await fetchAnalytics();
+        }
+        await refreshMlInsight({ allowAnalyticsRefresh: false });
+        return;
+      }
+
+      const hasAnalyticsError = Boolean(analyticsError);
+      const hasMlError = Boolean(mlError);
+
+      if (hasAnalyticsError && hasMlError) {
+        await fetchAnalytics();
+        await refreshMlInsight({ allowAnalyticsRefresh: false });
+        return;
+      }
+
+      if (hasAnalyticsError) {
+        const analyticsSucceeded = await fetchAnalytics();
+        if (analyticsSucceeded) {
+          await refreshMlInsight({ allowAnalyticsRefresh: false });
+        }
+        return;
+      }
+
+      if (hasMlError) {
+        await refreshMlInsight({ allowAnalyticsRefresh: false });
+        return;
+      }
+
+      await refreshMlInsight({ allowAnalyticsRefresh: true });
+    } finally {
+      retryInFlightRef.current = false;
+      setAnalyticsRetrying(false);
+    }
+  }, [
+    analyticsData,
+    analyticsError,
+    fetchAnalytics,
+    isAnalyticsEndpointMissing,
+    isAnalyticsStale,
+    mlError,
+    refreshMlInsight,
+  ]);
+
+  const handleRetry = useCallback(() => {
+    retryDataPath("auto");
+  }, [retryDataPath]);
+
+  const isRetryBusy = analyticsRetrying || mlRefreshing || (Boolean(analyticsError) && analyticsLoading);
+  const retryLabel = isRetryBusy ? "Retrying..." : "Retry";
 
   useEffect(() => {
     if (!isAuthenticated) {
       setMlInsight(getMLInsightUnavailable(studentId));
       setMlError(null);
+      setMlInsightStale(false);
       setMlLoading(false);
       setMlRefreshing(false);
       return;
     }
+
+    const requestSeq = mlRequestSeqRef.current;
+    const previousInsight = mlInsightRef.current;
+    const hasPreviousInsightForCurrentStudent =
+      Boolean(previousInsight)
+      && String(previousInsight?.studentId || "") === String(studentId || "");
     const controller = new AbortController();
     const loadMlInsight = async () => {
       setMlLoading(true);
@@ -1016,10 +1115,18 @@ const Chatbot = () => {
           token,
           signal: controller.signal,
         });
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || mlRequestSeqRef.current !== requestSeq) return;
         const normalizedInsight = insight || getMLInsightUnavailable(studentId);
+        const insightUnavailable = normalizedInsight?.source === "unavailable" || Boolean(normalizedInsight?.error);
+        if (insightUnavailable && hasPreviousInsightForCurrentStudent) {
+          setMlInsightStale(true);
+          setMlError(normalizedInsight?.error || "Refresh failed. Showing last available ML insight.");
+          return;
+        }
+
         setMlInsight(normalizedInsight);
         setMlLastUpdated(normalizedInsight?.lastUpdated || null);
+        setMlInsightStale(false);
         if (normalizedInsight?.error) {
           setMlError(normalizedInsight.error);
         } else if (normalizedInsight?.source === "unavailable") {
@@ -1029,10 +1136,17 @@ const Chatbot = () => {
         }
       } catch (err) {
         if (err?.name === "AbortError") return;
-        setMlInsight(getMLInsightUnavailable(studentId));
-        setMlError("ML insight is unavailable right now. Please try again.");
+        if (mlRequestSeqRef.current !== requestSeq) return;
+        if (hasPreviousInsightForCurrentStudent) {
+          setMlInsightStale(true);
+          setMlError("Refresh failed. Showing last available ML insight.");
+        } else {
+          setMlInsight(getMLInsightUnavailable(studentId));
+          setMlInsightStale(false);
+          setMlError("ML insight is unavailable right now. Please try again.");
+        }
       } finally {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && mlRequestSeqRef.current === requestSeq) {
           setMlLoading(false);
           setMlRefreshing(false);
         }
@@ -1062,7 +1176,7 @@ const Chatbot = () => {
     setIsTyping(true);
     const mlIntent = detectMlIntent(message);
     if (mlIntent) {
-      const mlAwareReply = buildMlAwareResponse(mlIntent, mlInsight);
+      const mlAwareReply = buildMlAwareResponse(mlIntent, chatbotMlContext);
       setMessages((prev) => [
         ...prev,
         {
@@ -1106,7 +1220,7 @@ const Chatbot = () => {
       setIsTyping(false);
       setIsSending(false);
     }
-  }, [analyticsData, getAuthHeaders, isSending, messages, mlInsight, user]);
+  }, [analyticsData, chatbotMlContext, getAuthHeaders, isSending, messages, user]);
 
   const handleSuggestionClick = useCallback((query) => sendMessage(query), [sendMessage]);
   const handleSend = useCallback(() => {
@@ -1127,7 +1241,7 @@ const Chatbot = () => {
   const confidenceBandDisplay = formatConfidenceBand(mlInsight?.confidenceBand);
   const sourceDisplay = formatMlSource(mlInsight?.source);
   const lastUpdatedDisplay = formatLastUpdated(mlLastUpdated || mlInsight?.lastUpdated);
-  const isInsightStale = isMlInsightStale(mlLastUpdated || mlInsight?.lastUpdated);
+  const isInsightStale = mlInsightStale || isMlInsightStale(mlLastUpdated || mlInsight?.lastUpdated);
   const missingMlFields = predictionDisplay === 'Prediction unavailable'
     || confidenceDisplay === 'Confidence unavailable';
   const mlErrorDisplay = mlError ? sanitizeMlErrorMessage(mlError) : null;
@@ -1146,11 +1260,13 @@ const Chatbot = () => {
         </div>
         <button
           type="button"
-          onClick={refreshMlInsight}
-          disabled={mlRefreshing}
+          onClick={() => {
+            refreshMlInsight({ allowAnalyticsRefresh: true });
+          }}
+          aria-disabled={mlRefreshing}
           title="Refresh ML insight"
           aria-label="Refresh ML insight"
-          className="self-start md:self-auto px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`self-start md:self-auto px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 ${mlRefreshing ? 'opacity-70' : ''}`}
         >
           {mlRefreshing ? 'Refreshing...' : 'Refresh ML insight'}
         </button>
@@ -1175,7 +1291,7 @@ const Chatbot = () => {
       )}
 
       {isInsightStale && !mlLoading && (
-        <p className="text-xs text-amber-700 mb-3">Insight may be out of date</p>
+        <p className="text-xs text-amber-700 mb-3">Showing last available ML insight. Refresh failed and this insight may be stale.</p>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -1350,10 +1466,10 @@ const Chatbot = () => {
                 {!analyticsError && mlErrorDisplay && <span>{mlErrorDisplay}</span>}
                 <button
                   onClick={handleRetry}
-                  disabled={isRetryDisabled}
-                  className="ml-3 underline text-amber-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-disabled={isRetryBusy}
+                  className={`ml-3 underline text-amber-800 font-medium ${isRetryBusy ? 'opacity-70' : ''}`}
                 >
-                  Retry
+                  {retryLabel}
                 </button>
               </div>
             )}
@@ -1461,7 +1577,7 @@ const Chatbot = () => {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
             {analyticsError && <span>Analytics error: {analyticsError}</span>}
             {!analyticsError && mlErrorDisplay && <span>{mlErrorDisplay}</span>}
-            <button onClick={handleRetry} disabled={isRetryDisabled} className="ml-2 underline font-medium disabled:opacity-50 disabled:cursor-not-allowed">Retry</button>
+            <button onClick={handleRetry} aria-disabled={isRetryBusy} className={`ml-2 underline font-medium ${isRetryBusy ? 'opacity-70' : ''}`}>{retryLabel}</button>
           </div>
         )}
 
