@@ -518,12 +518,12 @@ export async function fetchStudentRecommendations({ studentId, token, signal } =
 
 export async function fetchStudentMLInsight({ studentId, token, signal, timeoutMs = 15000 } = {}) {
   if (!studentId) {
-    const missingStudentIdError = "student_id is required";
+    const missingStudentIdError = "Student ID is required to fetch ML insight.";
     logMlInsightDebug("request_skipped_missing_student_id", {
       hasToken: Boolean(token || localStorage.getItem("token")),
       reason: missingStudentIdError,
     });
-    return getMLInsightUnavailable(studentId, missingStudentIdError);
+    throw new Error(missingStudentIdError);
   }
 
   const url = withQuery(`${API_BASE_URL}/ml/student-insight/`, {

@@ -903,14 +903,13 @@ const Chatbot = () => {
   const [mlError, setMlError] = useState(null);
   const [mlInsightStale, setMlInsightStale] = useState(false);
   const [mlLastUpdated, setMlLastUpdated] = useState(null);
-  const [resolvedProfileStudentId, setResolvedProfileStudentId] = useState(null);
   const resolveStudentIdFromUser = useCallback(
     (candidateUser) => resolveStudentIdFromUserShape(candidateUser),
     [],
   );
   const studentId = useMemo(() => {
-    return resolveStudentIdFromUser(user) || resolvedProfileStudentId || null;
-  }, [resolveStudentIdFromUser, resolvedProfileStudentId, user]);
+    return resolveStudentIdFromUser(user);
+  }, [resolveStudentIdFromUser, user]);
   const mlInsights = useMemo(() => ({
     prediction: mlInsight?.prediction ?? null,
     confidence: mlInsight?.confidence ?? null,
@@ -931,8 +930,6 @@ const Chatbot = () => {
   const activeMlControllerRef = useRef(null);
   const mlRequestSeqRef = useRef(0);
   const retryInFlightRef = useRef(false);
-  const studentIdLookupPromiseRef = useRef(null);
-  const studentIdLookupBlockedRef = useRef(false);
   const logMlDebug = useCallback((event, detail) => {
     if (import.meta.env.DEV) {
       // Debug details are developer-only and not rendered to students.
@@ -949,73 +946,17 @@ const Chatbot = () => {
       return fromUser;
     }
 
-    if (resolvedProfileStudentId) {
-      return resolvedProfileStudentId;
+    if (import.meta.env.DEV) {
+      logMlDebug("missing_student_id_from_auth", {
+        userKeys: user ? Object.keys(user) : [],
+        hasStudent: Boolean(user?.student),
+        hasStudentProfile: Boolean(user?.student_profile || user?.studentProfile),
+        hasProfile: Boolean(user?.profile),
+      });
     }
 
-    if (studentIdLookupBlockedRef.current) {
-      return null;
-    }
-
-    if (studentIdLookupPromiseRef.current) {
-      return studentIdLookupPromiseRef.current;
-    }
-
-    const lookupPromise = (async () => {
-      try {
-        const authHeaders = getAuthHeaders();
-        if (!authHeaders?.Authorization) {
-          logMlDebug("student_id_lookup_skipped_missing_auth", {});
-          return null;
-        }
-
-        const response = await fetch(`${API_BASE_URL}/student/profile/`, {
-          headers: authHeaders,
-        });
-
-        let payload = null;
-        try {
-          payload = await response.json();
-        } catch {
-          payload = null;
-        }
-
-        if (!response.ok) {
-          if (response.status === 401 || response.status === 403) {
-            studentIdLookupBlockedRef.current = true;
-          }
-          logMlDebug("student_id_lookup_failed", {
-            responseStatus: response.status,
-            responseOk: response.ok,
-            payload,
-          });
-          return null;
-        }
-
-        const profile = payload?.data && typeof payload.data === "object"
-          ? payload.data
-          : payload;
-        const profileStudentId = profile?.id || profile?.student_id || null;
-        if (!profileStudentId) {
-          logMlDebug("student_id_lookup_empty", { payload });
-          return null;
-        }
-
-        setResolvedProfileStudentId(profileStudentId);
-        studentIdLookupBlockedRef.current = false;
-        logMlDebug("student_id_lookup_success", { studentId: profileStudentId });
-        return profileStudentId;
-      } catch (error) {
-        logMlDebug("student_id_lookup_exception", error);
-        return null;
-      } finally {
-        studentIdLookupPromiseRef.current = null;
-      }
-    })();
-
-    studentIdLookupPromiseRef.current = lookupPromise;
-    return lookupPromise;
-  }, [getAuthHeaders, isAuthenticated, logMlDebug, resolveStudentIdFromUser, resolvedProfileStudentId, user]);
+    return null;
+  }, [isAuthenticated, logMlDebug, resolveStudentIdFromUser, user]);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024);
@@ -1028,12 +969,6 @@ const Chatbot = () => {
     mlInsightRef.current = mlInsight;
   }, [mlInsight]);
 
-  useEffect(() => {
-    if (isAuthenticated && localStorage.getItem("token")) {
-      studentIdLookupBlockedRef.current = false;
-    }
-  }, [isAuthenticated, user?.id]);
-
   const refreshMlInsight = useCallback(async ({ showRefreshing = true } = {}) => {
     if (!isAuthenticated) {
       return { ok: false, reason: "unauthenticated" };
@@ -1045,7 +980,7 @@ const Chatbot = () => {
       const hasToken = Boolean(localStorage.getItem("token"));
       setMlError(
         hasToken
-          ? "Student profile not loaded yet. Please refresh the page or sign in again."
+          ? "Student profile not loaded. Please sign out and sign in again."
           : "Session expired. Please sign in again."
       );
       return { ok: false, reason: "missing_student_id" };
@@ -1161,9 +1096,6 @@ const Chatbot = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setResolvedProfileStudentId(null);
-      studentIdLookupPromiseRef.current = null;
-      studentIdLookupBlockedRef.current = false;
       setMlInsight(getMLInsightUnavailable(null));
       setMlError(null);
       setMlInsightStale(false);
@@ -1191,6 +1123,22 @@ const Chatbot = () => {
     const mlIntent = detectMlIntent(message);
     if (mlIntent) {
       const refreshResult = await refreshMlInsight({ showRefreshing: false });
+      if (!refreshResult?.ok && (refreshResult?.reason === "missing_student_id" || refreshResult?.reason === "missing_token")) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: mlError || (refreshResult?.reason === "missing_token"
+              ? "Session expired. Please sign in again."
+              : "Student profile not loaded. Please sign out and sign in again."),
+            isUser: false,
+            timestamp: getTimestamp(),
+          },
+        ]);
+        setIsTyping(false);
+        setIsSending(false);
+        return;
+      }
       const latestInsight = refreshResult?.insight || mlInsightRef.current || chatbotMlContext;
       let mlAwareReply = buildMlAwareResponse(mlIntent, latestInsight);
       if (!refreshResult?.ok && latestInsight && latestInsight?.source !== 'unavailable') {
@@ -1239,7 +1187,7 @@ const Chatbot = () => {
       setIsTyping(false);
       setIsSending(false);
     }
-  }, [analyticsData, chatbotMlContext, getAuthHeaders, isSending, messages, refreshMlInsight, user]);
+  }, [analyticsData, chatbotMlContext, getAuthHeaders, isSending, messages, mlError, refreshMlInsight, user]);
 
   const handleSuggestionClick = useCallback((query) => sendMessage(query), [sendMessage]);
   const handleSend = useCallback(() => {
@@ -1267,19 +1215,19 @@ const Chatbot = () => {
     if (mlError && hasPriorMlInsight && mlInsightStale) {
       return {
         tone: "warning",
-        message: "Refresh failed. Showing last available ML insight. Some fields may be stale or unavailable.",
+        message: mlError,
       };
     }
     if (mlError && hasPriorMlInsight) {
       return {
         tone: "warning",
-        message: "Refresh failed. Showing last available ML insight. Some fields may be stale or unavailable.",
+        message: mlError,
       };
     }
     if (mlError && !hasPriorMlInsight) {
       return {
         tone: "error",
-        message: "ML insight unavailable. Please try again.",
+        message: mlError,
       };
     }
     if (!mlError && missingMlFields) {
