@@ -56,6 +56,7 @@ const DEFAULT_UNAVAILABLE_INSIGHT = {
   factors: [],
   source: "unavailable",
   lastUpdated: null,
+  message: null,
   error: null,
   raw: null,
 };
@@ -472,6 +473,7 @@ export function normalizeMLInsight(payload, options = {}) {
     factors,
     source: String(data?.source || "unavailable").toLowerCase(),
     lastUpdated: sanitizeTimestamp(data?.last_updated ?? data?.lastUpdated),
+    message: data?.message ? String(data.message) : null,
     error: body?.error || null,
     raw: payload,
   };
@@ -484,7 +486,7 @@ export function normalizeMLInsight(payload, options = {}) {
     insight.confidenceBand = confidenceBandFromValue(insight.confidence);
   }
 
-  if (!["ml_api", "unavailable"].includes(insight.source)) {
+  if (!["ml_api", "unavailable", "empty"].includes(insight.source)) {
     insight.source = "unavailable";
   }
 

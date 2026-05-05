@@ -135,6 +135,7 @@ const formatConfidenceBand = (band) => {
 const formatMlSource = (source) => {
   const normalized = typeof source === 'string' ? source.toLowerCase() : 'unknown';
   if (normalized === 'ml_api') return 'ML API';
+  if (normalized === 'empty') return 'No prediction data yet';
   if (normalized === 'chatbot_api') return 'Chatbot API';
   if (normalized === 'fallback') return 'Fallback data';
   if (normalized === 'unavailable') return 'Unavailable';
@@ -249,6 +250,7 @@ const getRecommendationSourceLabel = (source) => {
 };
 
 const ML_INSIGHT_UNAVAILABLE_MESSAGE = 'ML insight is not available yet. I can still give general study guidance, but personalized prediction-based advice requires the latest ML insight to load.';
+const ML_INSIGHT_EMPTY_MESSAGE = 'No ML prediction is available for your account yet. Please try again after records are processed.';
 const LOW_CONFIDENCE_CAVEAT = 'This estimate may be incomplete because model confidence is low or unavailable.';
 const IMPROVEMENT_EMPTY_RECOMMENDATIONS = 'No personalized recommendations are available yet. Review your recent performance, attendance, and competency gaps with a teacher or advisor.';
 const CAREER_FALLBACK_MESSAGE = 'I do not have personalized career pathway recommendations yet. A teacher or career advisor should review your competencies, interests, and subject performance before choosing a pathway.';
@@ -372,6 +374,9 @@ const hasRuleBasedRecommendations = (recommendations) =>
 const buildMlAwareResponse = (intent, insight) => {
   if (!insight || insight?.source === 'unavailable') {
     return ML_INSIGHT_UNAVAILABLE_MESSAGE;
+  }
+  if (insight?.source === 'empty') {
+    return insight?.message || ML_INSIGHT_EMPTY_MESSAGE;
   }
 
   const riskLevel = formatRiskLevel(insight?.riskLevel);
@@ -1151,7 +1156,7 @@ const Chatbot = () => {
       }
       const latestInsight = refreshResult?.insight || mlInsightRef.current || chatbotMlContext;
       let mlAwareReply = buildMlAwareResponse(mlIntent, latestInsight);
-      if (!refreshResult?.ok && latestInsight && latestInsight?.source !== 'unavailable') {
+      if (!refreshResult?.ok && latestInsight && latestInsight?.source !== 'unavailable' && latestInsight?.source !== 'empty') {
         mlAwareReply = `${mlAwareReply}\n\n${STALE_ML_REPLY_CAVEAT}`;
       }
       setMessages((prev) => [
@@ -1218,10 +1223,21 @@ const Chatbot = () => {
   const confidenceBandDisplay = formatConfidenceBand(mlInsight?.confidenceBand);
   const sourceDisplay = formatMlSource(mlInsight?.source);
   const lastUpdatedDisplay = formatLastUpdated(mlLastUpdated || mlInsight?.lastUpdated);
-  const hasPriorMlInsight = Boolean(mlInsight && mlInsight?.source !== "unavailable");
+  const isEmptyMlInsight = mlInsight?.source === "empty";
+  const hasPriorMlInsight = Boolean(
+    mlInsight
+    && mlInsight?.source !== "unavailable"
+    && mlInsight?.source !== "empty"
+  );
   const missingMlFields = hasPriorMlInsight
     && (mlInsight?.prediction == null || mlInsight?.confidence == null);
   const mlStatus = (() => {
+    if (!mlError && isEmptyMlInsight) {
+      return {
+        tone: "info",
+        message: mlInsight?.message || ML_INSIGHT_EMPTY_MESSAGE,
+      };
+    }
     if (mlError && hasPriorMlInsight && mlInsightStale) {
       return {
         tone: "warning",
