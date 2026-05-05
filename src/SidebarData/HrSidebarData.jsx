@@ -26,11 +26,7 @@ const HrData = [
         icon: <HouseIcon />,
         link: "/HrPortal/Department"
     },
-    {
-        title: "Message",
-        icon: <MessageCircle />,
-        link: "/HrPortal/Messages"
-    },
+
      
      
     // {
