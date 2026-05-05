@@ -2,7 +2,7 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 // context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -22,12 +22,42 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [otpData, setOtpData] = useState(null);
 
+  // Helper to check if token is expired
+  const isTokenExpired = useCallback((token) => {
+    if (!token) return true;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp;
+      if (!exp) return false;
+      const now = Math.floor(Date.now() / 1000);
+      return now > exp;
+    } catch (err) {
+      return true;
+    }
+  }, []);
+
+  // Force session expired - clears user and triggers existing UI
+  const forceSessionExpired = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('session_id');
+    setUser(null);
+  }, []);
+
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
       
       if (token && storedUser) {
+        // Check token expiration on init
+        if (isTokenExpired(token)) {
+          forceSessionExpired();
+          setLoading(false);
+          return;
+        }
+
         try {
           const tokenValue = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
           
@@ -43,16 +73,16 @@ export const AuthProvider = ({ children }) => {
             const data = await response.json();
             setUser(data.user);
           } else {
-            logout();
+            forceSessionExpired();
           }
         } catch (err) {
-          logout();
+          forceSessionExpired();
         }
       }
       setLoading(false);
     };
     initializeAuth();
-  }, []);
+  }, [isTokenExpired, forceSessionExpired]);
 
   useEffect(() => {
     const refreshInterval = setInterval(() => {
@@ -80,7 +110,6 @@ export const AuthProvider = ({ children }) => {
       
       const data = await response.json();
       
-      // Case 1: Active session exists
       if (response.status === 409 && data.code === 'ACTIVE_SESSION_EXISTS') {
         return { 
           success: false, 
@@ -90,7 +119,6 @@ export const AuthProvider = ({ children }) => {
         };
       }
       
-      // Case 2: OTP required after force logout
       if (data.code === 'OTP_REQUIRED') {
         setOtpData({
           email: email,
@@ -105,12 +133,10 @@ export const AuthProvider = ({ children }) => {
         };
       }
       
-      // Case 3: Login failed
       if (!response.ok) {
         throw new Error(data.error || data.detail || 'Invalid credentials');
       }
       
-      // Case 4: Login success
       const token = data.access || data.token || data.access_token;
       const refresh_token = data.refresh || data.refresh_token;
       let userData = data.user || {};
@@ -222,12 +248,14 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('session_id');
     setUser(null);
     setOtpData(null);
-
   };
 
   const refreshToken = async () => {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) return logout();
+    const refreshTokenValue = localStorage.getItem('refresh_token');
+    if (!refreshTokenValue) {
+      forceSessionExpired();
+      return;
+    }
     
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/refresh-token/`, {
@@ -236,22 +264,29 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        body: JSON.stringify({ refresh_token: refreshTokenValue }),
       });
       
       if (response.ok) {
         const data = await response.json();
         localStorage.setItem('token', data.token || data.access);
       } else {
-        logout();
+        forceSessionExpired();
       }
     } catch (err) {
-      logout();
+      forceSessionExpired();
     }
   };
   
+  // FIX: This is the key change - check token expiration BEFORE returning headers
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
+    
+    // Check if token is expired - if yes, clear session
+    if (token && isTokenExpired(token)) {
+      forceSessionExpired();
+      return {};
+    }
     
     const headers = {
       'Content-Type': 'application/json',

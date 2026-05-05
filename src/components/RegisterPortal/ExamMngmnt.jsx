@@ -1422,6 +1422,7 @@ function ExamManagement() {
                     className="w-full px-3 py-2 text-sm border border-gray-400 bg-white rounded"
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     Term
