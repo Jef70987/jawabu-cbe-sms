@@ -76,26 +76,14 @@ const MARKER_VISIBLE_STATUSES = new Set([
 ]);
 
 // ── Filter exam types based on selected grade level ──────────────────────────
-const getAvailableExamTypes = (gradeLevelId, gradeLevels) => {
-  const gradeObj = gradeLevels.find(
-    (gl) => String(gl.id) === String(gradeLevelId),
-  );
+const getAvailableExamTypesByClass = (classObj) => {
+  // Parse grade number from class_name e.g. "Grade 7", "Grade 9 East", "Grade 6B"
+  const match = classObj?.class_name?.match(/grade\s*(\d+)/i);
+  const level = match ? parseInt(match[1], 10) : null;
 
-  let numericGrade = null;
-  if (gradeObj) {
-    // Parse "Grade 6" / "Grade 9" from name — NOT gl.level which counts PP1/PP2
-    const raw = gradeObj.display_name || gradeObj.name || "";
-    const match = raw.match(/grade\s*(\d+)/i);
-    if (match) numericGrade = parseInt(match[1], 10);
-  }
-
-  let available = EXAM_TYPES.filter(
-    (t) => !["kpsea", "kjsea"].includes(t.value),
-  );
-  if (numericGrade === 6)
-    available.push(EXAM_TYPES.find((t) => t.value === "kpsea"));
-  if (numericGrade === 9)
-    available.push(EXAM_TYPES.find((t) => t.value === "kjsea"));
+  let available = EXAM_TYPES.filter(t => !["kpsea", "kjsea"].includes(t.value));
+  if (level === 6) available.push(EXAM_TYPES.find(t => t.value === "kpsea"));
+  if (level === 9) available.push(EXAM_TYPES.find(t => t.value === "kjsea"));
   return available;
 };
 
@@ -110,7 +98,6 @@ function ExamManagement() {
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [gradeLevels, setGradeLevels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
 
@@ -130,6 +117,8 @@ function ExamManagement() {
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showMarkingModal, setShowMarkingModal] = useState(false);
   const [showModerationModal, setShowModerationModal] = useState(false);
+
+  const [assessmentWindows, setAssessmentWindows] = useState([]);
 
   const [selectedExam, setSelectedExam] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -213,27 +202,15 @@ function ExamManagement() {
         classesRes,
         teachersRes,
         subjectsRes,
-        gradeLevelsRes,
         schedulesRes,
+        awRes,
       ] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/registrar/exams/`, {
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_BASE_URL}/api/registrar/classes/`, {
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_BASE_URL}/api/registrar/classes/teachers/`, {
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_BASE_URL}/api/registrar/classes/subjects/`, {
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_BASE_URL}/api/registrar/exams/grade-levels/`, {
-          headers: getAuthHeaders(),
-        }),
-        fetch(`${API_BASE_URL}/api/registrar/exams/all-schedules/`, {
-          headers: getAuthHeaders(),
-        }),
+        fetch(`${API_BASE_URL}/api/registrar/exams/`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE_URL}/api/registrar/classes/`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE_URL}/api/registrar/classes/teachers/`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE_URL}/api/registrar/classes/subjects/`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE_URL}/api/registrar/exams/all-schedules/`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE_URL}/api/registrar/academic/assessment-windows/`, { headers: getAuthHeaders() }),
       ]);
 
       const examsData = await examsRes.json();
@@ -263,18 +240,18 @@ function ExamManagement() {
       const subjectsData = await subjectsRes.json();
       if (subjectsData.success) setSubjects(subjectsData.data || []);
 
-      const gradeLevelsData = await gradeLevelsRes.json();
-      if (gradeLevelsData.success) setGradeLevels(gradeLevelsData.data || []);
 
       const schedulesData = await schedulesRes.json();
       if (schedulesData.success) setAllSchedules(schedulesData.data || []);
+
+      const awData = await awRes.json();
+      if (awData.success) setAssessmentWindows(awData.data || []);
     } catch {
       addNotification("error", "Failed to connect to backend server");
     } finally {
       setIsLoading(false);
     }
   };
-
   // ── Filters ───────────────────────────────────────────────────────────────
   const applyFilters = () => {
     let filtered = [...exams];
@@ -354,6 +331,7 @@ function ExamManagement() {
       grade_level: "",
       start_date: "",
       end_date: "",
+      assessment_window: "",
       duration_minutes: 180,
       total_marks: 100,
       passing_marks: 50,
@@ -392,6 +370,8 @@ function ExamManagement() {
       weighting: exam.weighting || {},
       room_allocation: exam.room_allocation || [],
       invigilators: exam.invigilators || [],
+      assessment_window: exam.assessment_window || "",
+
     });
     setShowExamModal(true);
   };
@@ -1378,35 +1358,29 @@ function ExamManagement() {
                     Grade Level *
                   </label>
                   {/* Grade Level select in modal */}
-                  {/* Grade Level select in Create/Edit modal */}
-                  <select
-                    value={editFormData.grade_level}
-                    onChange={(e) => {
-                      const newGrade = e.target.value;
-                      const availableTypes = getAvailableExamTypes(
-                        newGrade,
-                        gradeLevels,
-                      );
-                      const stillValid = availableTypes.some(
-                        (t) => t.value === editFormData.exam_type,
-                      );
-                      setEditFormData({
-                        ...editFormData,
-                        grade_level: newGrade,
-                        exam_type: stillValid ? editFormData.exam_type : "",
-                      });
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-gray-400 bg-white rounded"
-                  >
-                    <option value="">Select Grade</option>
-                    {gradeLevels.map((gl) => (
-                      <option key={gl.id} value={gl.choice_value}>
-                        {" "}
-                        {/* ← was gl.id */}
-                        {gl.display_name}
-                      </option>
-                    ))}
-                  </select>
+                 
+<select
+  value={editFormData.grade_level}
+  onChange={(e) => {
+    const classId = e.target.value;
+    const classObj = classes.find(c => String(c.id) === classId);
+    const availableTypes = getAvailableExamTypesByClass(classObj);
+    const stillValid = availableTypes.some(t => t.value === editFormData.exam_type);
+    setEditFormData({
+      ...editFormData,
+      grade_level: classId,          // stores Class UUID
+      exam_type: stillValid ? editFormData.exam_type : "",
+    });
+  }}
+  className="w-full px-3 py-2 text-sm border border-gray-400 bg-white rounded"
+>
+  <option value="">Select Grade / Class</option>
+  {classes.map((c) => (
+    <option key={c.id} value={c.id}>
+      {c.class_name}
+    </option>
+  ))}
+</select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
@@ -1424,14 +1398,11 @@ function ExamManagement() {
                     className="w-full px-3 py-2 text-sm border border-gray-400 bg-white rounded"
                   >
                     <option value="">Select Type</option>
-                    {getAvailableExamTypes(
-                      editFormData.grade_level,
-                      gradeLevels,
-                    ).map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
+                    {getAvailableExamTypesByClass(
+  classes.find(c => String(c.id) === String(editFormData.grade_level))
+).map((t) => (
+  <option key={t.value} value={t.value}>{t.label}</option>
+))}
                   </select>
                 </div>
 
@@ -1451,6 +1422,7 @@ function ExamManagement() {
                     className="w-full px-3 py-2 text-sm border border-gray-400 bg-white rounded"
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     Term
@@ -1470,6 +1442,33 @@ function ExamManagement() {
                     <option value="3">Term 3</option>
                   </select>
                 </div>
+                <div>
+  <label className="block text-xs font-bold text-gray-700 mb-1">
+    Assessment Window
+  </label>
+  <select
+    value={editFormData.assessment_window}
+    onChange={(e) => setEditFormData({ ...editFormData, assessment_window: e.target.value })}
+    className="w-full px-3 py-2 text-sm border border-gray-400 bg-white rounded"
+  >
+    <option value="">None</option>
+    {assessmentWindows
+      .filter((aw) => {
+        // filter by matching term number if term is selected
+        if (!editFormData.term) return true;
+        const termObj = aw.term_name || "";
+        return termObj.includes(`Term ${editFormData.term}`);
+      })
+      .map((aw) => (
+        <option key={aw.id} value={aw.id}>
+          {aw.term_name} — {aw.assessment_type} ({aw.weight_percentage}%)
+        </option>
+      ))}
+  </select>
+  <p className="text-xs text-gray-500 mt-1">
+    Links this exam to a scheduled assessment window.
+  </p>
+</div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     Start Date

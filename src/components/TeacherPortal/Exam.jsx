@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Lock, AlertTriangle, CheckCircle, XCircle, Info,
@@ -78,11 +77,13 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmLabel
 };
 
 // ── Grade helper ──────────────────────────────────────────────────────────────
-
+// FIX: gradeLevel must be a number (not a UUID string).
+// The list endpoint now provides grade_level_numeric directly.
 const computeGrade = (percentage, gradeLevel) => {
   if (percentage === undefined || percentage === null || percentage === '') return '';
-  let upper = false;
-  try { upper = parseInt(String(gradeLevel).trim()) >= 7; } catch (_) { /**/ }
+  // Ensure we are working with a real integer, not a UUID or null
+  const numericLevel = parseInt(gradeLevel, 10);
+  const upper = !isNaN(numericLevel) && numericLevel >= 7;
   if (upper) {
     if (percentage >= 90) return 'EE1';
     if (percentage >= 75) return 'EE2';
@@ -168,7 +169,6 @@ function Exams() {
   const [scores, setScores]                       = useState({});
   const [absentStudents, setAbsentStudents]       = useState(new Set());
   const [finalizedSubjects, setFinalizedSubjects] = useState(new Set());
-  // Subjects the moderator has already saved+locked
   const [moderatedSubjects, setModeratedSubjects] = useState([]);
   const [isModerator, setIsModerator]             = useState(false);
 
@@ -178,7 +178,6 @@ function Exams() {
   const [searchTerm, setSearchTerm]               = useState('');
   const [toasts, setToasts]                       = useState([]);
   const [showConfirmModal, setShowConfirmModal]   = useState(false);
-  // Separate confirm modal for moderator locking a subject
   const [showModerateConfirm, setShowModerateConfirm] = useState(false);
 
   const fetchingRef     = useRef(false);
@@ -191,12 +190,10 @@ function Exams() {
 
   const globallyLocked = selectedExam ? GLOBALLY_LOCKED.has(selectedExam.status) : false;
 
-  // For pure markers: locked when they finalized their own subject
   const markerSubjectLocked = !isModerator && selectedSubject
     ? finalizedSubjects.has(selectedSubject)
     : false;
 
-  // For moderators: locked when they already saved+locked this subject
   const moderatorSubjectLocked = isModerator && selectedSubject
     ? moderatedSubjects.includes(selectedSubject)
     : false;
@@ -209,7 +206,6 @@ function Exams() {
 
   const canFinalize = !isModerator && selectedExam?.status === 'marking' && !teacherAllDone;
 
-  // Moderator: all subjects done when moderated list covers all assigned subjects
   const allModerated = isModerator && assignedSubjects.length > 0
     && assignedSubjects.every(s => moderatedSubjects.includes(s));
 
@@ -263,6 +259,13 @@ function Exams() {
 
       setStudents(data.data);
 
+      // FIX: patch grade_level_numeric from scores endpoint (integer, never UUID)
+      if (data.grade_level_numeric !== undefined) {
+        setExams(prev => prev.map(e =>
+          e.id === examId ? { ...e, grade_level_numeric: data.grade_level_numeric } : e
+        ));
+      }
+
       const scoresMap = {};
       const absentSet = new Set();
       data.data.forEach(s => {
@@ -294,7 +297,6 @@ function Exams() {
     const subs   = exam?.assigned_subjects ?? [];
     const modded = exam?.moderated_subjects ?? [];
     const finSet = new Set(exam?.finalized_subjects ?? []);
-    // Prefer first unmoderated/unfinalized subject
     let subject = overrideSubject && subs.includes(overrideSubject)
       ? overrideSubject
       : (subs.find(s => !finSet.has(s) && !modded.includes(s)) ?? subs[0] ?? '');
@@ -428,10 +430,8 @@ function Exams() {
       });
       const data = await res.json();
       if (data.success) {
-        // Update local moderated list immediately from server response
         if (Array.isArray(data.moderated_subjects)) {
           setModeratedSubjects(data.moderated_subjects);
-          // Also patch the exam in list so switching exams keeps state
           setExams(prev => prev.map(e =>
             e.id === selectedExam.id
               ? { ...e, moderated_subjects: data.moderated_subjects, status: data.exam_status ?? e.status }
@@ -441,12 +441,10 @@ function Exams() {
 
         if (data.all_moderated) {
           addToast('All subjects moderated — exam published!', 'success');
-          // Refresh full exam list so status updates
           await fetchExams();
           lastFetchKeyRef.current = '';
         } else {
           addToast(`"${selectedSubject}" moderated and locked. ${data.message}`, 'success');
-          // Auto-advance to next unmoderated subject
           const nextSub = assignedSubjects.find(
             s => s !== selectedSubject && !data.moderated_subjects.includes(s)
           );
@@ -787,7 +785,7 @@ function Exams() {
                   </button>
                 )}
 
-                {/* Moderator: Save & Lock button (only when subject is not yet locked) */}
+                {/* Moderator: Save & Lock button */}
                 {isModerator && !moderatorSubjectLocked && !globallyLocked && (
                   <button
                     onClick={() => setShowModerateConfirm(true)}
@@ -857,8 +855,10 @@ function Exams() {
                     const isAbsent = absentStudents.has(student.student_id);
                     const score    = scores[student.student_id] ?? '';
                     const pct      = score !== '' ? (score / selectedExam.total_marks) * 100 : null;
-                    const grade    = !isAbsent && score !== '' ? computeGrade(pct, selectedExam.grade_level) : '';
-
+                    // FIX: use grade_level_numeric (integer from API) — never the grade_level UUID
+                    const grade = !isAbsent && score !== ''
+                      ? computeGrade(pct, selectedExam.grade_level_numeric)
+                      : '';
                     return (
                       <tr key={student.student_id}
                         className={`border-b border-gray-200 ${isAbsent ? 'bg-gray-100' : isLocked ? 'bg-gray-50' : ''}`}

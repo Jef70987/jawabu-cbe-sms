@@ -70,6 +70,7 @@ function AssessmentManager() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [saving, setSaving] = useState(false);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '', type: 'cat', description: '', classId: '', subjectId: '',
@@ -93,7 +94,7 @@ function AssessmentManager() {
 
   const fetchInitialData = async () => {
     setLoading(true);
-    try { await Promise.all([fetchAssessments(), fetchClasses(), fetchSubjects()]); }
+    try { await Promise.all([fetchAssessments(), fetchClasses()]); }
     catch { addToast('error', 'Failed to load data'); }
     finally { setLoading(false); }
   };
@@ -114,12 +115,23 @@ function AssessmentManager() {
     } catch { addToast('error', 'Failed to load classes'); }
   };
 
-  const fetchSubjects = async () => {
+  // ── Fetch subjects scoped to the selected class ───────────────────────────
+  const fetchSubjectsForClass = async (classId = '') => {
+    setSubjectsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/teacher/assessment/subjects/`, { headers: getAuthHeaders() });
+      const url = classId
+        ? `${API_BASE_URL}/api/teacher/assessment/subjects/?class_id=${classId}`
+        : `${API_BASE_URL}/api/teacher/assessment/subjects/`;
+      const res = await fetch(url, { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.success) setSubjects(data.data);
-    } catch { addToast('error', 'Failed to load subjects'); }
+      else setSubjects([]);
+    } catch {
+      addToast('error', 'Failed to load subjects');
+      setSubjects([]);
+    } finally {
+      setSubjectsLoading(false);
+    }
   };
 
   const fetchStudentsForGrading = async (assessmentId) => {
@@ -140,6 +152,27 @@ function AssessmentManager() {
     } catch { addToast('error', 'Failed to load students'); }
   };
 
+  // ── When the create modal opens, load subjects with no class filter first ──
+  const handleOpenCreateModal = () => {
+    setFormData({
+      title: '', type: 'cat', description: '', classId: '', subjectId: '',
+      dueDate: new Date().toISOString().split('T')[0], dueTime: '23:59',
+      maxScore: 100, instructions: '', allowLateSubmission: false, latePenalty: 10, published: false
+    });
+    setSubjects([]);
+    setShowCreateModal(true);
+  };
+
+  // ── Class change: reload subjects for that class, clear subject selection ──
+  const handleClassChange = (classId) => {
+    setFormData(prev => ({ ...prev, classId, subjectId: '' }));
+    if (classId) {
+      fetchSubjectsForClass(classId);
+    } else {
+      setSubjects([]);
+    }
+  };
+
   const handleCreateAssessment = async () => {
     if (!formData.title || !formData.classId || !formData.subjectId) {
       addToast('warning', 'Please fill in title, class, and subject'); return;
@@ -153,7 +186,6 @@ function AssessmentManager() {
       if (data.success) {
         addToast('success', 'Assessment created successfully');
         setShowCreateModal(false);
-        setFormData({ title: '', type: 'cat', description: '', classId: '', subjectId: '', dueDate: new Date().toISOString().split('T')[0], dueTime: '23:59', maxScore: 100, instructions: '', allowLateSubmission: false, latePenalty: 10, published: false });
         await fetchAssessments();
       } else { addToast('error', data.error || 'Failed to create assessment'); }
     } catch { addToast('error', 'Failed to create assessment'); }
@@ -176,7 +208,8 @@ function AssessmentManager() {
   const handleEditAssessment = (assessment) => {
     setSelectedAssessment(assessment);
     setFormData({
-      title: assessment.title || '', type: assessment.exam_type === 'cat' ? 'cat' : assessment.exam_type === 'cba' ? 'assignment' : 'exam',
+      title: assessment.title || '',
+      type: assessment.exam_type === 'cat' ? 'cat' : assessment.exam_type === 'cba' ? 'assignment' : 'exam',
       description: '', classId: assessment.classes?.[0] || '', subjectId: '',
       dueDate: new Date().toISOString().split('T')[0], dueTime: '23:59',
       maxScore: assessment.max_score || assessment.total_marks || 100,
@@ -217,7 +250,6 @@ function AssessmentManager() {
     finally { setSaving(false); setShowDeleteConfirm(false); setSelectedAssessment(null); }
   };
 
-  // ── NEW: Complete handlers ───────────────────────────────────────────────────
   const handleCompleteClick = (assessment) => { setSelectedAssessment(assessment); setShowCompleteConfirm(true); };
 
   const handleCompleteConfirm = async () => {
@@ -235,7 +267,6 @@ function AssessmentManager() {
     } catch { addToast('error', 'Failed to complete assessment'); }
     finally { setSaving(false); setShowCompleteConfirm(false); setSelectedAssessment(null); }
   };
-  // ────────────────────────────────────────────────────────────────────────────
 
   const handleStartGrading = async (assessment) => {
     setSelectedAssessment(assessment);
@@ -347,7 +378,6 @@ function AssessmentManager() {
       <ConfirmModal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} onConfirm={handleDeleteConfirm}
         title="Delete Assessment" message={`Are you sure you want to delete "${selectedAssessment?.title || ''}"? This action cannot be undone.`} />
 
-      {/* Complete Confirmation Modal */}
       <ConfirmModal isOpen={showCompleteConfirm} onClose={() => setShowCompleteConfirm(false)} onConfirm={handleCompleteConfirm}
         title="Mark as Completed"
         message={`Mark "${selectedAssessment?.title || ''}" as completed? This indicates all grading is finalised and results are ready.`} />
@@ -355,11 +385,11 @@ function AssessmentManager() {
       <div className="bg-green-700 p-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Assessment Manager for subject assigned</h1>
-            <p className="text-green-100 mt-1">Create, manage, and grade assessments for subject-classes assigned to you</p>
+            <h1 className="text-2xl font-bold text-white">Assessment Manager</h1>
+            <p className="text-green-100 mt-1">Create, manage, and grade assessments for your assigned subject-classes</p>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => setShowCreateModal(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+            <button onClick={handleOpenCreateModal} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
               <Plus className="h-4 w-4 inline mr-2" />Create Assessment
             </button>
             <button onClick={fetchAssessments} className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700">
@@ -403,7 +433,7 @@ function AssessmentManager() {
             <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-700">No assessments found</h3>
             <p className="text-gray-500 mt-1 mb-4">Create your first assessment to get started</p>
-            <button onClick={() => setShowCreateModal(true)} className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg">
+            <button onClick={handleOpenCreateModal} className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg">
               <Plus className="h-4 w-4 inline mr-2" />Create Assessment
             </button>
           </div>
@@ -422,6 +452,18 @@ function AssessmentManager() {
                     </span>
                   </div>
                   <div className="space-y-2 mb-4">
+                    {assessment.class_name && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Users className="h-4 w-4" />
+                        <span>{assessment.class_name}</span>
+                      </div>
+                    )}
+                    {assessment.subject_name && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <FileText className="h-4 w-4" />
+                        <span>{assessment.subject_name}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Calendar className="h-4 w-4" />
                       <span>ID: {assessment.exam_code || assessment.id.slice(0, 8)}</span>
@@ -436,7 +478,6 @@ function AssessmentManager() {
                     </div>
                   </div>
 
-                  {/* ── Action Buttons ── */}
                   <div className="flex flex-wrap gap-2">
                     {assessment.status === 'draft' && (
                       <>
@@ -466,7 +507,6 @@ function AssessmentManager() {
                         <button onClick={() => handleViewResults(assessment)} className="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700">
                           <BarChart3 className="h-3 w-3 inline mr-1" /> Results
                         </button>
-                        {/* ── NEW: Complete button appears once grading has started ── */}
                         <button onClick={() => handleCompleteClick(assessment)} className="px-3 py-1 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700">
                           <CheckCheck className="h-3 w-3 inline mr-1" /> Complete
                         </button>
@@ -517,28 +557,58 @@ function AssessmentManager() {
                     <option value="cat">CAT (Continuous Assessment Test)</option>
                     <option value="assignment">Assignment</option>
                     <option value="project">Project</option>
-                    <option value="exam">Exam/Summative</option>
                   </select>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
+                {/* ── Class select: triggers subject reload ── */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Class *</label>
-                  <select value={formData.classId} onChange={e => setFormData({...formData, classId: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                  <select
+                    value={formData.classId}
+                    onChange={e => handleClassChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  >
                     <option value="">Select Class</option>
                     {classes.map(cls => (
-                      <option key={cls.id} value={cls.id}>{cls.display_name || `${cls.class_name} - ${cls.stream || 'No Stream'}`}</option>
+                      <option key={cls.id} value={cls.id}>
+                        {cls.display_name || (cls.stream ? `${cls.class_name} - ${cls.stream}` : cls.class_name)}
+                      </option>
                     ))}
                   </select>
                 </div>
+
+                {/* ── Subject select: populated after class is chosen ── */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Subject *</label>
-                  <select value={formData.subjectId} onChange={e => setFormData({...formData, subjectId: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="">Select Subject</option>
-                    {subjects.map(sub => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
+                  <select
+                    value={formData.subjectId}
+                    onChange={e => setFormData({...formData, subjectId: e.target.value})}
+                    disabled={!formData.classId || subjectsLoading}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    {subjectsLoading ? (
+                      <option value="">Loading subjects...</option>
+                    ) : !formData.classId ? (
+                      <option value="">Select a class first</option>
+                    ) : subjects.length === 0 ? (
+                      <option value="">No subjects assigned for this class</option>
+                    ) : (
+                      <>
+                        <option value="">Select Subject</option>
+                        {subjects.map(sub => (
+                          <option key={sub.id} value={sub.id}>{sub.name}</option>
+                        ))}
+                      </>
+                    )}
                   </select>
+                  {formData.classId && !subjectsLoading && subjects.length === 0 && (
+                    <p className="text-xs text-red-500 mt-1">You have no subjects allocated for this class.</p>
+                  )}
                 </div>
               </div>
+
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
                 <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} rows="2" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Brief description of the assessment..." />
@@ -577,10 +647,18 @@ function AssessmentManager() {
             </div>
             <div className="sticky bottom-0 px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
               <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm">Cancel</button>
-              <button onClick={() => { setFormData({...formData, published: false}); handleCreateAssessment(); }} disabled={saving} className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg">
+              <button
+                onClick={() => { setFormData(prev => ({...prev, published: false})); handleCreateAssessment(); }}
+                disabled={saving}
+                className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg"
+              >
                 {saving && <ButtonSpinner />} Save as Draft
               </button>
-              <button onClick={handleCreateAssessment} disabled={saving} className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg">
+              <button
+                onClick={() => { setFormData(prev => ({...prev, published: true})); handleCreateAssessment(); }}
+                disabled={saving}
+                className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg"
+              >
                 {saving && <ButtonSpinner />} Publish
               </button>
             </div>
@@ -669,9 +747,13 @@ function AssessmentManager() {
               </table>
               {totalGradingPages > 1 && (
                 <div className="flex justify-center items-center gap-2 mt-4">
-                  <button onClick={() => setGradingPage(p => Math.max(1, p-1))} disabled={gradingPage === 1} className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50">Prev</button>
+                  <button onClick={() => setGradingPage(p => Math.max(1, p-1))} disabled={gradingPage === 1} className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50">
+                    <ChevronLeft className="h-4 w-4 inline" /> Prev
+                  </button>
                   <span className="text-sm">Page {gradingPage} of {totalGradingPages}</span>
-                  <button onClick={() => setGradingPage(p => Math.min(totalGradingPages, p+1))} disabled={gradingPage === totalGradingPages} className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50">Next</button>
+                  <button onClick={() => setGradingPage(p => Math.min(totalGradingPages, p+1))} disabled={gradingPage === totalGradingPages} className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50">
+                    Next <ChevronRight className="h-4 w-4 inline" />
+                  </button>
                 </div>
               )}
             </div>
@@ -720,7 +802,13 @@ function AssessmentManager() {
                 return (
                   <>
                     <div className="grid grid-cols-5 gap-4 mb-6">
-                      {[{ val: avg.toFixed(1), label: 'Average', color: 'text-green-700' }, { val: min, label: 'Lowest', color: 'text-blue-700' }, { val: max, label: 'Highest', color: 'text-orange-700' }, { val: passed, label: 'Passed', color: 'text-purple-700' }, { val: resultsData.length, label: 'Total', color: 'text-gray-900' }].map(({ val, label, color }) => (
+                      {[
+                        { val: avg.toFixed(1), label: 'Average', color: 'text-green-700' },
+                        { val: min, label: 'Lowest', color: 'text-blue-700' },
+                        { val: max, label: 'Highest', color: 'text-orange-700' },
+                        { val: passed, label: 'Passed', color: 'text-purple-700' },
+                        { val: resultsData.length, label: 'Total', color: 'text-gray-900' },
+                      ].map(({ val, label, color }) => (
                         <div key={label} className="text-center p-3 bg-gray-50 rounded-lg">
                           <p className={`text-2xl font-bold ${color}`}>{val}</p>
                           <p className="text-xs text-gray-600">{label}</p>
@@ -732,7 +820,7 @@ function AssessmentManager() {
                         <div key={item.label}>
                           <div className="flex justify-between text-sm mb-1"><span>{item.label}</span><span>{item.count} students</span></div>
                           <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                            <div className={`${item.color} h-full flex items-center justify-end px-2 text-xs text-white`} style={{ width: `${(item.count / resultsData.length) * 100}%` }}>
+                            <div className={`${item.color} h-full flex items-center justify-end px-2 text-xs text-white`} style={{ width: `${resultsData.length ? (item.count / resultsData.length) * 100 : 0}%` }}>
                               {item.count > 0 && item.count}
                             </div>
                           </div>
