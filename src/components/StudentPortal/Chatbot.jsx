@@ -901,19 +901,22 @@ const Chatbot = () => {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState(null);
+  const [analyticsRetrying, setAnalyticsRetrying] = useState(false);
+  const [isAnalyticsEndpointMissing, setIsAnalyticsEndpointMissing] = useState(false);
   const [mlInsight, setMlInsight] = useState(null);
   const [mlLoading, setMlLoading] = useState(false);
+  const [mlRefreshing, setMlRefreshing] = useState(false);
   const [mlError, setMlError] = useState(null);
   const [mlLastUpdated, setMlLastUpdated] = useState(null);
   const [mlReloadKey, setMlReloadKey] = useState(0);
   const refreshMlInsight = useCallback(() => {
+    if (mlRefreshing) return;
+    setMlRefreshing(true);
     setMlReloadKey((prev) => prev + 1);
-  }, []);
+  }, [mlRefreshing]);
   const studentId = useMemo(() => {
     return user?.student_id || user?.student?.id || user?.student_profile?.id || null;
   }, [user]);
-  const isChatOpen = !isMobile || isMobileChatOpen;
-  const canRefreshMlInsight = isAuthenticated && isChatOpen && !mlLoading;
   const mlInsights = useMemo(() => ({
     prediction: mlInsight?.prediction ?? null,
     confidence: mlInsight?.confidence ?? null,
@@ -938,12 +941,22 @@ const Chatbot = () => {
   }, []);
 
   const fetchAnalytics = useCallback(async () => {
+    if (isAnalyticsEndpointMissing) {
+      setAnalyticsLoading(false);
+      return;
+    }
     setAnalyticsLoading(true);
     setAnalyticsError(null);
     try {
       const res = await fetch(`${API_BASE_URL}/student/chatbot/analytics/`, {
         headers: getAuthHeaders(),
       });
+      if (res.status === 404) {
+        setIsAnalyticsEndpointMissing(true);
+        setAnalyticsData(null);
+        setAnalyticsError(null);
+        return;
+      }
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const json = await res.json();
       if (json.success) {
@@ -952,17 +965,43 @@ const Chatbot = () => {
         setAnalyticsError(json.error || "Failed to load analytics.");
       }
     } catch (err) {
+      if (String(err?.message || "").includes("404")) {
+        setIsAnalyticsEndpointMissing(true);
+        setAnalyticsData(null);
+        setAnalyticsError(null);
+        return;
+      }
       setAnalyticsError(err.message || "Failed to connect to server.");
     } finally {
       setAnalyticsLoading(false);
     }
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, isAnalyticsEndpointMissing]);
+
+  const handleRetry = useCallback(async () => {
+    if (analyticsError) {
+      if (analyticsLoading || analyticsRetrying) return;
+      setAnalyticsRetrying(true);
+      try {
+        await fetchAnalytics();
+      } finally {
+        setAnalyticsRetrying(false);
+      }
+      return;
+    }
+
+    refreshMlInsight();
+  }, [analyticsError, analyticsLoading, analyticsRetrying, fetchAnalytics, refreshMlInsight]);
+
+  const isRetryDisabled = analyticsError
+    ? (analyticsLoading || analyticsRetrying)
+    : mlRefreshing;
+
   useEffect(() => {
-    if (!isChatOpen) return;
     if (!isAuthenticated) {
       setMlInsight(getMLInsightUnavailable(studentId));
       setMlError(null);
       setMlLoading(false);
+      setMlRefreshing(false);
       return;
     }
     const controller = new AbortController();
@@ -970,7 +1009,8 @@ const Chatbot = () => {
       setMlLoading(true);
       setMlError(null);
       try {
-        const token = getAuthHeaders()?.Authorization || null;
+        const storedToken = localStorage.getItem("token");
+        const token = storedToken ? `Bearer ${storedToken.replace(/^Bearer\s+/i, "")}` : null;
         const insight = await fetchStudentMLInsight({
           studentId,
           token,
@@ -994,12 +1034,13 @@ const Chatbot = () => {
       } finally {
         if (!controller.signal.aborted) {
           setMlLoading(false);
+          setMlRefreshing(false);
         }
       }
     };
     loadMlInsight();
     return () => controller.abort();
-  }, [isChatOpen, isAuthenticated, studentId, getAuthHeaders, mlReloadKey]);
+  }, [isAuthenticated, studentId, mlReloadKey]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -1106,12 +1147,12 @@ const Chatbot = () => {
         <button
           type="button"
           onClick={refreshMlInsight}
-          disabled={!canRefreshMlInsight}
+          disabled={mlRefreshing}
           title="Refresh ML insight"
           aria-label="Refresh ML insight"
           className="self-start md:self-auto px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {mlLoading ? 'Refreshing...' : 'Refresh ML insight'}
+          {mlRefreshing ? 'Refreshing...' : 'Refresh ML insight'}
         </button>
       </div>
 
@@ -1308,8 +1349,9 @@ const Chatbot = () => {
                 {analyticsError && <span>Analytics error: {analyticsError}</span>}
                 {!analyticsError && mlErrorDisplay && <span>{mlErrorDisplay}</span>}
                 <button
-                  onClick={analyticsError ? fetchAnalytics : refreshMlInsight}
-                  className="ml-3 underline text-amber-800 font-medium"
+                  onClick={handleRetry}
+                  disabled={isRetryDisabled}
+                  className="ml-3 underline text-amber-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Retry
                 </button>
@@ -1419,7 +1461,7 @@ const Chatbot = () => {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
             {analyticsError && <span>Analytics error: {analyticsError}</span>}
             {!analyticsError && mlErrorDisplay && <span>{mlErrorDisplay}</span>}
-            <button onClick={analyticsError ? fetchAnalytics : refreshMlInsight} className="ml-2 underline font-medium">Retry</button>
+            <button onClick={handleRetry} disabled={isRetryDisabled} className="ml-2 underline font-medium disabled:opacity-50 disabled:cursor-not-allowed">Retry</button>
           </div>
         )}
 

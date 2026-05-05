@@ -475,7 +475,7 @@ export async function fetchStudentRecommendations({ studentId, token, signal } =
   return normalizeRecommendationsPayload(payload);
 }
 
-export async function fetchStudentMLInsight({ studentId, token, signal } = {}) {
+export async function fetchStudentMLInsight({ studentId, token, signal, timeoutMs = 15000 } = {}) {
   if (!studentId) {
     return getMLInsightUnavailable(studentId);
   }
@@ -484,11 +484,32 @@ export async function fetchStudentMLInsight({ studentId, token, signal } = {}) {
     student_id: studentId,
   });
 
+  const controller = new AbortController();
+  const normalizedTimeoutMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 15000;
+  let abortedByCaller = false;
+  let abortedByTimeout = false;
+  const handleCallerAbort = () => {
+    abortedByCaller = true;
+    controller.abort();
+  };
+  const timeoutId = setTimeout(() => {
+    abortedByTimeout = true;
+    controller.abort();
+  }, normalizedTimeoutMs);
+
+  if (signal) {
+    if (signal.aborted) {
+      handleCallerAbort();
+    } else {
+      signal.addEventListener("abort", handleCallerAbort, { once: true });
+    }
+  }
+
   try {
     const response = await fetch(url, {
       method: "GET",
       headers: buildAuthHeaders(token),
-      signal,
+      signal: controller.signal,
     });
 
     let payload = null;
@@ -532,11 +553,24 @@ export async function fetchStudentMLInsight({ studentId, token, signal } = {}) {
     }
     return normalized;
   } catch (error) {
-    if (isAbortError(error)) throw error;
+    if (isAbortError(error)) {
+      if (abortedByTimeout && !abortedByCaller) {
+        return getMLInsightUnavailable(
+          studentId,
+          "ML insight request timed out. Please try again."
+        );
+      }
+      throw error;
+    }
     return getMLInsightUnavailable(
       studentId,
       "ML insight is unavailable right now. Please try again."
     );
+  } finally {
+    clearTimeout(timeoutId);
+    if (signal) {
+      signal.removeEventListener("abort", handleCallerAbort);
+    }
   }
 }
 
@@ -615,8 +649,8 @@ export function normalizeMLMonitoringSummary(payload) {
 
 export async function fetchMLMonitoringSummary({ token, signal } = {}) {
   const endpoints = [
-    `${API_BASE_URL}/ml/monitoring/`,
-    `${API_BASE_URL}/ml/observability/`,
+    `${API_BASE_URL}/ml/monitoring/health/`,
+    `${API_BASE_URL}/ml/observability/health/`,
     `${API_BASE_URL}/ml/dashboard/`,
   ];
 
