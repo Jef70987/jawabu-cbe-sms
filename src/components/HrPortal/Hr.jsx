@@ -10,7 +10,7 @@ import Payroll from "./PayrollMngmt";
 import Recruitment from "./Recruitment";
 import StaffManagement from "./StaffMngnt";
 import DepartmentManagement from "./DepartmentMng";
-import Messages from "../CommonService/StaffMessaging";
+import StaffMessaging from "../CommonService/StaffMessaging";
 
 const Hr = () => {
     return(
