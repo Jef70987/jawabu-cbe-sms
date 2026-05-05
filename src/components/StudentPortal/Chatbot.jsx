@@ -930,6 +930,8 @@ const Chatbot = () => {
   const activeMlControllerRef = useRef(null);
   const mlRequestSeqRef = useRef(0);
   const retryInFlightRef = useRef(false);
+  const missingStudentIdLoggedRef = useRef(false);
+  const refreshBlockedLoggedRef = useRef(false);
   const logMlDebug = useCallback((event, detail) => {
     if (import.meta.env.DEV) {
       // Debug details are developer-only and not rendered to students.
@@ -943,10 +945,13 @@ const Chatbot = () => {
 
     const fromUser = resolveStudentIdFromUser(user);
     if (fromUser) {
+      missingStudentIdLoggedRef.current = false;
+      refreshBlockedLoggedRef.current = false;
       return fromUser;
     }
 
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && !missingStudentIdLoggedRef.current) {
+      missingStudentIdLoggedRef.current = true;
       logMlDebug("missing_student_id_from_auth", {
         userKeys: user ? Object.keys(user) : [],
         hasStudent: Boolean(user?.student),
@@ -976,7 +981,10 @@ const Chatbot = () => {
 
     const resolvedStudentId = await ensureStudentId();
     if (!resolvedStudentId) {
-      logMlDebug("refresh_blocked_missing_student_id", {});
+      if (!refreshBlockedLoggedRef.current) {
+        refreshBlockedLoggedRef.current = true;
+        logMlDebug("refresh_blocked_missing_student_id", {});
+      }
       const hasToken = Boolean(localStorage.getItem("token"));
       setMlError(
         hasToken
@@ -1096,6 +1104,8 @@ const Chatbot = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
+      missingStudentIdLoggedRef.current = false;
+      refreshBlockedLoggedRef.current = false;
       setMlInsight(getMLInsightUnavailable(null));
       setMlError(null);
       setMlInsightStale(false);
