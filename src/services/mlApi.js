@@ -52,9 +52,13 @@ const DEFAULT_UNAVAILABLE_INSIGHT = {
   riskLevel: "unknown",
   confidence: null,
   confidenceBand: "unknown",
+  confidenceCaveat: null,
   recommendations: [],
   factors: [],
   source: "unavailable",
+  sourceMetadata: {},
+  stale: true,
+  errorMetadata: null,
   lastUpdated: null,
   message: null,
   error: null,
@@ -119,6 +123,36 @@ function sanitizeTimestamp(value) {
 
 function isAbortError(error) {
   return error?.name === "AbortError";
+}
+
+function extractApiDetail(payload) {
+  if (!payload) return "";
+  if (typeof payload === "string") return payload.trim();
+  if (typeof payload === "object") {
+    return String(payload.detail || payload.error || payload.message || "").trim();
+  }
+  return "";
+}
+
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payloadPart = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = payloadPart + "=".repeat((4 - (payloadPart.length % 4 || 4)) % 4);
+    const decoded = atob(padded);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+function getJwtTokenType(token) {
+  const payload = decodeJwtPayload(token);
+  if (!payload || typeof payload !== "object") return null;
+  const tokenType = payload.token_type;
+  return typeof tokenType === "string" ? tokenType.toLowerCase() : null;
 }
 
 function pickFirstNonNull(obj, fields) {
@@ -229,26 +263,182 @@ function normalizeFactorDirection(value, impact) {
   return "neutral";
 }
 
+function normalizeAuthToken(token) {
+  if (!token) return null;
+
+  let normalized = String(token).trim();
+
+  try {
+    const parsed = JSON.parse(normalized);
+    if (typeof parsed === "string") {
+      normalized = parsed.trim();
+    } else if (parsed && typeof parsed === "object") {
+      if (parsed.access) normalized = String(parsed.access).trim();
+      else if (parsed.token) normalized = String(parsed.token).trim();
+    }
+  } catch {
+    // token was not JSON; continue.
+  }
+
+  normalized = normalized.replace(/^Bearer\s+/i, "").trim();
+  normalized = normalized.replace(/^"+|"+$/g, "").trim();
+  if (!normalized) return null;
+
+  const tokenType = getJwtTokenType(normalized);
+  if (tokenType === "refresh") {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeRefreshToken(token) {
+  if (!token) return null;
+
+  let normalized = String(token).trim();
+
+  try {
+    const parsed = JSON.parse(normalized);
+    if (typeof parsed === "string") {
+      normalized = parsed.trim();
+    } else if (parsed && typeof parsed === "object") {
+      if (parsed.refresh) normalized = String(parsed.refresh).trim();
+      else if (parsed.refresh_token) normalized = String(parsed.refresh_token).trim();
+      else if (parsed.token) normalized = String(parsed.token).trim();
+    }
+  } catch {
+    // token was not JSON; continue.
+  }
+
+  normalized = normalized.replace(/^Bearer\s+/i, "").trim();
+  normalized = normalized.replace(/^"+|"+$/g, "").trim();
+  if (!normalized) return null;
+  return normalized;
+}
+
+function getStoredAccessToken() {
+  const candidates = [
+    localStorage.getItem("token"),
+    localStorage.getItem("access_token"),
+    localStorage.getItem("accessToken"),
+    localStorage.getItem("authToken"),
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeAuthToken(candidate);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
+function getStoredRefreshToken() {
+  const candidates = [
+    localStorage.getItem("refresh_token"),
+    localStorage.getItem("refreshToken"),
+    localStorage.getItem("token"),
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeRefreshToken(candidate);
+    if (!normalized) continue;
+    const tokenType = getJwtTokenType(normalized);
+    if (tokenType === "refresh") return normalized;
+  }
+  return null;
+}
+
+function clearStoredAuthTokens() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("refreshToken");
+}
+
+function getMlInsightErrorMessage(status, payload) {
+  const detail = extractApiDetail(payload);
+  if (status === 401) {
+    if (/token not valid|token is invalid|token is expired|not valid for any token type|token_not_valid/i.test(detail)) {
+      return "Your session has expired. Please sign in again.";
+    }
+    return "You need to sign in again to view this ML insight.";
+  }
+  if (status === 403) {
+    return "You are not permitted to view this ML insight.";
+  }
+  if (status === 429) {
+    return "ML insight is temporarily rate-limited. Please try again shortly.";
+  }
+  return detail || "ML insight is unavailable right now.";
+}
+
+async function tryRefreshAccessToken({ signal } = {}) {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) {
+    return { ok: false, reason: "missing_refresh_token", payload: null };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh-token/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      signal,
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      return { ok: false, reason: "refresh_failed", payload };
+    }
+
+    const candidateAccessToken = normalizeAuthToken(
+      payload?.token ?? payload?.access ?? payload?.access_token ?? payload?.data?.token ?? payload?.data?.access,
+    );
+    if (!candidateAccessToken) {
+      return { ok: false, reason: "missing_access_token", payload };
+    }
+
+    localStorage.setItem("token", candidateAccessToken);
+    return { ok: true, accessToken: candidateAccessToken, payload };
+  } catch {
+    return { ok: false, reason: "refresh_error", payload: null };
+  }
+}
+
 function buildAuthHeaders(token) {
   const headers = {
     "Content-Type": "application/json",
     Accept: "application/json",
   };
 
-  const sourceToken = token || localStorage.getItem("token");
+  const sourceToken = normalizeAuthToken(token) || getStoredAccessToken();
   if (sourceToken) {
-    const tokenValue = sourceToken.startsWith("Bearer ") ? sourceToken : `Bearer ${sourceToken}`;
-    headers.Authorization = tokenValue;
+    headers.Authorization = `Bearer ${sourceToken}`;
   }
 
   return headers;
 }
 
-async function fetchJson(url, { token, signal } = {}) {
-  const response = await fetch(url, {
-    method: "GET",
+async function fetchJson(url, { method = "GET", token, signal, body } = {}) {
+  const requestInit = {
+    method,
     headers: buildAuthHeaders(token),
     signal,
+  };
+  if (body !== undefined) {
+    requestInit.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(url, {
+    ...requestInit,
   });
 
   const text = await response.text();
@@ -272,7 +462,10 @@ async function fetchJson(url, { token, signal } = {}) {
       .trim()
       .slice(0, 180);
     const safeDetail = detail || "Please try again.";
-    throw new Error(`ML insight unavailable (${response.status}): ${safeDetail}`);
+    const requestError = new Error(`ML insight unavailable (${response.status}): ${safeDetail}`);
+    requestError.status = response.status;
+    requestError.payload = payload;
+    throw requestError;
   }
 
   return payload;
@@ -472,6 +665,25 @@ export function normalizeMLInsight(payload, options = {}) {
     recommendations,
     factors,
     source: String(data?.source || "unavailable").toLowerCase(),
+    sourceMetadata:
+      data?.source_metadata && typeof data.source_metadata === "object"
+        ? data.source_metadata
+        : data?.sourceMetadata && typeof data.sourceMetadata === "object"
+          ? data.sourceMetadata
+          : {},
+    stale: Boolean(data?.stale ?? data?.is_stale ?? false),
+    errorMetadata:
+      data?.error_metadata && typeof data.error_metadata === "object"
+        ? data.error_metadata
+        : data?.errorMetadata && typeof data.errorMetadata === "object"
+          ? data.errorMetadata
+          : null,
+    confidenceCaveat:
+      typeof data?.confidence_caveat === "string"
+        ? data.confidence_caveat
+        : typeof data?.confidenceCaveat === "string"
+          ? data.confidenceCaveat
+          : null,
     lastUpdated: sanitizeTimestamp(data?.last_updated ?? data?.lastUpdated),
     message: data?.message ? String(data.message) : null,
     error: body?.error || null,
@@ -486,18 +698,19 @@ export function normalizeMLInsight(payload, options = {}) {
     insight.confidenceBand = confidenceBandFromValue(insight.confidence);
   }
 
-  if (!["ml_api", "unavailable", "empty"].includes(insight.source)) {
+  if (!["ml_api", "unavailable", "empty", "stale_cache"].includes(insight.source)) {
     insight.source = "unavailable";
   }
 
   return insight;
 }
 
-export function getMLInsightUnavailable(studentId, error = null, raw = null) {
+export function getMLInsightUnavailable(studentId, error = null, raw = null, errorMetadata = null) {
   return {
     ...DEFAULT_UNAVAILABLE_INSIGHT,
     studentId: studentId ?? null,
     error,
+    errorMetadata: errorMetadata && typeof errorMetadata === "object" ? errorMetadata : null,
     raw,
   };
 }
@@ -518,26 +731,31 @@ export async function fetchStudentRecommendations({ studentId, token, signal } =
   return normalizeRecommendationsPayload(payload);
 }
 
-export async function fetchStudentMLInsight({ studentId, token, signal, timeoutMs = 15000 } = {}) {
-  if (!studentId) {
-    const missingStudentIdError = "Student ID is required to fetch ML insight.";
-    logMlInsightDebug("request_skipped_missing_student_id", {
-      hasToken: Boolean(token || localStorage.getItem("token")),
-      reason: missingStudentIdError,
-    });
-    throw new Error(missingStudentIdError);
-  }
-
-  const url = withQuery(`${API_BASE_URL}/ml/student-insight/`, {
-    student_id: studentId,
-  });
-
-  logMlInsightDebug("request", {
+async function requestStudentMLInsight(
+  {
+    method = "GET",
+    endpoint = `${API_BASE_URL}/ml/student-insight/`,
     studentId,
-    hasToken: Boolean(token || localStorage.getItem("token")),
+    token,
+    signal,
+    timeoutMs = 15000,
+    query = {},
+    body,
+    authRetryAttempted = false,
+  } = {},
+) {
+  const safeQuery = { ...query };
+  if (studentId) {
+    safeQuery.student_id = studentId;
+  }
+  const url = withQuery(endpoint, safeQuery);
+  logMlInsightDebug("request", {
+    method,
+    studentId: studentId || null,
+    hasToken: Boolean(normalizeAuthToken(token) || getStoredAccessToken()),
     url,
+    authRetryAttempted,
   });
-
   const controller = new AbortController();
   const normalizedTimeoutMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 15000;
   let abortedByCaller = false;
@@ -560,88 +778,91 @@ export async function fetchStudentMLInsight({ studentId, token, signal, timeoutM
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: buildAuthHeaders(token),
+    const payload = await fetchJson(url, {
+      method,
+      token,
       signal: controller.signal,
+      body,
     });
-
-    let payload = null;
-    try {
-      payload = await response.json();
-    } catch {
-      payload = null;
-    }
-
-    logMlInsightDebug("response", {
-      studentId,
-      responseStatus: response.status,
-      responseOk: response.ok,
-      rawPayload: payload,
-    });
-
-    if (response.status === 401 || response.status === 403) {
+    if (payload && typeof payload === "object" && payload.status === "error") {
+      const errorText =
+        typeof payload.error === "string" && payload.error.trim()
+          ? payload.error.trim()
+          : "ML insight is unavailable right now.";
       return getMLInsightUnavailable(
         studentId,
-        "You are not permitted to view this ML insight.",
+        errorText,
         payload
       );
     }
-
-    if (response.status === 429) {
-      return getMLInsightUnavailable(
-        studentId,
-        "ML insight is temporarily rate-limited. Please try again shortly.",
-        payload
-      );
-    }
-
-    if (!response.ok || payload?.status === "error") {
-      const apiError = payload && typeof payload === "object" ? String(payload.error || "").toLowerCase() : "";
-      if (apiError.includes("not permitted")) {
-        return getMLInsightUnavailable(
-          studentId,
-          "You are not permitted to view this ML insight.",
-          payload
-        );
-      }
-      if (apiError.includes("rate-limited") || apiError.includes("rate limited")) {
-        return getMLInsightUnavailable(
-          studentId,
-          "ML insight is temporarily rate-limited. Please try again shortly.",
-          payload
-        );
-      }
-      if (apiError.includes("student_id is required") || apiError.includes("invalid student_id")) {
-        return getMLInsightUnavailable(
-          studentId,
-          "ML insight is unavailable for this student right now.",
-          payload
-        );
-      }
-      return getMLInsightUnavailable(
-        studentId,
-        `ML insight request failed with status ${response.status}.`,
-        payload
-      );
-    }
-
     const normalized = normalizeMLInsight(payload, { studentId });
     logMlInsightDebug("normalized", normalized);
     if (normalized.source === "unavailable" && !normalized.error) {
       return getMLInsightUnavailable(
-        studentId,
+        normalized.studentId ?? studentId,
         "ML insight is not available yet.",
         payload
       );
     }
     return normalized;
   } catch (error) {
+    const responseStatus = Number.isFinite(error?.status) ? Number(error.status) : null;
+    const responsePayload = error?.payload ?? null;
     logMlInsightDebug("request_exception", {
       studentId,
+      method,
+      responseStatus,
+      responsePayload,
       errorName: error?.name || null,
       errorMessage: error?.message || String(error),
     });
+
+    if (responseStatus === 401 && !authRetryAttempted) {
+      const refreshAttempt = await tryRefreshAccessToken({ signal });
+      if (refreshAttempt.ok) {
+        return requestStudentMLInsight({
+          method,
+          endpoint,
+          studentId,
+          token: refreshAttempt.accessToken,
+          signal,
+          timeoutMs,
+          query,
+          body,
+          authRetryAttempted: true,
+        });
+      }
+      clearStoredAuthTokens();
+      return getMLInsightUnavailable(
+        studentId,
+        getMlInsightErrorMessage(401, responsePayload),
+        responsePayload
+      );
+    }
+
+    if (responseStatus === 401 || responseStatus === 403) {
+      return getMLInsightUnavailable(
+        studentId,
+        getMlInsightErrorMessage(responseStatus, responsePayload),
+        responsePayload
+      );
+    }
+
+    if (responseStatus === 429) {
+      return getMLInsightUnavailable(
+        studentId,
+        getMlInsightErrorMessage(429, responsePayload),
+        responsePayload
+      );
+    }
+
+    if (responseStatus && responseStatus >= 400 && responseStatus < 500) {
+      return getMLInsightUnavailable(
+        studentId,
+        getMlInsightErrorMessage(responseStatus, responsePayload),
+        responsePayload
+      );
+    }
     if (isAbortError(error)) {
       if (abortedByTimeout && !abortedByCaller) {
         return getMLInsightUnavailable(
@@ -661,6 +882,42 @@ export async function fetchStudentMLInsight({ studentId, token, signal, timeoutM
       signal.removeEventListener("abort", handleCallerAbort);
     }
   }
+}
+
+export async function fetchStudentMLInsight(
+  { studentId, token, signal, timeoutMs = 15000, forceRefresh = false } = {},
+) {
+  const query = {};
+  if (forceRefresh) {
+    query.force_refresh = "true";
+  }
+  return requestStudentMLInsight({
+    method: "GET",
+    endpoint: `${API_BASE_URL}/ml/student-insight/`,
+    studentId,
+    token,
+    signal,
+    timeoutMs,
+    query,
+  });
+}
+
+export async function refreshStudentMLInsight(
+  { studentId, token, signal, timeoutMs = 20000 } = {},
+) {
+  const body = {};
+  if (studentId) {
+    body.student_id = studentId;
+  }
+  return requestStudentMLInsight({
+    method: "POST",
+    endpoint: `${API_BASE_URL}/ml/student-insight/refresh/`,
+    studentId,
+    token,
+    signal,
+    timeoutMs,
+    body,
+  });
 }
 
 export function getMLMonitoringUnavailable() {

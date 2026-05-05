@@ -1,6 +1,10 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../Authentication/AuthContext";
-import { fetchStudentMLInsight, getMLInsightUnavailable } from "../../services/mlApi";
+import {
+  fetchStudentMLInsight,
+  getMLInsightUnavailable,
+  refreshStudentMLInsight,
+} from "../../services/mlApi";
 import {
   MessageCircle,
   Send,
@@ -979,13 +983,17 @@ const Chatbot = () => {
     mlInsightRef.current = mlInsight;
   }, [mlInsight]);
 
-  const refreshMlInsight = useCallback(async ({ showRefreshing = true } = {}) => {
+  const refreshMlInsight = useCallback(async ({ showRefreshing = true, mode = "read" } = {}) => {
     if (!isAuthenticated) {
       return { ok: false, reason: "unauthenticated" };
     }
 
     const resolvedStudentId = await ensureStudentId();
-    if (!resolvedStudentId) {
+    const userRole = String(user?.role || "").toLowerCase();
+    const isStudentRole = userRole === "student";
+    const requestStudentId = isStudentRole ? null : resolvedStudentId;
+
+    if (!requestStudentId && !isStudentRole) {
       if (!refreshBlockedLoggedRef.current) {
         refreshBlockedLoggedRef.current = true;
         logMlDebug("refresh_blocked_missing_student_id", {});
@@ -1011,7 +1019,10 @@ const Chatbot = () => {
     const previousInsight = mlInsightRef.current;
     const hasPreviousInsightForCurrentStudent =
       Boolean(previousInsight)
-      && String(previousInsight?.studentId || "") === String(resolvedStudentId || "");
+      && (
+        !resolvedStudentId
+        || String(previousInsight?.studentId || "") === String(resolvedStudentId || "")
+      );
 
     setMlLoading(true);
     if (showRefreshing) setMlRefreshing(true);
@@ -1024,36 +1035,48 @@ const Chatbot = () => {
         return { ok: false, reason: "missing_token" };
       }
       const token = storedToken ? `Bearer ${storedToken.replace(/^Bearer\s+/i, "")}` : null;
-      const insight = await fetchStudentMLInsight({
-        studentId: resolvedStudentId,
-        token,
-        signal: controller.signal,
-      });
+      const insight = mode === "refresh"
+        ? await refreshStudentMLInsight({
+          studentId: requestStudentId,
+          token,
+          signal: controller.signal,
+        })
+        : await fetchStudentMLInsight({
+          studentId: requestStudentId,
+          token,
+          signal: controller.signal,
+          forceRefresh: false,
+        });
       if (controller.signal.aborted || mlRequestSeqRef.current !== requestSeq) {
         return { ok: false, reason: "aborted" };
       }
 
-      const normalizedInsight = insight || getMLInsightUnavailable(resolvedStudentId);
+      const normalizedInsight = insight || getMLInsightUnavailable(requestStudentId || resolvedStudentId);
       const insightUnavailable = normalizedInsight?.source === "unavailable" || Boolean(normalizedInsight?.error);
+      const normalizedErrorMessage = normalizedInsight?.error || "ML insight unavailable. Please try again.";
       if (insightUnavailable && hasPreviousInsightForCurrentStudent) {
         logMlDebug("refresh_failed_using_stale", normalizedInsight?.error || normalizedInsight);
         setMlInsightStale(true);
-        setMlError("Refresh failed. Showing last available ML insight. Some fields may be stale or unavailable.");
+        if (/session has expired|sign in again/i.test(normalizedErrorMessage)) {
+          setMlError(`${normalizedErrorMessage} Showing last available ML insight.`);
+        } else {
+          setMlError("Refresh failed. Showing last available ML insight. Some fields may be stale or unavailable.");
+        }
         return { ok: false, reason: "stale_fallback", insight: previousInsight };
       }
 
       if (insightUnavailable) {
         logMlDebug("refresh_failed_no_prior", normalizedInsight?.error || normalizedInsight);
         setMlInsight(normalizedInsight);
-        setMlInsightStale(false);
+        setMlInsightStale(Boolean(normalizedInsight?.stale));
         setMlLastUpdated(normalizedInsight?.lastUpdated || null);
-        setMlError("ML insight unavailable. Please try again.");
+        setMlError(normalizedErrorMessage);
         return { ok: false, reason: "unavailable", insight: normalizedInsight };
       }
 
       setMlInsight(normalizedInsight);
       setMlLastUpdated(normalizedInsight?.lastUpdated || null);
-      setMlInsightStale(false);
+      setMlInsightStale(Boolean(normalizedInsight?.stale));
       setMlError(null);
       return { ok: true, insight: normalizedInsight };
     } catch (err) {
@@ -1067,12 +1090,15 @@ const Chatbot = () => {
       if (hasPreviousInsightForCurrentStudent) {
         logMlDebug("refresh_exception_using_stale", err);
         setMlInsightStale(true);
-        setMlError("Refresh failed. Showing last available ML insight. Some fields may be stale or unavailable.");
+        const fallbackMessage = /session has expired|sign in again/i.test(String(err?.message || ""))
+          ? "Your session has expired. Please sign in again. Showing last available ML insight."
+          : "Refresh failed. Showing last available ML insight. Some fields may be stale or unavailable.";
+        setMlError(fallbackMessage);
         return { ok: false, reason: "stale_fallback", insight: previousInsight };
       }
 
       logMlDebug("refresh_exception_no_prior", err);
-      setMlInsight(getMLInsightUnavailable(resolvedStudentId));
+      setMlInsight(getMLInsightUnavailable(requestStudentId || resolvedStudentId));
       setMlInsightStale(false);
       setMlError("ML insight unavailable. Please try again.");
       return { ok: false, reason: "unavailable" };
@@ -1085,7 +1111,7 @@ const Chatbot = () => {
         activeMlControllerRef.current = null;
       }
     }
-  }, [ensureStudentId, isAuthenticated, logMlDebug]);
+  }, [ensureStudentId, isAuthenticated, logMlDebug, user]);
 
   const retryDataPath = useCallback(async (target = "ml") => {
     if (retryInFlightRef.current) return;
@@ -1093,7 +1119,7 @@ const Chatbot = () => {
 
     try {
       if (target === "ml" || target === "auto" || target === "all" || target === "recommendations" || target === "chatbotContext") {
-        await refreshMlInsight({ showRefreshing: true });
+        await refreshMlInsight({ showRefreshing: true, mode: "refresh" });
       }
     } finally {
       retryInFlightRef.current = false;
@@ -1118,7 +1144,7 @@ const Chatbot = () => {
       setMlRefreshing(false);
       return;
     }
-    refreshMlInsight({ showRefreshing: false });
+    refreshMlInsight({ showRefreshing: false, mode: "read" });
     return () => {
       if (activeMlControllerRef.current) {
         activeMlControllerRef.current.abort();
@@ -1137,7 +1163,7 @@ const Chatbot = () => {
     setIsTyping(true);
     const mlIntent = detectMlIntent(message);
     if (mlIntent) {
-      const refreshResult = await refreshMlInsight({ showRefreshing: false });
+      const refreshResult = await refreshMlInsight({ showRefreshing: false, mode: "read" });
       if (!refreshResult?.ok && (refreshResult?.reason === "missing_student_id" || refreshResult?.reason === "missing_token")) {
         setMessages((prev) => [
           ...prev,
@@ -1256,6 +1282,18 @@ const Chatbot = () => {
         message: mlError,
       };
     }
+    if (!mlError && mlInsight?.errorMetadata?.message) {
+      return {
+        tone: "warning",
+        message: `ML refresh warning: ${mlInsight.errorMetadata.message}`,
+      };
+    }
+    if (!mlError && mlInsightStale) {
+      return {
+        tone: "warning",
+        message: "Showing stale ML insight while refresh is pending or unavailable.",
+      };
+    }
     if (!mlError && missingMlFields) {
       return {
         tone: "info",
@@ -1280,7 +1318,7 @@ const Chatbot = () => {
         <button
           type="button"
           onClick={() => {
-            refreshMlInsight({ showRefreshing: true });
+            refreshMlInsight({ showRefreshing: true, mode: "refresh" });
           }}
           title="Refresh ML insight"
           aria-label="Refresh ML insight"
@@ -1306,6 +1344,12 @@ const Chatbot = () => {
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {mlInsight?.sourceMetadata?.fallback_used && (
+        <div className="mb-3 border rounded-lg p-2 text-xs bg-blue-50 border-blue-200 text-blue-700">
+          Insight based on latest available term data.
         </div>
       )}
 
